@@ -35,7 +35,7 @@ type driver struct {
 }
 
 const (
-	driverName = "NFS"
+	driverName = "csi-nfsplugin"
 )
 
 var (
@@ -70,5 +70,8 @@ func NewNodeServer(d *driver) *nodeServer {
 }
 
 func (d *driver) Run() {
-	csicommon.RunNodePublishServer(d.endpoint, d.csiDriver, NewNodeServer(d))
+	csicommon.Serve(d.endpoint,
+		csicommon.NewDefaultIdentityServer(d.csiDriver),
+			csicommon.NewDefaultControllerServer(d.csiDriver),
+				NewNodeServer(d))
 }
