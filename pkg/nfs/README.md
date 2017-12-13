@@ -30,7 +30,7 @@ Please update the NFS Server & share information in nginx.yaml file.
 
 ### Start NFS driver
 ```
-$ sudo ../_output/nfsdriver --endpoint tcp://127.0.0.1:10000 --nodeid CSINode
+$ sudo ../../_output/flexadapter --endpoint tcp://127.0.0.1:10000 --drivername simplenfs --driverpath ./examples/simplenfs-flexdriver/driver/nfs --nodeid CSINode -v=3
 ```
 
 ## Test
@@ -52,7 +52,7 @@ $ csc identity supportedversions --endpoint tcp://127.0.0.1:10000
 ```
 $ export NFS_SERVER="Your Server IP (Ex: 10.10.10.10)"
 $ export NFS_SHARE="Your NFS share"
-$ csc node publishvolume --endpoint tcp://127.0.0.1:10000 --target-path /mnt/nfs --attrib server=$NFS_SERVER --attrib exportPath=$NFS_SHARE nfstestvol
+$ csc node publishvolume --endpoint tcp://127.0.0.1:10000 --target-path /mnt/nfs --attrib server=$NFS_SERVER --attrib share=$NFS_SHARE nfstestvol
 nfstestvol
 ```
 

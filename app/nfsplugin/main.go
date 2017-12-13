@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -30,7 +31,14 @@ var (
 	nodeID   string
 )
 
+func init() {
+	flag.Set("logtostderr", "true")
+}
+
 func main() {
+
+	flag.CommandLine.Parse([]string{})
+
 	cmd := &cobra.Command{
 		Use:   "NFS",
 		Short: "CSI based NFS driver",
@@ -39,12 +47,15 @@ func main() {
 		},
 	}
 
+	cmd.Flags().AddGoFlagSet(flag.CommandLine)
+
 	cmd.PersistentFlags().StringVar(&nodeID, "nodeid", "", "node id")
 	cmd.MarkPersistentFlagRequired("nodeid")
 
 	cmd.PersistentFlags().StringVar(&endpoint, "endpoint", "", "CSI endpoint")
 	cmd.MarkPersistentFlagRequired("endpoint")
 
+	cmd.ParseFlags(os.Args[1:])
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err.Error())
 		os.Exit(1)

@@ -70,8 +70,10 @@ func NewNodeServer(d *driver) *nodeServer {
 }
 
 func (d *driver) Run() {
-	csicommon.Serve(d.endpoint,
+	s := csicommon.NewNonBlockingGRPCServer()
+	s.Start(d.endpoint,
 		csicommon.NewDefaultIdentityServer(d.csiDriver),
-			csicommon.NewDefaultControllerServer(d.csiDriver),
-				NewNodeServer(d))
+		csicommon.NewDefaultControllerServer(d.csiDriver),
+		NewNodeServer(d))
+	s.Wait()
 }
