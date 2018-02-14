@@ -28,6 +28,11 @@ Please update the NFS Server & share information in nginx.yaml file.
 
 ## Using CSC tool
 
+### Build nfsplugin
+```
+$ make nfs
+```
+
 ### Start NFS driver
 ```
 $ sudo ./_output/nfsplugin --endpoint tcp://127.0.0.1:10000 --nodeid CSINode -v=5
