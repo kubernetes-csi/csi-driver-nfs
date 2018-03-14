@@ -54,7 +54,7 @@ func NewDriver(nodeID, endpoint string) *driver {
 	// NFS plugin does not support ControllerServiceCapability now.
 	// If support is added, it should set to appropriate
 	// ControllerServiceCapability RPC types.
-        csiDriver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_UNKNOWN})
+	csiDriver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_UNKNOWN})
 
 	d.csiDriver = csiDriver
 
