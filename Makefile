@@ -14,7 +14,7 @@
 
 REGISTRY_NAME=quay.io/k8scsi
 IMAGE_NAME=nfsplugin
-IMAGE_VERSION=canary
+IMAGE_VERSION=v1.0.0
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(IMAGE_VERSION)
 REV=$(shell git describe --long --tags --dirty)
 
@@ -29,7 +29,7 @@ nfs:
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o _output/nfsplugin ./app/
 
 nfs-container: nfs
-	docker build -t $(IMAGE_TAG) -f ./app/Dockerfile .
+	docker build -t $(IMAGE_TAG) -f ./Dockerfile .
 
 push: nfs-container
 	docker push $(IMAGE_TAG)

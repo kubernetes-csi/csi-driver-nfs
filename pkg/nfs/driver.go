@@ -27,8 +27,8 @@ type driver struct {
 	csiDriver *csicommon.CSIDriver
 	endpoint  string
 
-	ids *csicommon.DefaultIdentityServer
-	ns  *nodeServer
+	//ids *identityServer
+	ns *nodeServer
 
 	cap   []*csi.VolumeCapability_AccessMode
 	cscap []*csi.ControllerServiceCapability
@@ -71,8 +71,9 @@ func (d *driver) Run() {
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(d.endpoint,
 		csicommon.NewDefaultIdentityServer(d.csiDriver),
-		// NFS plugin has not implemented ControllerServer.
-		nil,
+		// NFS plugin has not implemented ControllerServer
+		// using default controllerserver.
+		csicommon.NewDefaultControllerServer(d.csiDriver),
 		NewNodeServer(d))
 	s.Wait()
 }

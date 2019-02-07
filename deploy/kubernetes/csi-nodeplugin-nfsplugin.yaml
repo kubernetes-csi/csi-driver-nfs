@@ -16,14 +16,17 @@ spec:
       serviceAccount: csi-nodeplugin
       hostNetwork: true
       containers:
-        - name: driver-registrar
-          image: quay.io/k8scsi/driver-registrar:v0.3.0
+        - name: node-driver-registrar
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "rm -rf /registration/csi-nfsplugin /registration/csi-nfsplugin-reg.sock"]
           args:
-            - "--v=5"
-            - "--csi-address=$(ADDRESS)"
+            - --v=5
+            - --csi-address=/plugin/csi.sock
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/csi-nfsplugin/csi.sock
           env:
-            - name: ADDRESS
-              value: /plugin/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
@@ -31,13 +34,15 @@ spec:
           volumeMounts:
             - name: plugin-dir
               mountPath: /plugin
+            - name: registration-dir
+              mountPath: /registration
         - name: nfs
           securityContext:
             privileged: true
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: quay.io/k8scsi/nfsplugin:v0.3.0
+          image: quay.io/k8scsi/nfsplugin:v1.0.0
           args :
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
@@ -64,3 +69,7 @@ spec:
           hostPath:
             path: /var/lib/kubelet/pods
             type: Directory
+        - hostPath:
+            path: /var/lib/kubelet/plugins_registry
+            type: Directory
+          name: registration-dir
