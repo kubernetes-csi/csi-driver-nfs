@@ -2,7 +2,8 @@
 
 approvers:
 - childsb
+- msau42
 - saad-ali
-reviews:
-- childsb
+reviewers:
+- msau42
 - saad-ali
