@@ -12,28 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-REGISTRY_NAME=quay.io/k8scsi
-IMAGE_NAME=nfsplugin
-IMAGE_VERSION=v1.0.0
-IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(IMAGE_VERSION)
-REV=$(shell git describe --long --tags --dirty)
+CMDS=nfsplugin
+all: build
 
-.PHONY: all nfs clean nfs-container push
-
-test:
-	go test github.com/kubernetes-csi/csi-driver-nfs/pkg/... -cover
-	go vet github.com/kubernetes-csi/csi-driver-nfs/pkg/...
-
-nfs:
-	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o _output/nfsplugin ./app/
-
-nfs-container: nfs
-	docker build -t $(IMAGE_TAG) -f ./Dockerfile .
-
-push: nfs-container
-	docker push $(IMAGE_TAG)
-
-clean:
-	go clean -r -x
-	-rm -rf _output
+include release-tools/build.make
