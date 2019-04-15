@@ -66,6 +66,13 @@ $ csc node get-id --endpoint tcp://127.0.0.1:10000
 CSINode
 ```
 
+## Running Kubernetes End To End tests on the NFS Driver
+1) Stand up a local cluster `ALLOW_PRIVILEGED=1 hack/local-up-cluster.sh`
+2) Build the nfs driver by running `make`
+3) Create NFS Driver Image, where the image tag would be whatever that is required by your YAML deployment files        `docker build -t quay.io/k8scsi/nfsplugin:v1.0.0 .`
+4) Run E2E Tests using the following command: `go test -v ./cmd/nfsplugin/ -ginkgo.v -ginkgo.progress --kubeconfig=/var/run/kubernetes/admin.kubeconfig -timeout=0`
+
+
 ## Community, discussion, contribution, and support
 
 Learn how to engage with the Kubernetes community on the [community page](http://kubernetes.io/community/).
