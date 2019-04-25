@@ -14,8 +14,6 @@ limitations under the License.
 package test
 
 import (
-	"fmt"
-	. "github.com/onsi/ginkgo"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -100,17 +98,7 @@ func (n *nfsDriver) PrepareTest(f *framework.Framework) (*testsuites.PerTestConf
 		Framework: f,
 	}
 
-	//Install the nfs driver from the manifests
-	cleanup, err := config.Framework.CreateFromManifests(nil, n.manifests...)
-
-	if err != nil {
-		framework.Failf("deploying %s driver: %v", n.driverInfo.Name, err)
-	}
-
-	return config, func() {
-		By(fmt.Sprintf("uninstalling %s driver", n.driverInfo.Name))
-		cleanup()
-	}
+	return config, func() {}
 }
 
 func (n *nfsDriver) CreateVolume(config *testsuites.PerTestConfig, volType testpatterns.TestVolType) testsuites.TestVolume {

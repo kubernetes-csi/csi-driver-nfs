@@ -65,12 +65,26 @@ nfstestvol
 $ csc node get-id --endpoint tcp://127.0.0.1:10000
 CSINode
 ```
+## Running Kubernetes End To End tests on an NFS Driver
 
-## Running Kubernetes End To End tests on the NFS Driver
-1) Stand up a local cluster `ALLOW_PRIVILEGED=1 hack/local-up-cluster.sh`
-2) Build the nfs driver by running `make`
-3) Create NFS Driver Image, where the image tag would be whatever that is required by your YAML deployment files        `docker build -t quay.io/k8scsi/nfsplugin:v1.0.0 .`
-4) Run E2E Tests using the following command: `go test -v ./cmd/nfsplugin/ -ginkgo.v -ginkgo.progress --kubeconfig=/var/run/kubernetes/admin.kubeconfig -timeout=0`
+First, stand up a local cluster `ALLOW_PRIVILEGED=1 hack/local-up-cluster.sh` (from your Kubernetes repo)
+For Fedora/RHEL clusters, the following might be required:
+  ```
+  sudo chown -R $USER:$USER /var/run/kubernetes/
+  sudo chown -R $USER:$USER /var/lib/kubelet
+  sudo chcon -R -t svirt_sandbox_file_t /var/lib/kubelet
+  ```
+If you are plannig to test using your own private image, you could either install your nfs driver using your own set of YAML files, or edit the existing YAML files to use that private image.
+
+When using the [existing set of YAML files](https://github.com/kubernetes-csi/csi-driver-nfs/tree/master/deploy/kubernetes), you would edit the [csi-attacher-nfsplugin.yaml](https://github.com/kubernetes-csi/csi-driver-nfs/blob/master/deploy/kubernetes/csi-attacher-nfsplugin.yaml#L46) and [csi-nodeplugin-nfsplugin.yaml](https://github.com/kubernetes-csi/csi-driver-nfs/blob/master/deploy/kubernetes/csi-nodeplugin-nfsplugin.yaml#L45) files to include your private image instead of the default one. After editing these files, skip to step 3 of the following steps.
+
+If you already have a driver installed, skip to step 4 of the following steps.
+
+1) Build the nfs driver by running `make`
+2) Create NFS Driver Image, where the image tag would be whatever that is required by your YAML deployment files        `docker build -t quay.io/k8scsi/nfsplugin:v1.0.0 .`
+3) Install the Driver: `kubectl create -f deploy/kubernetes`
+4) Build E2E test binary: `make build-tests`
+5) Run E2E Tests using the following command: `./bin/tests --ginkgo.v --ginkgo.progress --kubeconfig=/var/run/kubernetes/admin.kubeconfig`
 
 
 ## Community, discussion, contribution, and support
