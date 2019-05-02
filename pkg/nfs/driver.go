@@ -72,7 +72,7 @@ func (d *driver) Run() {
 		csicommon.NewDefaultIdentityServer(d.csiDriver),
 		// NFS plugin has not implemented ControllerServer
 		// using default controllerserver.
-		csicommon.NewDefaultControllerServer(d.csiDriver),
+		getControllerServer(d.csiDriver),
 		NewNodeServer(d))
 	s.Wait()
 }
