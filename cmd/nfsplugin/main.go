@@ -65,6 +65,6 @@ func main() {
 }
 
 func handle() {
-	d := nfs.NewDriver(nodeID, endpoint)
+	d := nfs.NewNFSdriver(nodeID, endpoint)
 	d.Run()
 }
