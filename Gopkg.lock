@@ -281,14 +281,6 @@
   version = "v0.2.0"
 
 [[projects]]
-  digest = "1:0bde3fb932a1aa4e12bc43ef91157fcda27dd0fc5d9f309647544ceaec075f48"
-  name = "github.com/kubernetes-csi/drivers"
-  packages = ["pkg/csi-common"]
-  pruneopts = "NUT"
-  revision = "8a4ae6feb47cf7ae29b3dab9e3dc3d1ff796fbf2"
-  version = "v1.0.2"
-
-[[projects]]
   branch = "master"
   digest = "1:df495c9184b4e6cbb9d55652236dbcbe72c65a1c8b6469da50722628cea474e7"
   name = "github.com/mailru/easyjson"
@@ -1397,11 +1389,12 @@
   input-imports = [
     "github.com/container-storage-interface/spec/lib/go/csi",
     "github.com/golang/glog",
-    "github.com/kubernetes-csi/drivers/pkg/csi-common",
+    "github.com/kubernetes-csi/csi-lib-utils/protosanitizer",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/spf13/cobra",
     "golang.org/x/net/context",
+    "google.golang.org/grpc",
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/status",
     "k8s.io/api/core/v1",
