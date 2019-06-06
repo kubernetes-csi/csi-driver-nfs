@@ -27,8 +27,9 @@ import (
 )
 
 var (
-	endpoint string
-	nodeID   string
+	endpoint         string
+	nodeID           string
+	controllerPlugin string
 )
 
 func init() {
@@ -55,6 +56,8 @@ func main() {
 	cmd.PersistentFlags().StringVar(&endpoint, "endpoint", "", "CSI endpoint")
 	cmd.MarkPersistentFlagRequired("endpoint")
 
+	cmd.PersistentFlags().StringVar(&controllerPlugin, "controllerPlugin", "", "Controller plugin")
+
 	cmd.ParseFlags(os.Args[1:])
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err.Error())
@@ -65,6 +68,6 @@ func main() {
 }
 
 func handle() {
-	d := nfs.NewNFSdriver(nodeID, endpoint)
+	d := nfs.NewNFSdriver(nodeID, endpoint, controllerPlugin)
 	d.Run()
 }

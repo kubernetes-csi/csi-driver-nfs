@@ -1,6 +1,8 @@
 package nfs
 
 import (
+	"plugin"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
@@ -12,11 +14,51 @@ type ControllerServer struct {
 	Driver *nfsDriver
 }
 
+func isSupported(pluginName string, symbolName string) bool {
+	symbol, err := lookupSymbol(pluginName, symbolName)
+	return err == nil && symbol != nil
+}
+
+func lookupSymbol(pluginName string, symbolName string) (interface{}, error) {
+	if pluginName != "" {
+		plug, err := plugin.Open(pluginName)
+		if err != nil {
+			glog.Infof("Failed to load plugin: %s error: %v", pluginName, err)
+			return nil, err
+		}
+		symbol, err := plug.Lookup(symbolName)
+		if err != nil {
+			glog.Infof("Failed to lookup symbol: %s error: %v", symbolName, err)
+			return nil, err
+		}
+		return symbol, nil
+	}
+	return nil, nil
+}
+
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+	glog.Infof("CreateVolume called")
+	symbol, err := lookupSymbol(cs.Driver.controllerPlugin, "CreateVolume")
+	if err == nil && symbol != nil {
+		createVolume, ok := symbol.(func(cs *ControllerServer, ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error))
+		if ok {
+			return createVolume(cs, ctx, req)
+		}
+	}
+
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+	glog.Infof("DeleteVolume called")
+	symbol, err := lookupSymbol(cs.Driver.controllerPlugin, "DeleteVolume")
+	if err == nil && symbol != nil {
+		deleteVolume, ok := symbol.(func(cs *ControllerServer, ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error))
+		if ok {
+			return deleteVolume(cs, ctx, req)
+		}
+	}
+
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
@@ -29,6 +71,14 @@ func (cs *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 }
 
 func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+	symbol, err := lookupSymbol(cs.Driver.controllerPlugin, "ValidateVolumeCapabilities")
+	if err == nil && symbol != nil {
+		validateVolumeCapabilities, ok := symbol.(func(cs *ControllerServer, ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error))
+		if ok {
+			return validateVolumeCapabilities(cs, ctx, req)
+		}
+	}
+
 	return nil, status.Error(codes.Unimplemented, "")
 }
 

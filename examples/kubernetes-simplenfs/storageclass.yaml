@@ -1,0 +1,9 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+   name: csi-simplenfs-sc
+provisioner: csi-nfsplugin
+parameters:
+  server: 192.168.122.57
+  rootpath: /exports
+reclaimPolicy: Delete

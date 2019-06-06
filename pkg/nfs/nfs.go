@@ -26,7 +26,8 @@ type nfsDriver struct {
 	nodeID  string
 	version string
 
-	endpoint string
+	endpoint         string
+	controllerPlugin string
 
 	//ids *identityServer
 	ns    *nodeServer
@@ -42,21 +43,29 @@ var (
 	version = "1.0.0-rc2"
 )
 
-func NewNFSdriver(nodeID, endpoint string) *nfsDriver {
+func NewNFSdriver(nodeID, endpoint, controllerPlugin string) *nfsDriver {
 	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	n := &nfsDriver{
-		name:     driverName,
-		version:  version,
-		nodeID:   nodeID,
-		endpoint: endpoint,
+		name:             driverName,
+		version:          version,
+		nodeID:           nodeID,
+		endpoint:         endpoint,
+		controllerPlugin: controllerPlugin,
 	}
 
 	n.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER})
-	// NFS plugin does not support ControllerServiceCapability now.
-	// If support is added, it should set to appropriate
-	// ControllerServiceCapability RPC types.
-	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_UNKNOWN})
+	glog.Infof("controllerPlugin: %s", n.controllerPlugin)
+	glog.Infof("CreateVolume: %v, DeleteVolume: %v", isSupported(n.controllerPlugin, "CreateVolume"), isSupported(n.controllerPlugin, "DeleteVolume"))
+	createVolume, _ := lookupSymbol(n.controllerPlugin, "CreateVolume")
+	deleteVolume, _ := lookupSymbol(n.controllerPlugin, "DeleteVolume")
+	glog.Infof("CreateVolume: %v, DeleteVolume: %v", createVolume, deleteVolume)
+
+	if isSupported(n.controllerPlugin, "CreateVolume") && isSupported(n.controllerPlugin, "DeleteVolume") {
+		n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME})
+	} else {
+		n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_UNKNOWN})
+	}
 
 	return n
 }
