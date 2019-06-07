@@ -49,3 +49,60 @@ Cheat sheet:
 - `git subtree add --prefix=release-tools https://github.com/kubernetes-csi/csi-release-tools.git master` - add release tools to a repo which does not have them yet (only once)
 - `git subtree pull --prefix=release-tools https://github.com/kubernetes-csi/csi-release-tools.git master` - update local copy to latest upstream (whenever upstream changes)
 - edit, `git commit`, `git subtree push --prefix=release-tools git@github.com:<user>/csi-release-tools.git <my-new-or-existing-branch>` - push to a new branch before submitting a PR
+
+verify-shellcheck.sh
+--------------------
+
+The [verify-shellcheck.sh](./verify-shellcheck.sh) script in this repo
+is a stripped down copy of the [corresponding
+script](https://github.com/kubernetes/kubernetes/blob/release-1.14/hack/verify-shellcheck.sh)
+in the Kubernetes repository. It can be used to check for certain
+errors shell scripts, like missing quotation marks. The default
+`test-shellcheck` target in [build.make](./build.make) only checks the
+scripts in this directory. Components can add more directories to
+`TEST_SHELLCHECK_DIRS` to check also other scripts.
+
+End-to-end testing
+------------------
+
+A repo that wants to opt into testing via Prow must set up a top-level
+`.prow.sh`. Typically that will source `prow.sh` and then transfer
+control to it:
+
+``` bash
+#! /bin/bash -e
+
+. release-tools/prow.sh
+main
+```
+
+All Kubernetes-CSI repos are expected to switch to Prow. For details
+on what is enabled in Prow, see
+https://github.com/kubernetes/test-infra/tree/master/config/jobs/kubernetes-csi
+
+Test results for periodic jobs are visible in
+https://testgrid.k8s.io/sig-storage-csi
+
+It is possible to reproduce the Prow testing locally on a suitable machine:
+- Linux host
+- Docker installed
+- code to be tested checkout out in `$GOPATH/src/<import path>`
+- `cd $GOPATH/src/<import path> && ./.prow.sh`
+
+Beware that the script intentionally doesn't clean up after itself and
+modifies the content of `$GOPATH`, in particular the `kubernetes` and
+`kind` repositories there. Better run it in an empty, disposable
+`$GOPATH`.
+
+When it terminates, the following command can be used to get access to
+the Kubernetes cluster that was brought up for testing (assuming that
+this step succeeded):
+
+    export KUBECONFIG="$(kind get kubeconfig-path --name="csi-prow")"
+
+It is possible to control the execution via environment variables. See
+`prow.sh` for details. Particularly useful is testing against different
+Kubernetes releases:
+
+    CSI_PROW_KUBERNETES_VERSION=1.13.3 ./.prow.sh
+    CSI_PROW_KUBERNETES_VERSION=latest ./.prow.sh
