@@ -154,6 +154,7 @@ configvar CSI_PROW_WORK "$(mkdir -p "$GOPATH/pkg" && mktemp -d "$GOPATH/pkg/csip
 configvar CSI_PROW_HOSTPATH_VERSION fc52d13ba07922c80555a24616a5b16480350c3f "hostpath driver" # pre-1.1.0
 configvar CSI_PROW_HOSTPATH_REPO https://github.com/kubernetes-csi/csi-driver-host-path "hostpath repo"
 configvar CSI_PROW_DEPLOYMENT "" "deployment"
+configvar CSI_PROW_DEPLOY_SCRIPT "deploy-hostpath.sh" "deploy script inside the deployment directory"
 
 # If CSI_PROW_HOSTPATH_CANARY is set (typically to "canary", but also
 # "1.0-canary"), then all image versions are replaced with that
@@ -176,6 +177,7 @@ configvar CSI_PROW_E2E_IMPORT_PATH_LATEST k8s.io/kubernetes "E2E package for Kub
 configvar CSI_PROW_E2E_VERSION "$(get_versioned_variable CSI_PROW_E2E_VERSION "${csi_prow_kubernetes_version_suffix}")"  "E2E version"
 configvar CSI_PROW_E2E_REPO "$(get_versioned_variable CSI_PROW_E2E_REPO "${csi_prow_kubernetes_version_suffix}")" "E2E repo"
 configvar CSI_PROW_E2E_IMPORT_PATH "$(get_versioned_variable CSI_PROW_E2E_IMPORT_PATH "${csi_prow_kubernetes_version_suffix}")" "E2E package"
+configvar CSI_PROW_E2E_TEST_PREFIX "External Storage" "common name of all E2E tests"
 
 # csi-sanity testing from the csi-test repo can be run against the installed
 # CSI driver. For this to work, deploying the driver must expose the Unix domain
@@ -520,7 +522,7 @@ find_deployment () {
 
     # Fixed deployment name? Use it if it exists, otherwise fail.
     if [ "${CSI_PROW_DEPLOYMENT}" ]; then
-        file="$dir/${CSI_PROW_DEPLOYMENT}/deploy-hostpath.sh"
+        file="$dir/${CSI_PROW_DEPLOYMENT}/${CSI_PROW_DEPLOY_SCRIPT}"
         if ! [ -e "$file" ]; then
             return 1
         fi
@@ -530,9 +532,9 @@ find_deployment () {
 
     # Ignore: See if you can use ${variable//search/replace} instead.
     # shellcheck disable=SC2001
-    file="$dir/kubernetes-$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')/deploy-hostpath.sh"
+    file="$dir/kubernetes-$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')/${CSI_PROW_DEPLOY_SCRIPT}"
     if ! [ -e "$file" ]; then
-        file="$dir/kubernetes-latest/deploy-hostpath.sh"
+        file="$dir/kubernetes-latest/${CSI_PROW_DEPLOY_SCRIPT}"
         if ! [ -e "$file" ]; then
             return 1
         fi
@@ -540,12 +542,13 @@ find_deployment () {
     echo "$file"
 }
 
-# This installs the hostpath driver example. CSI_PROW_HOSTPATH_CANARY overrides all
-# image versions with that canary version. The parameters of install_hostpath can be
+# This installs the driver from the current repo or (if none found and CSI_PROW_HOSTPATH_REPO is set)
+# the hostpath driver example. CSI_PROW_HOSTPATH_CANARY overrides all
+# image versions with that canary version. The parameters of install_driver can be
 # used to override registry and/or tag of individual images (CSI_PROVISIONER_REGISTRY=localhost:9000
 # CSI_PROVISIONER_TAG=latest).
-install_hostpath () {
-    local images deploy_hostpath
+install_driver () {
+    local images deploy
     images="$*"
 
     if [ "${CSI_PROW_DEPLOYMENT}" = "none" ]; then
@@ -561,16 +564,16 @@ install_hostpath () {
         done
     fi
 
-    if deploy_hostpath="$(find_deployment "$(pwd)/deploy")"; then
+    if deploy="$(find_deployment "$(pwd)/deploy")"; then
         :
     elif [ "${CSI_PROW_HOSTPATH_REPO}" = "none" ]; then
         return 1
     else
         git_checkout "${CSI_PROW_HOSTPATH_REPO}" "${CSI_PROW_WORK}/hostpath" "${CSI_PROW_HOSTPATH_VERSION}" --depth=1 || die "checking out hostpath repo failed"
-        if deploy_hostpath="$(find_deployment "${CSI_PROW_WORK}/hostpath/deploy")"; then
+        if deploy="$(find_deployment "${CSI_PROW_WORK}/hostpath/deploy")"; then
             :
         else
-            die "deploy-hostpath.sh not found in ${CSI_PROW_HOSTPATH_REPO} ${CSI_PROW_HOSTPATH_VERSION}. To disable E2E testing, set CSI_PROW_HOSTPATH_REPO=none"
+            die "${CSI_PROW_DEPLOY_SCRIPT} not found in ${CSI_PROW_HOSTPATH_REPO} ${CSI_PROW_HOSTPATH_VERSION}. To disable E2E testing, set CSI_PROW_HOSTPATH_REPO=none"
         fi
     fi
 
@@ -580,12 +583,12 @@ install_hostpath () {
     # Ignore: Double quote to prevent globbing and word splitting.
     # It's intentional here for $images.
     # shellcheck disable=SC2086
-    if ! run env $images "${deploy_hostpath}"; then
+    if ! run env $images "${deploy}"; then
         # Collect information about failed deployment before failing.
         collect_cluster_info
         (start_loggers >/dev/null; wait)
         info "For container output see job artifacts."
-        die "deploying the hostpath driver with ${deploy_hostpath} failed"
+        die "deploying the CSI driver with ${deploy} failed"
     fi
 }
 
@@ -686,6 +689,16 @@ run_filter_junit () {
     run_with_go "${CSI_PROW_GO_VERSION_BUILD}" go run "${RELEASE_TOOLS_ROOT}/filter-junit.go" "$@"
 }
 
+# Rename, merge and filter JUnit files. Necessary in case that we run the E2E suite again
+# and to avoid the large number of "skipped" tests that we get from using
+# the full Kubernetes E2E testsuite while only running a few tests.
+move_junit () {
+    local name="$1"
+    if ls "${ARTIFACTS}"/junit_[0-9]*.xml 2>/dev/null >/dev/null; then
+        run_filter_junit -t="${CSI_PROW_E2E_TEST_PREFIX}" -o "${ARTIFACTS}/junit_${name}.xml" "${ARTIFACTS}"/junit_[0-9]*.xml && rm -f "${ARTIFACTS}"/junit_[0-9]*.xml
+    fi
+}
+
 # Runs the E2E test suite in a sub-shell.
 run_e2e () (
     name="$1"
@@ -716,15 +729,7 @@ DriverInfo:
     multipods: true
 EOF
 
-    # Rename, merge and filter JUnit files. Necessary in case that we run the E2E suite again
-    # and to avoid the large number of "skipped" tests that we get from using
-    # the full Kubernetes E2E testsuite while only running a few tests.
-    move_junit () {
-        if ls "${ARTIFACTS}"/junit_[0-9]*.xml 2>/dev/null >/dev/null; then
-            run_filter_junit -t="External Storage" -o "${ARTIFACTS}/junit_${name}.xml" "${ARTIFACTS}"/junit_[0-9]*.xml && rm -f "${ARTIFACTS}"/junit_[0-9]*.xml
-        fi
-    }
-    trap move_junit EXIT
+    trap "move_junit '$name'" EXIT
 
     cd "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" &&
     run_with_loggers ginkgo -v "$@" "${CSI_PROW_WORK}/e2e.test" -- -report-dir "${ARTIFACTS}" -storage.testdriver="${CSI_PROW_WORK}/hostpath-test-driver.yaml"
@@ -893,7 +898,7 @@ main () {
             cmds="$(grep '^\s*CMDS\s*=' Makefile | sed -e 's/\s*CMDS\s*=//')"
             # Get the image that was just built (if any) from the
             # top-level Makefile CMDS variable and set the
-            # deploy-hostpath.sh env variables for it. We also need to
+            # deploy env variables for it. We also need to
             # side-load those images into the cluster.
             for i in $cmds; do
                 e=$(echo "$i" | tr '[:lower:]' '[:upper:]' | tr - _)
@@ -921,7 +926,7 @@ main () {
             start_cluster || die "starting the non-alpha cluster failed"
 
             # Installing the driver might be disabled.
-            if install_hostpath "$images"; then
+            if install_driver "$images"; then
                 collect_cluster_info
 
                 if sanity_enabled; then
@@ -934,7 +939,7 @@ main () {
                     # Ignore: Double quote to prevent globbing and word splitting.
                     # shellcheck disable=SC2086
                     if ! run_e2e parallel ${CSI_PROW_GINKO_PARALLEL} \
-                         -focus="External.Storage" \
+                         -focus="${CSI_PROW_E2E_TEST_PREFIX}" \
                          -skip="$(regex_join "${CSI_PROW_E2E_SERIAL}" "${CSI_PROW_E2E_ALPHA}" "${CSI_PROW_E2E_SKIP}")"; then
                         warn "E2E parallel failed"
                         ret=1
@@ -943,7 +948,7 @@ main () {
 
                 if tests_enabled "serial"; then
                     if ! run_e2e serial \
-                         -focus="External.Storage.*($(regex_join "${CSI_PROW_E2E_SERIAL}"))" \
+                         -focus="${CSI_PROW_E2E_TEST_PREFIX}.*($(regex_join "${CSI_PROW_E2E_SERIAL}"))" \
                          -skip="$(regex_join "${CSI_PROW_E2E_ALPHA}" "${CSI_PROW_E2E_SKIP}")"; then
                         warn "E2E serial failed"
                         ret=1
@@ -957,14 +962,14 @@ main () {
             start_cluster "${CSI_PROW_E2E_ALPHA_GATES}" || die "starting alpha cluster failed"
 
             # Installing the driver might be disabled.
-            if install_hostpath "$images"; then
+            if install_driver "$images"; then
                 collect_cluster_info
 
                 if tests_enabled "parallel-alpha"; then
                     # Ignore: Double quote to prevent globbing and word splitting.
                     # shellcheck disable=SC2086
                     if ! run_e2e parallel-alpha ${CSI_PROW_GINKO_PARALLEL} \
-                         -focus="External.Storage.*($(regex_join "${CSI_PROW_E2E_ALPHA}"))" \
+                         -focus="${CSI_PROW_E2E_TEST_PREFIX}.*($(regex_join "${CSI_PROW_E2E_ALPHA}"))" \
                          -skip="$(regex_join "${CSI_PROW_E2E_SERIAL}" "${CSI_PROW_E2E_SKIP}")"; then
                         warn "E2E parallel alpha failed"
                         ret=1
@@ -973,7 +978,7 @@ main () {
 
                 if tests_enabled "serial-alpha"; then
                     if ! run_e2e serial-alpha \
-                         -focus="External.Storage.*(($(regex_join "${CSI_PROW_E2E_SERIAL}")).*($(regex_join "${CSI_PROW_E2E_ALPHA}"))|($(regex_join "${CSI_PROW_E2E_ALPHA}")).*($(regex_join "${CSI_PROW_E2E_SERIAL}")))" \
+                         -focus="${CSI_PROW_E2E_TEST_PREFIX}.*(($(regex_join "${CSI_PROW_E2E_SERIAL}")).*($(regex_join "${CSI_PROW_E2E_ALPHA}"))|($(regex_join "${CSI_PROW_E2E_ALPHA}")).*($(regex_join "${CSI_PROW_E2E_SERIAL}")))" \
                          -skip="$(regex_join "${CSI_PROW_E2E_SKIP}")"; then
                         warn "E2E serial alpha failed"
                         ret=1
