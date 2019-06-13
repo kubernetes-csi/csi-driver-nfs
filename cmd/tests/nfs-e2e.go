@@ -14,25 +14,16 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	_ "github.com/kubernetes-csi/csi-driver-nfs/test"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"testing"
 )
 
-func init() {
+func main() {
 	framework.HandleFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
-}
-
-func Test(t *testing.T) {
-	flag.Parse()
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "CSI Suite")
-}
-
-func main() {
-	Test(&testing.T{})
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(&testing.T{}, "CSI Suite")
 }
