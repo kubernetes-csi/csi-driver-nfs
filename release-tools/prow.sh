@@ -732,7 +732,7 @@ EOF
     trap "move_junit '$name'" EXIT
 
     cd "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" &&
-    run_with_loggers ginkgo -v "$@" "${CSI_PROW_WORK}/e2e.test" -- -report-dir "${ARTIFACTS}" -storage.testdriver="${CSI_PROW_WORK}/hostpath-test-driver.yaml"
+    run_with_loggers env KUBECONFIG="$KUBECONFIG" ginkgo -v "$@" "${CSI_PROW_WORK}/e2e.test" -- -report-dir "${ARTIFACTS}" -storage.testdriver="${CSI_PROW_WORK}/hostpath-test-driver.yaml"
 )
 
 # Run csi-sanity against installed CSI driver.
