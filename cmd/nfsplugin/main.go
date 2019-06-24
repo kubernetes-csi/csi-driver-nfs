@@ -68,6 +68,10 @@ func main() {
 }
 
 func handle() {
-	d := nfs.NewNFSdriver(nodeID, endpoint, controllerPlugin)
+	d, err := nfs.NewNFSdriver(nodeID, endpoint, controllerPlugin)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err.Error())
+		os.Exit(1)
+	}
 	d.Run()
 }

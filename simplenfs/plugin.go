@@ -24,7 +24,17 @@ const (
 	mountPathBase = "/csi-nfs-volume"
 )
 
-func CreateVolume(cs *nfs.ControllerServer, ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+// csPlugin is an implementation of ControllerPlugin
+type csPlugin struct {
+	name string
+}
+
+var _ nfs.ControllerPlugin = csPlugin{}
+var _ nfs.CreateDeleteVolumeControllerPlugin = csPlugin{}
+var NfsPlugin = csPlugin{"NfsPlugin"}
+
+// CreateVolume is an implenetaiton that is required by CreateDeleteVolumeControllerPlugin interface
+func (p csPlugin) CreateVolume(ctx context.Context, cs *nfs.ControllerServer, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	glog.Infof("plugin.CreateVolume called")
 	var volSize int64
 	if req.GetCapacityRange() != nil {
@@ -68,7 +78,8 @@ func CreateVolume(cs *nfs.ControllerServer, ctx context.Context, req *csi.Create
 	}, nil
 }
 
-func DeleteVolume(cs *nfs.ControllerServer, ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+// DeleteVolume is an implenetaiton that is required by CreateDeleteVolumeControllerPlugin interface
+func (p csPlugin) DeleteVolume(ctx context.Context, cs *nfs.ControllerServer, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	glog.Infof("plugin.DeleteVolume called")
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
@@ -106,7 +117,8 @@ func DeleteVolume(cs *nfs.ControllerServer, ctx context.Context, req *csi.Delete
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
-func ValidateVolumeCapabilities(cs *nfs.ControllerServer, ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+// ValidateVolumeCapabilities is an implenetaiton that is required by ControllerPlugin interface
+func (p csPlugin) ValidateVolumeCapabilities(ctx context.Context, cs *nfs.ControllerServer, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	if req.GetVolumeId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "Empty volume ID in request")
 	}

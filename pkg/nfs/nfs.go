@@ -17,6 +17,9 @@ limitations under the License.
 package nfs
 
 import (
+	"fmt"
+	"plugin"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/glog"
 )
@@ -26,48 +29,108 @@ type nfsDriver struct {
 	nodeID  string
 	version string
 
-	endpoint         string
-	controllerPlugin string
+	endpoint string
 
 	//ids *identityServer
 	ns    *nodeServer
 	cap   []*csi.VolumeCapability_AccessMode
 	cscap []*csi.ControllerServiceCapability
+
+	csPlugin interface{}
 }
 
 const (
-	driverName = "csi-nfsplugin"
+	driverName       = "csi-nfsplugin"
+	pluginSymbolName = "NfsPlugin"
 )
 
 var (
 	version = "1.0.0-rc2"
 )
 
-func NewNFSdriver(nodeID, endpoint, controllerPlugin string) *nfsDriver {
+func loadControllerPlugin(pluginName string) (interface{}, []csi.ControllerServiceCapability_RPC_Type, error) {
+	csc := []csi.ControllerServiceCapability_RPC_Type{}
+
+	if pluginName == "" {
+		csc = append(csc, csi.ControllerServiceCapability_RPC_UNKNOWN)
+		return nil, csc, nil
+	}
+
+	plug, err := plugin.Open(pluginName)
+	if err != nil {
+		glog.Infof("Failed to load plugin: %s error: %v", pluginName, err)
+		return nil, csc, err
+	}
+
+	csPlugin, err := plug.Lookup(pluginSymbolName)
+	if err != nil {
+		glog.Infof("Failed to lookup csPlugin: %s error: %v", pluginSymbolName, err)
+		return nil, csc, err
+	}
+
+	// Check if csPlugin implements each capability and add it to implenentation
+	if _, ok := csPlugin.(ControllerPlugin); !ok {
+		glog.Infof("Plugin doesn't implement mandatory methods for controller")
+		return nil, csc, fmt.Errorf("Plugin doesn't implement mandatory methods for controller")
+	}
+
+	if _, ok := csPlugin.(CreateDeleteVolumeControllerPlugin); ok {
+		csc = append(csc, csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME)
+	}
+
+	if _, ok := csPlugin.(PublishUnpublishVolumeControllerPlugin); ok {
+		csc = append(csc, csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME)
+	}
+
+	if _, ok := csPlugin.(ListVolumesControllerPlugin); ok {
+		csc = append(csc, csi.ControllerServiceCapability_RPC_LIST_VOLUMES)
+	}
+
+	if _, ok := csPlugin.(GetCapacityControllerPlugin); ok {
+		csc = append(csc, csi.ControllerServiceCapability_RPC_GET_CAPACITY)
+	}
+
+	if _, ok := csPlugin.(SnapshotControllerPlugin); ok {
+		csc = append(csc, csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT)
+	}
+
+	if _, ok := csPlugin.(ListSnapshotControllerPlugin); ok {
+		csc = append(csc, csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS)
+	}
+
+	if _, ok := csPlugin.(ExpandVolumeControllerPlugin); ok {
+		csc = append(csc, csi.ControllerServiceCapability_RPC_EXPAND_VOLUME)
+	}
+
+	// TODO: Need to handle clone volume and publish read only capability?
+
+	if len(csc) == 0 {
+		csc = append(csc, csi.ControllerServiceCapability_RPC_UNKNOWN)
+	}
+
+	return csPlugin, csc, nil
+}
+
+func NewNFSdriver(nodeID, endpoint, controllerPlugin string) (*nfsDriver, error) {
 	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	n := &nfsDriver{
-		name:             driverName,
-		version:          version,
-		nodeID:           nodeID,
-		endpoint:         endpoint,
-		controllerPlugin: controllerPlugin,
+		name:     driverName,
+		version:  version,
+		nodeID:   nodeID,
+		endpoint: endpoint,
 	}
 
 	n.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER})
-	glog.Infof("controllerPlugin: %s", n.controllerPlugin)
-	glog.Infof("CreateVolume: %v, DeleteVolume: %v", isSupported(n.controllerPlugin, "CreateVolume"), isSupported(n.controllerPlugin, "DeleteVolume"))
-	createVolume, _ := lookupSymbol(n.controllerPlugin, "CreateVolume")
-	deleteVolume, _ := lookupSymbol(n.controllerPlugin, "DeleteVolume")
-	glog.Infof("CreateVolume: %v, DeleteVolume: %v", createVolume, deleteVolume)
 
-	if isSupported(n.controllerPlugin, "CreateVolume") && isSupported(n.controllerPlugin, "DeleteVolume") {
-		n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME})
-	} else {
-		n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_UNKNOWN})
+	csPlugin, csc, err := loadControllerPlugin(controllerPlugin)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to load plugin %s: %v", controllerPlugin, err)
 	}
+	n.csPlugin = csPlugin
+	n.AddControllerServiceCapabilities(csc)
 
-	return n
+	return n, nil
 }
 
 func NewNodeServer(n *nfsDriver) *nodeServer {
@@ -80,8 +143,6 @@ func (n *nfsDriver) Run() {
 	s := NewNonBlockingGRPCServer()
 	s.Start(n.endpoint,
 		NewDefaultIdentityServer(n),
-		// NFS plugin has not implemented ControllerServer
-		// using default controllerserver.
 		NewControllerServer(n),
 		NewNodeServer(n))
 	s.Wait()
