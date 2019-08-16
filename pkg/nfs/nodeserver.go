@@ -18,9 +18,10 @@ package nfs
 
 import (
 	"fmt"
-	"github.com/golang/glog"
 	"os"
 	"strings"
+
+	"github.com/golang/glog"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
@@ -30,12 +31,13 @@ import (
 )
 
 type nodeServer struct {
-	Driver *nfsDriver
+	Driver  *nfsDriver
+	mounter mount.Interface
 }
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
-	notMnt, err := mount.New("").IsLikelyNotMountPoint(targetPath)
+	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			if err := os.MkdirAll(targetPath, 0750); err != nil {
@@ -60,8 +62,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	ep := req.GetVolumeContext()["share"]
 	source := fmt.Sprintf("%s:%s", s, ep)
 
-	mounter := mount.New("")
-	err = mounter.Mount(source, targetPath, "nfs", mo)
+	err = ns.mounter.Mount(source, targetPath, "nfs", mo)
 	if err != nil {
 		if os.IsPermission(err) {
 			return nil, status.Error(codes.PermissionDenied, err.Error())
@@ -77,7 +78,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
-	notMnt, err := mount.New("").IsLikelyNotMountPoint(targetPath)
+	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -90,7 +91,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.NotFound, "Volume not mounted")
 	}
 
-	err = mount.CleanupMountPoint(req.GetTargetPath(), mount.New(""), false)
+	err = mount.CleanupMountPoint(req.GetTargetPath(), ns.mounter, false)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
