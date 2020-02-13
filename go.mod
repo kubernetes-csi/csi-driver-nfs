@@ -11,7 +11,6 @@ require (
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
-	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cobra v0.0.3
 	golang.org/x/net v0.0.0-20190415100556-4a65cf94b679
 	google.golang.org/grpc v1.20.0
@@ -24,5 +23,5 @@ require (
 	k8s.io/kube-aggregator v0.0.0-20190415133304-80ce4e5a0cbc // indirect
 	k8s.io/kube-openapi v0.0.0-20190401085232-94e1e7b7574c // indirect
 	k8s.io/kubernetes v1.14.1
-	k8s.io/utils v0.0.0-20190308190857-21c4ce38f2a7 // indirect
+	k8s.io/utils v0.0.0-20200124190032-861946025e34
 )
