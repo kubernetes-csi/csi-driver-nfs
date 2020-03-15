@@ -54,7 +54,7 @@ func initNFSDriver(name string, manifests ...string) testsuites.TestDriver {
 
 func InitNFSDriver() testsuites.TestDriver {
 
-	return initNFSDriver("csi-nfsplugin",
+	return initNFSDriver("nfs.csi.k8s.io",
 		"csi-attacher-nfsplugin.yaml",
 		"csi-attacher-rbac.yaml",
 		"csi-nodeplugin-nfsplugin.yaml",
