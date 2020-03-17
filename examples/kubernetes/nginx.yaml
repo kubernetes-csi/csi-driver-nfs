@@ -10,7 +10,7 @@ spec:
   capacity:
     storage: 100Gi
   csi:
-    driver: csi-nfsplugin
+    driver: nfs.csi.k8s.io
     volumeHandle: data-id
     volumeAttributes: 
       server: 127.0.0.1

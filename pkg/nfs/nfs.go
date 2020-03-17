@@ -36,7 +36,7 @@ type nfsDriver struct {
 }
 
 const (
-	driverName = "csi-nfsplugin"
+	driverName = "nfs.csi.k8s.io"
 )
 
 var (
