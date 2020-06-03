@@ -60,23 +60,30 @@ else
 TESTARGS =
 endif
 
-ARCH := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
-
 # Specific packages can be excluded from each of the tests below by setting the *_FILTER_CMD variables
 # to something like "| grep -v 'github.com/kubernetes-csi/project/pkg/foobar'". See usage below.
 
-build-%: check-go-version-go
-	mkdir -p bin
-	CGO_ENABLED=0 GOOS=linux go build $(GOFLAGS_VENDOR) -a -ldflags '-X main.version=$(REV) -extldflags "-static"' -o ./bin/$* ./cmd/$*
-	if [ "$$ARCH" = "amd64" ]; then \
-		CGO_ENABLED=0 GOOS=windows go build $(GOFLAGS_VENDOR) -a -ldflags '-X main.version=$(REV) -extldflags "-static"' -o ./bin/$*.exe ./cmd/$* ; \
-		CGO_ENABLED=0 GOOS=linux GOARCH=ppc64le go build $(GOFLAGS_VENDOR) -a -ldflags '-X main.version=$(REV) -extldflags "-static"' -o ./bin/$*-ppc64le ./cmd/$* ; \
-	fi
+# BUILD_PLATFORMS contains a set of <os> <arch> <suffix> triplets,
+# separated by semicolon. An empty variable or empty entry (= just a
+# semicolon) builds for the default platform of the current Go
+# toolchain.
+BUILD_PLATFORMS =
 
-container-%: build-%
+# This builds each command (= the sub-directories of ./cmd) for the target platform(s)
+# defined by BUILD_PLATFORMS.
+$(CMDS:%=build-%): build-%: check-go-version-go
+	mkdir -p bin
+	echo '$(BUILD_PLATFORMS)' | tr ';' '\n' | while read -r os arch suffix; do \
+		if ! (set -x; CGO_ENABLED=0 GOOS="$$os" GOARCH="$$arch" go build $(GOFLAGS_VENDOR) -a -ldflags '-X main.version=$(REV) -extldflags "-static"' -o "./bin/$*$$suffix" ./cmd/$*); then \
+			echo "Building $* for GOOS=$$os GOARCH=$$arch failed, see error(s) above."; \
+			exit 1; \
+		fi; \
+	done
+
+$(CMDS:%=container-%): container-%: build-%
 	docker build -t $*:latest -f $(shell if [ -e ./cmd/$*/Dockerfile ]; then echo ./cmd/$*/Dockerfile; else echo Dockerfile; fi) --label revision=$(REV) .
 
-push-%: container-%
+$(CMDS:%=push-%): push-%: container-%
 	set -ex; \
 	push_image () { \
 		docker tag $*:latest $(IMAGE_NAME):$$tag; \
@@ -97,6 +104,77 @@ push-%: container-%
 build: $(CMDS:%=build-%)
 container: $(CMDS:%=container-%)
 push: $(CMDS:%=push-%)
+
+# Additional parameters are needed when pushing to a local registry,
+# see https://github.com/docker/buildx/issues/94.
+# However, that then runs into https://github.com/docker/cli/issues/2396.
+#
+# What works for local testing is:
+# make push-multiarch PULL_BASE_REF=master REGISTRY_NAME=<your account on dockerhub.io> BUILD_PLATFORMS="linux amd64; windows amd64 .exe; linux ppc64le -ppc64le; linux s390x -s390x"
+DOCKER_BUILDX_CREATE_ARGS ?=
+
+# This target builds a multiarch image for one command using Moby BuildKit builder toolkit.
+# Docker Buildx is included in Docker 19.03.
+#
+# ./cmd/<command>/Dockerfile[.Windows] is used if found, otherwise Dockerfile[.Windows].
+# It is currently optional: if no such file exists, Windows images are not included,
+# even when Windows is listed in BUILD_PLATFORMS. That way, projects can test that
+# Windows binaries can be built before adding a Dockerfile for it.
+#
+# BUILD_PLATFORMS determines which individual images are included in the multiarch image.
+# PULL_BASE_REF must be set to 'master', 'release-x.y', or a tag name, and determines
+# the tag for the resulting multiarch image.
+$(CMDS:%=push-multiarch-%): push-multiarch-%: check-pull-base-ref build-%
+	set -ex; \
+	DOCKER_CLI_EXPERIMENTAL=enabled; \
+	export DOCKER_CLI_EXPERIMENTAL; \
+	docker buildx create $(DOCKER_BUILDX_CREATE_ARGS) --use --name multiarchimage-buildertest; \
+	trap "docker buildx rm multiarchimage-buildertest" EXIT; \
+	dockerfile_linux=$$(if [ -e ./cmd/$*/Dockerfile ]; then echo ./cmd/$*/Dockerfile; else echo Dockerfile; fi); \
+	dockerfile_windows=$$(if [ -e ./cmd/$*/Dockerfile.Windows ]; then echo ./cmd/$*/Dockerfile.Windows; else echo Dockerfile.Windows; fi); \
+	if [ '$(BUILD_PLATFORMS)' ]; then build_platforms='$(BUILD_PLATFORMS)'; else build_platforms="linux amd64"; fi; \
+	if ! [ -f "$$dockerfile_windows" ]; then \
+		build_platforms="$$(echo "$$build_platforms" | sed -e 's/windows *[^ ]* *.exe//g' -e 's/; *;/;/g')"; \
+	fi; \
+	pushMultiArch () { \
+		tag=$$1; \
+		echo "$$build_platforms" | tr ';' '\n' | while read -r os arch suffix; do \
+			docker buildx build --push \
+				--tag $(IMAGE_NAME):$$arch-$$os-$$tag \
+				--platform=$$os/$$arch \
+				--file $$(eval echo \$${dockerfile_$$os}) \
+				--build-arg binary=./bin/$*$$suffix \
+				--label revision=$(REV) \
+				.; \
+		done; \
+		images=$$(echo "$$build_platforms" | tr ';' '\n' | while read -r os arch suffix; do echo $(IMAGE_NAME):$$arch-$$os-$$tag; done); \
+		docker manifest create --amend $(IMAGE_NAME):$$tag $$images; \
+		docker manifest push -p $(IMAGE_NAME):$$tag; \
+	}; \
+	if [ $(PULL_BASE_REF) = "master" ]; then \
+			: "creating or overwriting canary image"; \
+			pushMultiArch canary; \
+	elif echo $(PULL_BASE_REF) | grep -q -e 'release-*' ; then \
+			: "creating or overwriting canary image for release branch"; \
+			release_canary_tag=$$(echo $(PULL_BASE_REF) | cut -f2 -d '-')-canary; \
+			pushMultiArch $$release_canary_tag; \
+	elif docker pull $(IMAGE_NAME):$(PULL_BASE_REF) 2>&1 | tee /dev/stderr | grep -q "manifest for $(IMAGE_NAME):$(PULL_BASE_REF) not found"; then \
+			: "creating release image"; \
+			pushMultiArch $(PULL_BASE_REF); \
+	else \
+			: "ERROR: release image $(IMAGE_NAME):$(PULL_BASE_REF) already exists: a new tag is required!"; \
+			exit 1; \
+	fi
+
+.PHONY: check-pull-base-ref
+check-pull-base-ref:
+	if ! [ "$(PULL_BASE_REF)" ]; then \
+		echo >&2 "ERROR: PULL_BASE_REF must be set to 'master', 'release-x.y', or a tag name."; \
+		exit 1; \
+	fi
+
+.PHONY: push-multiarch
+push-multiarch: $(CMDS:%=push-multiarch-%)
 
 clean:
 	-rm -rf bin
