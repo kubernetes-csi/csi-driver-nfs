@@ -85,7 +85,7 @@ get_versioned_variable () {
     echo "$value"
 }
 
-configvar CSI_PROW_BUILD_PLATFORMS "linux amd64; windows amd64 .exe; linux ppc64le -ppc64le; linux s390x -s390x" "Go target platforms (= GOOS + GOARCH) and file suffix of the resulting binaries"
+configvar CSI_PROW_BUILD_PLATFORMS "linux amd64; windows amd64 .exe; linux ppc64le -ppc64le; linux s390x -s390x; linux arm64 -arm64" "Go target platforms (= GOOS + GOARCH) and file suffix of the resulting binaries"
 
 # If we have a vendor directory, then use it. We must be careful to only
 # use this for "make" invocations inside the project's repo itself because
@@ -1197,6 +1197,12 @@ gcr_cloud_build () {
     # Register gcloud as a Docker credential helper.
     # Required for "docker buildx build --push".
     gcloud auth configure-docker
+
+    if find . -name Dockerfile | grep -v ^./vendor | xargs --no-run-if-empty cat | grep -q ^RUN; then
+        # Needed for "RUN" steps on non-linux/amd64 platforms.
+        # See https://github.com/multiarch/qemu-user-static#getting-started
+        (set -x; docker run --rm --privileged multiarch/qemu-user-static --reset -p yes)
+    fi
 
     # Extract tag-n-hash value from GIT_TAG (form vYYYYMMDD-tag-n-hash) for REV value.
     REV=v$(echo "$GIT_TAG" | cut -f3- -d 'v')
