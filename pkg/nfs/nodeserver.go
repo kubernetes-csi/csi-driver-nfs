@@ -73,6 +73,12 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	if ns.Driver.perm != nil {
+		if err := os.Chmod(targetPath, os.FileMode(*ns.Driver.perm)); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 

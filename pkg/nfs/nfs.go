@@ -29,21 +29,23 @@ type nfsDriver struct {
 
 	endpoint string
 
+	perm *uint32
+
 	//ids *identityServer
 	ns    *nodeServer
-	cap   []*csi.VolumeCapability_AccessMode
+	cap   map[csi.VolumeCapability_AccessMode_Mode]bool
 	cscap []*csi.ControllerServiceCapability
 }
 
 const (
-	driverName = "csi-nfsplugin"
+	driverName = "nfs.csi.k8s.io"
 )
 
 var (
-	version = "1.0.0-rc2"
+	version = "2.0.0"
 )
 
-func NewNFSdriver(nodeID, endpoint string) *nfsDriver {
+func NewNFSdriver(nodeID, endpoint string, perm *uint32) *nfsDriver {
 	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	n := &nfsDriver{
@@ -51,9 +53,19 @@ func NewNFSdriver(nodeID, endpoint string) *nfsDriver {
 		version:  version,
 		nodeID:   nodeID,
 		endpoint: endpoint,
+		cap:      map[csi.VolumeCapability_AccessMode_Mode]bool{},
+		perm:     perm,
 	}
 
-	n.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER})
+	vcam := []csi.VolumeCapability_AccessMode_Mode{
+		csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+		csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY,
+		csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
+		csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER,
+		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+	}
+	n.AddVolumeCapabilityAccessModes(vcam)
+
 	// NFS plugin does not support ControllerServiceCapability now.
 	// If support is added, it should set to appropriate
 	// ControllerServiceCapability RPC types.
@@ -86,8 +98,8 @@ func (n *nfsDriver) AddVolumeCapabilityAccessModes(vc []csi.VolumeCapability_Acc
 	for _, c := range vc {
 		glog.Infof("Enabling volume access mode: %v", c.String())
 		vca = append(vca, &csi.VolumeCapability_AccessMode{Mode: c})
+		n.cap[c] = true
 	}
-	n.cap = vca
 	return vca
 }
 

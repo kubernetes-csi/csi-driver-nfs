@@ -85,6 +85,8 @@ get_versioned_variable () {
     echo "$value"
 }
 
+configvar CSI_PROW_BUILD_PLATFORMS "linux amd64; windows amd64 .exe; linux ppc64le -ppc64le; linux s390x -s390x; linux arm64 -arm64" "Go target platforms (= GOOS + GOARCH) and file suffix of the resulting binaries"
+
 # If we have a vendor directory, then use it. We must be careful to only
 # use this for "make" invocations inside the project's repo itself because
 # setting it globally can break other go usages (like "go get <some command>"
@@ -193,7 +195,7 @@ configvar CSI_PROW_WORK "$(mkdir -p "$GOPATH/pkg" && mktemp -d "$GOPATH/pkg/csip
 # If the deployment script is called with CSI_PROW_TEST_DRIVER=<file name> as
 # environment variable, then it must write a suitable test driver configuration
 # into that file in addition to installing the driver.
-configvar CSI_PROW_DRIVER_VERSION "v1.3.0-rc4" "CSI driver version"
+configvar CSI_PROW_DRIVER_VERSION "v1.3.0" "CSI driver version"
 configvar CSI_PROW_DRIVER_REPO https://github.com/kubernetes-csi/csi-driver-host-path "CSI driver repo"
 configvar CSI_PROW_DEPLOYMENT "" "deployment"
 
@@ -340,7 +342,7 @@ configvar CSI_PROW_E2E_ALPHA_GATES_LATEST '' "alpha feature gates for latest Kub
 configvar CSI_PROW_E2E_ALPHA_GATES "$(get_versioned_variable CSI_PROW_E2E_ALPHA_GATES "${csi_prow_kubernetes_version_suffix}")" "alpha E2E feature gates"
 
 # Which external-snapshotter tag to use for the snapshotter CRD and snapshot-controller deployment
-configvar CSI_SNAPSHOTTER_VERSION 'v2.0.0' "external-snapshotter version tag"
+configvar CSI_SNAPSHOTTER_VERSION 'v2.0.1' "external-snapshotter version tag"
 
 # Some tests are known to be unusable in a KinD cluster. For example,
 # stopping kubelet with "ssh <node IP> systemctl stop kubelet" simply
@@ -1026,7 +1028,7 @@ main () {
     images=
     if ${CSI_PROW_BUILD_JOB}; then
         # A successful build is required for testing.
-        run_with_go "${CSI_PROW_GO_VERSION_BUILD}" make all "GOFLAGS_VENDOR=${GOFLAGS_VENDOR}" || die "'make all' failed"
+        run_with_go "${CSI_PROW_GO_VERSION_BUILD}" make all "GOFLAGS_VENDOR=${GOFLAGS_VENDOR}" "BUILD_PLATFORMS=${CSI_PROW_BUILD_PLATFORMS}" || die "'make all' failed"
         # We don't want test failures to prevent E2E testing below, because the failure
         # might have been minor or unavoidable, for example when experimenting with
         # changes in "release-tools" in a PR (that fails the "is release-tools unmodified"
@@ -1062,18 +1064,24 @@ main () {
                 # always pulling the image
                 # (https://github.com/kubernetes-sigs/kind/issues/328).
                 docker tag "$i:latest" "$i:csiprow" || die "tagging the locally built container image for $i failed"
-            done
 
-            if [ -e deploy/kubernetes/rbac.yaml ]; then
-                # This is one of those components which has its own RBAC rules (like external-provisioner).
-                # We are testing a locally built image and also want to test with the the current,
-                # potentially modified RBAC rules.
-                if [ "$(echo "$cmds" | wc -w)" != 1 ]; then
-                    die "ambiguous deploy/kubernetes/rbac.yaml: need exactly one command, got: $cmds"
+                # For components with multiple cmds, the RBAC file should be in the following format:
+                #   rbac-$cmd.yaml
+                # If this file cannot be found, we can default to the standard location:
+                #   deploy/kubernetes/rbac.yaml
+                rbac_file_path=$(find . -type f -name "rbac-$i.yaml")
+                if [ "$rbac_file_path" == "" ]; then
+                    rbac_file_path="$(pwd)/deploy/kubernetes/rbac.yaml"
                 fi
-                e=$(echo "$cmds" | tr '[:lower:]' '[:upper:]' | tr - _)
-                images="$images ${e}_RBAC=$(pwd)/deploy/kubernetes/rbac.yaml"
-            fi
+                
+                if [ -e "$rbac_file_path" ]; then
+                    # This is one of those components which has its own RBAC rules (like external-provisioner).
+                    # We are testing a locally built image and also want to test with the the current,
+                    # potentially modified RBAC rules.
+                    e=$(echo "$i" | tr '[:lower:]' '[:upper:]' | tr - _)
+                    images="$images ${e}_RBAC=$rbac_file_path"
+                fi
+            done
         fi
 
         if tests_need_non_alpha_cluster; then
@@ -1180,4 +1188,24 @@ main () {
     fi
 
     return "$ret"
+}
+
+# This function can be called by a repo's top-level cloudbuild.sh:
+# it handles environment set up in the GCR cloud build and then
+# invokes "make push-multiarch" to do the actual image building.
+gcr_cloud_build () {
+    # Register gcloud as a Docker credential helper.
+    # Required for "docker buildx build --push".
+    gcloud auth configure-docker
+
+    if find . -name Dockerfile | grep -v ^./vendor | xargs --no-run-if-empty cat | grep -q ^RUN; then
+        # Needed for "RUN" steps on non-linux/amd64 platforms.
+        # See https://github.com/multiarch/qemu-user-static#getting-started
+        (set -x; docker run --rm --privileged multiarch/qemu-user-static --reset -p yes)
+    fi
+
+    # Extract tag-n-hash value from GIT_TAG (form vYYYYMMDD-tag-n-hash) for REV value.
+    REV=v$(echo "$GIT_TAG" | cut -f3- -d 'v')
+
+    run_with_go "${CSI_PROW_GO_VERSION_BUILD}" make push-multiarch REV="${REV}" REGISTRY_NAME="${REGISTRY_NAME}" BUILD_PLATFORMS="${CSI_PROW_BUILD_PLATFORMS}"
 }
