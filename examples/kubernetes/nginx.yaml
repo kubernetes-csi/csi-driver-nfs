@@ -5,6 +5,9 @@ metadata:
   labels:
     name: data-nfsplugin
 spec:
+  claimRef:
+    name: data-nfsplugin
+    namespace: default
   accessModes:
   - ReadWriteMany
   capacity:
@@ -12,7 +15,9 @@ spec:
   csi:
     driver: nfs.csi.k8s.io
     volumeHandle: data-id
-    volumeAttributes: 
+    volumeAttributes:
+      # The nfs server could be a K8s service
+      # server: nfs-server.default.svc.cluster.local
       server: 127.0.0.1
       share: /export
 ---
@@ -26,28 +31,22 @@ spec:
   resources:
     requests:
       storage: 100Gi
-  selector:
-    matchExpressions:
-    - key: name
-      operator: In
-      values: ["data-nfsplugin"]
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx 
+  name: nginx
 spec:
   containers:
   - image: maersk/nginx
-    imagePullPolicy: Always
     name: nginx
     ports:
     - containerPort: 80
       protocol: TCP
     volumeMounts:
       - mountPath: /var/www
-        name: data-nfsplugin 
+        name: data-nfsplugin
   volumes:
   - name: data-nfsplugin
     persistentVolumeClaim:
-      claimName: data-nfsplugin 
+      claimName: data-nfsplugin
