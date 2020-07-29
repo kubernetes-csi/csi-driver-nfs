@@ -14,7 +14,6 @@ spec:
         app: csi-nodeplugin-nfsplugin
     spec:
       serviceAccount: csi-nodeplugin
-      hostNetwork: true
       containers:
         - name: node-driver-registrar
           image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
