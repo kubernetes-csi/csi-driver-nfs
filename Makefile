@@ -16,3 +16,8 @@ CMDS=nfsplugin
 all: build
 
 include release-tools/build.make
+
+.PHONY: sanity-test
+sanity-test: build
+	./test/sanity/run-test.sh
+
