@@ -19,7 +19,9 @@ package nfs
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 
@@ -34,6 +36,11 @@ type nodeServer struct {
 	Driver  *nfsDriver
 	mounter mount.Interface
 }
+
+const (
+	// Deadline for unmount. After this time, umount -f is performed.
+	unmountTimeout = time.Minute
+)
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
@@ -82,27 +89,85 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
-func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
-	targetPath := req.GetTargetPath()
-	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
-
+func (ns *nodeServer) IsNotMountPoint(path string) (bool, error) {
+	mtab, err := ns.mounter.List()
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, status.Error(codes.NotFound, "Targetpath not found")
-		} else {
-			return nil, status.Error(codes.Internal, err.Error())
+		return false, err
+	}
+
+	for _, mnt := range mtab {
+		// This is how a directory deleted on the NFS server looks like
+		deletedDir := fmt.Sprintf("%s\\040(deleted)", mnt.Path)
+
+		if mnt.Path == path || mnt.Path == deletedDir {
+			return false, nil
 		}
 	}
-	if notMnt {
-		return nil, status.Error(codes.NotFound, "Volume not mounted")
-	}
+	return true, nil
+}
 
-	err = mount.CleanupMountPoint(req.GetTargetPath(), ns.mounter, false)
+func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+	targetPath := req.GetTargetPath()
+	glog.V(6).Infof("NodeUnpublishVolume started for %s", targetPath)
+
+	notMnt, err := ns.IsNotMountPoint(targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	glog.V(4).Infof("NodeUnpublishVolume: path %s is *not* a mount point: %t", targetPath, notMnt)
+	if !notMnt {
+
+		err := ns.tryUnmount(targetPath)
+		if err != nil {
+			if err == context.DeadlineExceeded {
+				glog.V(2).Infof("Timed out waiting for unmount of %s, trying with -f", targetPath)
+				err = ns.forceUnmount(targetPath)
+			}
+		}
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		glog.V(2).Infof("Unmounted %s", targetPath)
+	}
+
+	if err := os.Remove(targetPath); err != nil {
+		if !os.IsNotExist(err) {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+	glog.V(4).Infof("Cleaned %s", targetPath)
+
 	return &csi.NodeUnpublishVolumeResponse{}, nil
+}
+
+// tryUnmount calls plain "umount" and waits for unmountTimeout for it to finish.
+func (ns *nodeServer) tryUnmount(path string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), unmountTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "umount", path)
+	out, cmderr := cmd.CombinedOutput()
+
+	// CombinedOutput() does not return DeadlineExceeded, make sure it's
+	// propagated on timeout.
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	if cmderr != nil {
+		return fmt.Errorf("failed to unmount volume: %s: %s", cmderr, string(out))
+	}
+	return nil
+}
+
+func (ns *nodeServer) forceUnmount(path string) error {
+	cmd := exec.Command("umount", "-f", path)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to force-unmount volume: %s: %s", err, string(out))
+	}
+	return nil
 }
 
 func (ns *nodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
