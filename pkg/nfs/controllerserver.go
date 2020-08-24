@@ -29,7 +29,15 @@ func (cs *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 }
 
 func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
+	if len(req.GetVolumeId()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
+	}
+	if req.GetVolumeCapabilities() == nil {
+		return nil, status.Error(codes.InvalidArgument, "Volume capabilities missing in request")
+	}
+
+	// supports all AccessModes, no need to check capabilities here
+	return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
 }
 
 func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
