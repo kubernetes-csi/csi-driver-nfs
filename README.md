@@ -38,8 +38,8 @@ and working NFS server (e.g. https://github.com/rootfs/nfs-ganesha-docker)
 #### Deploy
 
 Deploy the NFS plugin along with the `CSIDriver` info.
-```
-kubectl -f deploy/kubernetes create
+```console
+kubectl create -f deploy/kubernetes
 ```
 
 #### Example Nginx application
@@ -53,22 +53,22 @@ NFS server public end point and configuration. You can also provide additional
 `mountOptions`, such as protocol version, in the `PersistentVolume` `spec` 
 relevant for your NFS Server.
 
-```
-kubectl -f examples/kubernetes/nginx.yaml create
+```console
+kubectl create -f examples/kubernetes/nginx.yaml
 ```
 
 ## Running Kubernetes End To End tests on an NFS Driver
 
 First, stand up a local cluster `ALLOW_PRIVILEGED=1 hack/local-up-cluster.sh` (from your Kubernetes repo)
 For Fedora/RHEL clusters, the following might be required:
-```
+```console
 sudo chown -R $USER:$USER /var/run/kubernetes/
 sudo chown -R $USER:$USER /var/lib/kubelet
 sudo chcon -R -t svirt_sandbox_file_t /var/lib/kubelet
 ```
 If you are plannig to test using your own private image, you could either install your nfs driver using your own set of YAML files, or edit the existing YAML files to use that private image.
 
-When using the [existing set of YAML files](https://github.com/kubernetes-csi/csi-driver-nfs/tree/master/deploy/kubernetes), you would edit the [csi-attacher-nfsplugin.yaml](https://github.com/kubernetes-csi/csi-driver-nfs/blob/master/deploy/kubernetes/csi-attacher-nfsplugin.yaml#L46) and [csi-nodeplugin-nfsplugin.yaml](https://github.com/kubernetes-csi/csi-driver-nfs/blob/master/deploy/kubernetes/csi-nodeplugin-nfsplugin.yaml#L45) files to include your private image instead of the default one. After editing these files, skip to step 3 of the following steps.
+When using the [existing set of YAML files](https://github.com/kubernetes-csi/csi-driver-nfs/tree/master/deploy/kubernetes), you would edit [csi-nfs-node.yaml](https://github.com/kubernetes-csi/csi-driver-nfs/blob/master/deploy/kubernetes/csi-nfs-node.yaml#L45) files to include your private image instead of the default one. After editing these files, skip to step 3 of the following steps.
 
 If you already have a driver installed, skip to step 4 of the following steps.
 

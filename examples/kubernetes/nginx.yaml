@@ -38,7 +38,7 @@ metadata:
   name: nginx
 spec:
   containers:
-  - image: maersk/nginx
+  - image: nginx
     name: nginx
     ports:
     - containerPort: 80
