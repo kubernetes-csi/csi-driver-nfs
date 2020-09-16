@@ -14,7 +14,7 @@ limitations under the License.
 package test
 
 import (
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/storage/testpatterns"
@@ -52,14 +52,9 @@ func initNFSDriver(name string, manifests ...string) testsuites.TestDriver {
 	}
 }
 
+// InitNFSDriver initialize NFS driver for test
 func InitNFSDriver() testsuites.TestDriver {
-
-	return initNFSDriver("nfs.csi.k8s.io",
-		"csi-attacher-nfsplugin.yaml",
-		"csi-attacher-rbac.yaml",
-		"csi-nodeplugin-nfsplugin.yaml",
-		"csi-nodeplugin-rbac.yaml")
-
+	return initNFSDriver("nfs.csi.k8s.io", "csi-nfs-node.yaml")
 }
 
 var _ testsuites.TestDriver = &nfsDriver{}

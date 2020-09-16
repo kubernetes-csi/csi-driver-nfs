@@ -3,17 +3,17 @@
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: csi-nodeplugin-nfsplugin
+  name: csi-nfs-node
+  namespace: kube-system
 spec:
   selector:
     matchLabels:
-      app: csi-nodeplugin-nfsplugin
+      app: csi-nfs-node
   template:
     metadata:
       labels:
-        app: csi-nodeplugin-nfsplugin
+        app: csi-nfs-node
     spec:
-      serviceAccount: csi-nodeplugin
       containers:
         - name: node-driver-registrar
           image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
