@@ -14,6 +14,7 @@ before_script:
 - export PATH=$PWD/bin:$PATH
 script:
 - make -k all test GOFLAGS_VENDOR=$( [ -d vendor ] && echo '-mod=vendor' )
+- make e2e-test
 after_success:
   - if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
       docker login -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}" quay.io;

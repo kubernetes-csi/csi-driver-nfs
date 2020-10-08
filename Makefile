@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CMDS=nfsplugin
+CMDS=nfsplugin tests
 all: build
 
 include release-tools/build.make
@@ -21,3 +21,10 @@ include release-tools/build.make
 sanity-test: build
 	./test/sanity/run-test.sh
 
+.PHONY: deploy-kind
+deploy-kind:
+	test/utils/deploy-kind.sh
+
+.PHONY: e2e-test
+e2e-test: deploy-kind build-tests
+	./bin/tests --ginkgo.v --ginkgo.progress --kubeconfig=$$HOME/.kube/config
