@@ -37,6 +37,7 @@ spec:
                     - mountPath: /nfsshare
                       name: data-volume
             volumes:
-                name: data-volume
-                hostPath: /nfsshare-volume
-                type: DirectoryOrCreate
+                - name: data-volume
+                  hostPath:
+                    path: /exports
+                    type: DirectoryOrCreate
