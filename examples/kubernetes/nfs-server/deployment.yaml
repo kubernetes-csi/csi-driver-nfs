@@ -12,9 +12,13 @@ spec:
   mountOptions:
     - hard
     - nfsvers=4.1
-  nfs:
-    path: /
-    server: 10.0.171.239
+  csi:
+    driver: nfs.csi.k8s.io
+    readOnly: false
+    volumeHandle: unique-volumeid  # make sure it's a unique id in the cluster
+    volumeAttributes:
+      server: nfs-server.default.svc.cluster.local
+      share: /
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -25,7 +29,7 @@ spec:
     - ReadWriteMany
   resources:
     requests:
-      storage: 2Gi
+      storage: 10Gi
   volumeName: pv-nfs
   storageClassName: ""
 ---
