@@ -1,43 +1,39 @@
----
 kind: Service
 apiVersion: v1
 metadata:
-  name: nfs-server
-  labels:
-    app: nfs-server
+  name: nfs-service
 spec:
-  type: ClusterIP  # use "LoadBalancer" to get a public ip
+  clusterIP: 10.0.171.239
   selector:
-    app: nfs-server
+    role: nfs
   ports:
-    - port: 2049
-      name: nfs-server
+    - name: tcp-2049
+      port: 2049
+      protocol: TCP
+    - name: udp-111
+      port: 111
+      protocol: UDP
+
 ---
-kind: Deployment
-apiVersion: apps/v1
+kind: Pod
+apiVersion: v1
 metadata:
-    name: nfs-server
+  name: nfs-server-pod
+  labels:
+    role: nfs
 spec:
-    replicas: 1
-    selector:
-        matchLabels:
-            app: nfs-server
-    template:
-        metadata:
-            name: nfs-server
-            labels:
-                app: nfs-server
-        spec:
-            containers:
-                - name: nfs-server
-                  image: gcr.io/kubernetes-e2e-test-images/volume/nfs:1.0
-                  ports:
-                    - containerPort: 2049
-                  volumeMounts:
-                    - mountPath: /nfsshare
-                      name: data-volume
-            volumes:
-                - name: data-volume
-                  hostPath:
-                    path: /exports
-                    type: DirectoryOrCreate
+  containers:
+    - name: nfs-server-container
+      image: itsthenetwork/nfs-server-alpine:latest
+      env:
+      - name: SHARED_DIRECTORY
+        value: "/exports"
+      volumeMounts:
+        - mountPath: /exports
+          name: nfs-vol
+      securityContext:
+        privileged: true
+  volumes:
+    - name: nfs-vol
+      emptyDir: {}
+---
