@@ -11,6 +11,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Install nfs-common
+        run: |
+          sudo apt-get install -y nfs-common
       - name: Run tests
         run: |
           make sanity-test
