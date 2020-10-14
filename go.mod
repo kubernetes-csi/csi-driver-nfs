@@ -13,6 +13,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/spf13/cobra v0.0.3
 	golang.org/x/net v0.0.0-20190415100556-4a65cf94b679
+	golang.org/x/text v0.3.3 // indirect
 	google.golang.org/grpc v1.20.0
 	k8s.io/api v0.0.0-20190415132514-c2f1300cac21
 	k8s.io/apiextensions-apiserver v0.0.0-20190315093550-53c4693659ed // indirect
