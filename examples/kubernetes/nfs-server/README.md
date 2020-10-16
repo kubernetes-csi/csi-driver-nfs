@@ -8,11 +8,7 @@
 kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/examples/kubernetes/nfs-provisioner/nfs-server.yaml
 ```
 
-- After deploying, a new service `nfs-service` is created. The file share path is accessible at  `10.0.171.239`. Verify if the NFS Server pod is running
-
-```bash
-$ kubectl get po nfs-server-pod
-```
+- After deploying, a new service `nfs-server` is created, nfs share path is`nfs-server.default.svc.cluster.local:/`.
 
 - To check if the server is working, we can statically create a `PersistentVolume` and a `PersistentVolumeClaim`, and mount it onto a sample pod:
 
@@ -23,6 +19,12 @@ kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nf
 Verify if the newly create deployment is Running:
 
 ```bash
-$ kubectl get deploy nfs-busybox
+# kubectl exec -it nfs-busybox-8cd8d9c5b-sf8mx sh
+/ # df -h
+Filesystem                Size      Used Available Use% Mounted on
+...
+nfs-server.default.svc.cluster.local:/
+                        123.9G     15.2G    108.6G  12% /mnt
+...
 ```
 

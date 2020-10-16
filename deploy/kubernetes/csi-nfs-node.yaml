@@ -14,6 +14,8 @@ spec:
       labels:
         app: csi-nfs-node
     spec:
+      hostNetwork: true # original nfs connection would be broken without hostNetwork setting
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: node-driver-registrar
           image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
