@@ -39,6 +39,13 @@ type nfsDriver struct {
 
 const (
 	driverName = "nfs.csi.k8s.io"
+	// Address of the NFS server
+	paramServer = "server"
+	// Base directory of the NFS server to create volumes under.
+	// The base directory must be a direct child of the root directory.
+	// The root directory is ommitted from the string, for example:
+	//     "base" instead of "/base"
+	paramShare = "share"
 )
 
 var (
@@ -69,8 +76,9 @@ func NewNFSdriver(nodeID, endpoint string, perm *uint32) *nfsDriver {
 	// NFS plugin does not support ControllerServiceCapability now.
 	// If support is added, it should set to appropriate
 	// ControllerServiceCapability RPC types.
-	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_UNKNOWN})
-
+	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+	})
 	return n
 }
 

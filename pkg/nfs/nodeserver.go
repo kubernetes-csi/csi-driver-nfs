@@ -27,6 +27,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/utils/mount"
 )
 
@@ -69,8 +70,8 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		mo = append(mo, "ro")
 	}
 
-	s := req.GetVolumeContext()["server"]
-	ep := req.GetVolumeContext()["share"]
+	s := req.GetVolumeContext()[paramServer]
+	ep := req.GetVolumeContext()[paramShare]
 	source := fmt.Sprintf("%s:%s", s, ep)
 
 	err = ns.mounter.Mount(source, targetPath, "nfs", mo)
@@ -160,4 +161,8 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
+}
+
+func getVolumeMetrics(volumePath string) (*volume.Metrics, error) {
+	return volume.NewMetricsStatFS(volumePath).GetMetrics()
 }
