@@ -1,0 +1,39 @@
+name: K8s external storage E2E Tests
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+jobs:
+  test:
+    name: E2E Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.13
+        id: go
+      - name: Build image 
+        run: |
+          make build
+          docker build -t nfsplugin:latest .
+      - uses: engineerd/setup-kind@v0.4.0
+        name: Installing KinD cluster
+        with:
+          version: "v0.9.0"
+      - name: Push image to KinD
+        run: |
+          kind load docker-image --name=kind nfsplugin:latest
+      - name: Install NFS Server on KinD
+        run: kubectl apply -f ./examples/kubernetes/nfs-server/nfs-server.yaml
+      - name: Install csi-nfs driver on KinD
+        run: make kind-install-driver
+      - name: Setup K8s E2E external storage tests
+        run: make setup-external-e2e
+      - name: Run tests
+        run: |
+          go get -u github.com/onsi/ginkgo/ginkgo
+          make run-external-e2e

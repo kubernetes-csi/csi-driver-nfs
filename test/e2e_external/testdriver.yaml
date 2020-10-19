@@ -1,0 +1,10 @@
+StorageClass:
+  FromName: false
+  FromFile: /tmp/csi-nfs/storageclass.yaml
+DriverInfo:
+  Name: csi-nfsplugin
+  Capabilities:
+    persistence: true
+    exec: true
+    multipods: true
+    RWX: true
