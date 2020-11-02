@@ -1,0 +1,26 @@
+image:
+    nfs:
+        repository: quay.io/k8scsi/nfsplugin
+        tag: v2.0.0
+        pullPolicy: ifNotPresent
+    csiProvisioner:
+        repository: mcr.microsoft.com/oss/kubernetes-csi/csi-provisioner
+        tag: v1.4.0
+        pullPolicy: ifNotPresent
+    livenessProbe:
+        repository: mcr.microsoft.com/oss/kubernetes-csi/livenessprobe
+        tag: v1.1.0
+        pullPolicy: ifNotPresent
+    nodeDriverRegistrar:
+        repository: mcr.microsoft.com/oss/kubernetes-csi/csi-node-driver-registrar
+        tag: v1.2.0
+        pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+
+rbac:
+  create: true
+
+controller:
+  replicas: 2
