@@ -32,19 +32,8 @@ func Kind(kind string) schema.GroupKind {
 	return SchemeGroupVersion.WithKind(kind).GroupKind()
 }
 
-// scheme is the registry for the common types that adhere to the meta v1beta1 API spec.
-var scheme = runtime.NewScheme()
-
-// ParameterCodec knows about query parameters used with the meta v1beta1 API spec.
-var ParameterCodec = runtime.NewParameterCodec(scheme)
-
-func init() {
-	if err := AddToScheme(scheme); err != nil {
-		panic(err)
-	}
-}
-
-func AddToScheme(scheme *runtime.Scheme) error {
+// AddMetaToScheme registers base meta types into schemas.
+func AddMetaToScheme(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&Table{},
 		&TableOptions{},
@@ -52,10 +41,5 @@ func AddToScheme(scheme *runtime.Scheme) error {
 		&PartialObjectMetadataList{},
 	)
 
-	return scheme.AddConversionFuncs(
-		Convert_Slice_string_To_v1beta1_IncludeObjectPolicy,
-	)
-
-	// register manually. This usually goes through the SchemeBuilder, which we cannot use here.
-	//scheme.AddGeneratedDeepCopyFuncs(GetGeneratedDeepCopyFuncs()...)
+	return nil
 }
