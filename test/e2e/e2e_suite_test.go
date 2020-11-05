@@ -28,7 +28,7 @@ var (
 	perm                          *uint32
 	nfsDriver                     = nfs.NewNFSdriver(nodeID, "unix:///csi/csi.sock", perm)
 	defaultStorageClassParameters = map[string]string{
-		"server": "nfs-server.default.svc.cluster.loca",
+		"server": "nfs-server.default.svc.cluster.local",
 		"share":  "/",
 	}
 )
@@ -120,5 +120,5 @@ func execTestCmd(cmds []testCmd) {
 
 func TestE2E(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "E2e Suite")
+	ginkgo.RunSpecs(t, "E2E Suite")
 }

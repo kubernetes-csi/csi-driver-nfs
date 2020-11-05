@@ -20,8 +20,7 @@ LDFLAGS ?= "-X ${PKG}/pkg/nfs.driverVersion=${IMAGE_VERSION} -X -s -w -extldflag
 IMAGE_NAME ?= nfsplugin
 REGISTRY ?= andyzhangx
 IMAGE_TAG = $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_VERSION)
-
-
+GINKGO_FLAGS = -ginkgo.v
 all: build
 
 include release-tools/build.make
@@ -57,19 +56,6 @@ local-k8s-uninstall:
 nfs:
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags ${LDFLAGS} -o _output/nfsplugin ./cmd/nfsplugin
 
-.PHONY: nfs-container
-nfs-container:
-	docker buildx rm container-builder || true
-	docker buildx create --use --name=container-builder
-ifdef CI
-	make nfs
-	docker buildx build --no-cache --build-arg LDFLAGS=${LDFLAGS} -t $(IMAGE_TAG)-linux-amd64 . --platform="linux/amd64" --push .
-ifdef PUBLISH
-	docker manifest create $(IMAGE_TAG_LATEST) $(IMAGE_TAG)-linux-amd64
-	docker manifest inspect $(IMAGE_TAG_LATEST)
-endif
-endif
-
 .PHONY: install-nfs-server
 install-nfs-server:
 	kubectl apply -f ./examples/kubernetes/nfs-server/nfs-server.yaml
@@ -78,21 +64,16 @@ install-nfs-server:
 install-helm:
 	curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 
-.PHONY: push
-push:
-ifdef CI
-	docker manifest push --purge $(IMAGE_TAG)
-else
-	docker push $(IMAGE_TAG)
-endif
-
 .PHONY: e2e-bootstrap
 e2e-bootstrap: install-helm
-	docker pull $(IMAGE_TAG) || make nfs-container push
 	helm install -n csi-driver-nfs ./charts/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
 	--set image.nfs.repository=$(REGISTRY)/$(IMAGE_NAME) \
-	--set image.smb.tag=$(IMAGE_VERSION)
+	--set image.nfs.tag=$(IMAGE_VERSION)
 
 .PHONY: e2e-teardown
 e2e-teardown:
 	helm delete csi-driver-nfs --namespace kube-system
+
+.PHONY: e2e-test
+e2e-test:
+	go test -v -timeout=0 ./test/e2e ${GINKGO_FLAGS}
