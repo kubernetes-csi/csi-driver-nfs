@@ -6,6 +6,8 @@ require (
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/kubernetes-csi/csi-lib-utils v0.2.0
+	github.com/onsi/ginkgo v1.11.0
+	github.com/onsi/gomega v1.7.0
 	github.com/spf13/cobra v0.0.5
 	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
 	golang.org/x/text v0.3.3 // indirect
