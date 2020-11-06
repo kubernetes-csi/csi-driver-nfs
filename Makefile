@@ -11,26 +11,41 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 CMDS=nfsplugin
 DEPLOY_FOLDER = ./deploy/kubernetes
 CMDS=nfsplugin
 PKG = github.com/kubernetes-csi/csi-driver-nfs
+GIT_COMMIT ?= $(shell git rev-parse HEAD)
 IMAGE_VERSION ?= v0.5.0
-LDFLAGS ?= "-X ${PKG}/pkg/nfs.driverVersion=${IMAGE_VERSION} -X -s -w -extldflags '-static'"
-IMAGE_NAME ?= nfsplugin
+# Use a custom version for E2E tests if we are testing in CI
+ifdef CI
+ifndef PUBLISH
+override IMAGE_VERSION := e2e-$(GIT_COMMIT)
+endif
+endif
+IMAGE_NAME = nfsplugin
 REGISTRY ?= andyzhangx
+REGISTRY_NAME = $(shell echo $(REGISTRY) | sed "s/.azurecr.io//g")
 IMAGE_TAG = $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_VERSION)
 GINKGO_FLAGS = -ginkgo.v
-all: build
+GO111MODULE = on
+GOPATH ?= $(shell go env GOPATH)
+GOBIN ?= $(GOPATH)/bin
+DOCKER_CLI_EXPERIMENTAL = enabled
+export GOPATH GOBIN GO111MODULE DOCKER_CLI_EXPERIMENTAL
 
-include release-tools/build.make
+LDFLAGS = "-X ${PKG}/pkg/nfs.driverVersion=${IMAGE_VERSION} -s -w -extldflags '-static'"
+
+all: nfs
+
 
 .PHONY: sanity-test
-sanity-test: build
+sanity-test: nfs
 	./test/sanity/run-test.sh
 
 .PHONY: local-build-push
-local-build-push: build
+local-build-push: nfs
 	docker build -t $(LOCAL_USER)/nfsplugin:latest .
 	docker push $(LOCAL_USER)/nfsplugin
 
@@ -54,7 +69,15 @@ local-k8s-uninstall:
 
 .PHONY: nfs
 nfs:
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags ${LDFLAGS} -o _output/nfsplugin ./cmd/nfsplugin
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags ${LDFLAGS} -o bin/nfsplugin ./cmd/nfsplugin
+
+.PHONY: container
+container: nfs
+	docker build --no-cache -t $(IMAGE_TAG) .
+
+.PHONY: push
+push:
+	docker push $(IMAGE_TAG)
 
 .PHONY: install-nfs-server
 install-nfs-server:
@@ -66,7 +89,8 @@ install-helm:
 
 .PHONY: e2e-bootstrap
 e2e-bootstrap: install-helm
-	helm install -n csi-driver-nfs ./charts/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
+	docker pull $(IMAGE_TAG) || make container push
+	helm install csi-driver-nfs ./charts/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
 	--set image.nfs.repository=$(REGISTRY)/$(IMAGE_NAME) \
 	--set image.nfs.tag=$(IMAGE_VERSION)
 

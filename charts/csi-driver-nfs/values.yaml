@@ -2,15 +2,15 @@ image:
     nfs:
         repository: quay.io/k8scsi/nfsplugin
         tag: v2.0.0
-        pullPolicy: ifNotPresent
+        pullPolicy:   IfNotPresent
     csiProvisioner:
         repository: mcr.microsoft.com/oss/kubernetes-csi/csi-provisioner
         tag: v1.4.0
-        pullPolicy: ifNotPresent
+        pullPolicy: IfNotPresent
     livenessProbe:
         repository: mcr.microsoft.com/oss/kubernetes-csi/livenessprobe
         tag: v2.0.0
-        pullPolicy: ifNotPresent
+        pullPolicy: IfNotPresent
     nodeDriverRegistrar:
         repository: mcr.microsoft.com/oss/kubernetes-csi/csi-node-driver-registrar
         tag: v1.2.0
