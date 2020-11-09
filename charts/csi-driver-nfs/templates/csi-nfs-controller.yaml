@@ -50,7 +50,7 @@ spec:
           image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
           args:
             - --csi-address=/csi/csi.sock
-            - --connection-timeout=3s
+            - --probe-timeout=3s
             - --health-port=29642
             - --v=5
           imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
