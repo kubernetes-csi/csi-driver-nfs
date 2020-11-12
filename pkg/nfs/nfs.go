@@ -38,7 +38,7 @@ type nfsDriver struct {
 }
 
 const (
-	driverName = "nfs.csi.k8s.io"
+	DriverName = "nfs.csi.k8s.io"
 	// Address of the NFS server
 	paramServer = "server"
 	// Base directory of the NFS server to create volumes under.
@@ -53,10 +53,10 @@ var (
 )
 
 func NewNFSdriver(nodeID, endpoint string, perm *uint32) *nfsDriver {
-	glog.Infof("Driver: %v version: %v", driverName, version)
+	glog.Infof("Driver: %v version: %v", DriverName, version)
 
 	n := &nfsDriver{
-		name:     driverName,
+		name:     DriverName,
 		version:  version,
 		nodeID:   nodeID,
 		endpoint: endpoint,

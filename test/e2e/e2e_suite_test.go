@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -10,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs"
-	testutil "github.com/kubernetes-csi/csi-driver-nfs/test/utils/testutils"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
+	"github.com/pborman/uuid"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/config"
 )
@@ -26,7 +27,7 @@ const (
 var (
 	nodeID                        = os.Getenv("NODE_ID")
 	perm                          *uint32
-	nfsDriver                     = nfs.NewNFSdriver(nodeID, "unix:///csi/csi.sock", perm)
+	nfsDriver                     = nfs.NewNFSdriver(nodeID, fmt.Sprintf("unix:///tmp/csi-%s.sock", uuid.NewUUID().String()), perm)
 	defaultStorageClassParameters = map[string]string{
 		"server": "nfs-server.default.svc.cluster.local",
 		"share":  "/",
@@ -50,40 +51,38 @@ var _ = ginkgo.BeforeSuite(func() {
 	handleFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
 
-	if testutil.IsRunningInProw() {
-		// install nfs server
-		installNFSServer := testCmd{
-			command:  "make",
-			args:     []string{"install-nfs-server"},
-			startLog: "Installing NFS Server...",
-			endLog:   "NFS Server successfully installed",
-		}
-
-		e2eBootstrap := testCmd{
-			command:  "make",
-			args:     []string{"e2e-bootstrap"},
-			startLog: "Installing NFS CSI Driver...",
-			endLog:   "NFS CSI Driver Installed",
-		}
-		// todo: Install metrics server once added to this driver
-
-		execTestCmd([]testCmd{installNFSServer, e2eBootstrap})
-		go func() {
-			nfsDriver.Run()
-		}()
+	// install nfs server
+	installNFSServer := testCmd{
+		command:  "make",
+		args:     []string{"install-nfs-server"},
+		startLog: "Installing NFS Server...",
+		endLog:   "NFS Server successfully installed",
 	}
+
+	e2eBootstrap := testCmd{
+		command:  "make",
+		args:     []string{"e2e-bootstrap"},
+		startLog: "Installing NFS CSI Driver...",
+		endLog:   "NFS CSI Driver Installed",
+	}
+	// todo: Install metrics server once added to this driver
+
+	execTestCmd([]testCmd{installNFSServer, e2eBootstrap})
+	go func() {
+		nfsDriver.Run()
+	}()
+
 })
 
 var _ = ginkgo.AfterSuite(func() {
-	if testutil.IsRunningInProw() {
-		e2eTeardown := testCmd{
-			command:  "make",
-			args:     []string{"e2e-teardown"},
-			startLog: "Uninstalling SMB CSI Driver...",
-			endLog:   "SMB Driver uninstalled",
-		}
-		execTestCmd([]testCmd{e2eTeardown})
+	e2eTeardown := testCmd{
+		command:  "make",
+		args:     []string{"e2e-teardown"},
+		startLog: "Uninstalling NFS CSI Driver...",
+		endLog:   "SMB Driver uninstalled",
 	}
+	execTestCmd([]testCmd{e2eTeardown})
+
 })
 
 // handleFlags sets up all flags and parses the command line.
