@@ -19,7 +19,7 @@ package testsuites
 import (
 	"fmt"
 
-	"github.com/kubernetes-csi/csi-driver-smb/test/e2e/driver"
+	"github.com/kubernetes-csi/csi-driver-nfs/test/e2e/driver"
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -119,6 +119,43 @@ func (pod *PodDetails) SetupWithDynamicVolumes(client clientset.Interface, names
 		tpvc, funcs := v.SetupDynamicPersistentVolumeClaim(client, namespace, csiDriver, storageClassParameters)
 		cleanupFuncs = append(cleanupFuncs, funcs...)
 		tpod.SetupVolume(tpvc.persistentVolumeClaim, fmt.Sprintf("%s%d", v.VolumeMount.NameGenerate, n+1), fmt.Sprintf("%s%d", v.VolumeMount.MountPathGenerate, n+1), v.VolumeMount.ReadOnly)
+	}
+	return tpod, cleanupFuncs
+}
+
+func (pod *PodDetails) SetupDeployment(client clientset.Interface, namespace *v1.Namespace, csiDriver driver.DynamicPVTestDriver, storageClassParameters map[string]string) (*TestDeployment, []func()) {
+	cleanupFuncs := make([]func(), 0)
+	volume := pod.Volumes[0]
+	ginkgo.By("setting up the StorageClass")
+	storageClass := csiDriver.GetDynamicProvisionStorageClass(storageClassParameters, volume.MountOptions, volume.ReclaimPolicy, volume.VolumeBindingMode, volume.AllowedTopologyValues, namespace.Name)
+	tsc := NewTestStorageClass(client, namespace, storageClass)
+	createdStorageClass := tsc.Create()
+	cleanupFuncs = append(cleanupFuncs, tsc.Cleanup)
+	ginkgo.By("setting up the PVC")
+	tpvc := NewTestPersistentVolumeClaim(client, namespace, volume.ClaimSize, volume.VolumeMode, &createdStorageClass)
+	tpvc.Create()
+	tpvc.WaitForBound()
+	tpvc.ValidateProvisionedPersistentVolume()
+	cleanupFuncs = append(cleanupFuncs, tpvc.Cleanup)
+	ginkgo.By("setting up the Deployment")
+	tDeployment := NewTestDeployment(client, namespace, pod.Cmd, tpvc.persistentVolumeClaim, fmt.Sprintf("%s%d", volume.VolumeMount.NameGenerate, 1), fmt.Sprintf("%s%d", volume.VolumeMount.MountPathGenerate, 1), volume.VolumeMount.ReadOnly)
+
+	cleanupFuncs = append(cleanupFuncs, tDeployment.Cleanup)
+	return tDeployment, cleanupFuncs
+}
+
+// SetupWithDynamicMultipleVolumes each pod will be mounted with multiple volumes
+func (pod *PodDetails) SetupWithDynamicMultipleVolumes(client clientset.Interface, namespace *v1.Namespace, csiDriver driver.DynamicPVTestDriver, storageClassParameters map[string]string) (*TestPod, []func()) {
+	tpod := NewTestPod(client, namespace, pod.Cmd)
+	cleanupFuncs := make([]func(), 0)
+	for n, v := range pod.Volumes {
+		tpvc, funcs := v.SetupDynamicPersistentVolumeClaim(client, namespace, csiDriver, storageClassParameters)
+		cleanupFuncs = append(cleanupFuncs, funcs...)
+		if v.VolumeMode == Block {
+			tpod.SetupRawBlockVolume(tpvc.persistentVolumeClaim, fmt.Sprintf("%s%d", v.VolumeDevice.NameGenerate, n+1), v.VolumeDevice.DevicePath)
+		} else {
+			tpod.SetupVolume(tpvc.persistentVolumeClaim, fmt.Sprintf("%s%d", v.VolumeMount.NameGenerate, n+1), fmt.Sprintf("%s%d", v.VolumeMount.MountPathGenerate, n+1), v.VolumeMount.ReadOnly)
+		}
 	}
 	return tpod, cleanupFuncs
 }

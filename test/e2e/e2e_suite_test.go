@@ -32,6 +32,7 @@ var (
 		"server": "nfs-server.default.svc.cluster.local",
 		"share":  "/",
 	}
+	controllerServer = nfs.NewControllerServer(nfsDriver)
 )
 
 type testCmd struct {
@@ -79,7 +80,7 @@ var _ = ginkgo.AfterSuite(func() {
 		command:  "make",
 		args:     []string{"e2e-teardown"},
 		startLog: "Uninstalling NFS CSI Driver...",
-		endLog:   "SMB Driver uninstalled",
+		endLog:   "NFS Driver uninstalled",
 	}
 	execTestCmd([]testCmd{e2eTeardown})
 
