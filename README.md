@@ -21,6 +21,9 @@ preexisting NFS server, whether it is deployed on cluster or provisioned
 independently. The plugin itself provides only a communication layer between 
 resources in the cluser and the NFS server.
 
+## Install NFS CSI driver on a kubernetes cluster
+Please refer to [install NFS CSI driver](https://github.com/kubernetes-csi/csi-driver-nfs/blob/master/docs/install-csi-driver.md).
+
 ## Example
 
 There are multiple ways to create a kubernetes cluster, the NFS CSI plugin
