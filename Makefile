@@ -90,7 +90,7 @@ install-helm:
 .PHONY: e2e-bootstrap
 e2e-bootstrap: install-helm
 	docker pull $(IMAGE_TAG) || make container push
-	helm install csi-driver-nfs ./charts/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
+	helm install csi-driver-nfs ./charts/latest/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
 	--set image.nfs.repository=$(REGISTRY)/$(IMAGE_NAME) \
 	--set image.nfs.tag=$(IMAGE_VERSION)
 
