@@ -21,6 +21,8 @@ function cleanup {
   pkill -f nfsplugin
   echo 'Deleting CSI sanity test binary'
   rm -rf csi-test
+  echo 'Uninstalling NFS server on localhost'
+  docker rm nfs -f
 }
 trap cleanup EXIT
 
