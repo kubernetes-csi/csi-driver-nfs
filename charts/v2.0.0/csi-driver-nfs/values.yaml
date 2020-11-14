@@ -4,23 +4,20 @@ image:
         tag: v2.0.0
         pullPolicy:   IfNotPresent
     csiProvisioner:
-        repository: mcr.microsoft.com/oss/kubernetes-csi/csi-provisioner
-        tag: v1.4.0
+        repository: k8s.gcr.io/sig-storage/csi-provisioner
+        tag: v2.0.4
         pullPolicy: IfNotPresent
     livenessProbe:
-        repository: mcr.microsoft.com/oss/kubernetes-csi/livenessprobe
-        tag: v2.0.0
+        repository: k8s.gcr.io/sig-storage/livenessprobe
+        tag: v2.1.0
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
-        repository: mcr.microsoft.com/oss/kubernetes-csi/csi-node-driver-registrar
-        tag: v1.2.0
+        repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
+        tag: v2.0.1
         pullPolicy: IfNotPresent
-
 serviceAccount:
   create: true
-
 rbac:
   create: true
-
 controller:
   replicas: 2
