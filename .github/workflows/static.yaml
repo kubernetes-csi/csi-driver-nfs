@@ -1,0 +1,20 @@
+name: Static Checks
+on:
+    pull_request: {}
+    push: {}
+jobs:
+    go_lint:
+        # Enable once https://github.com/kubernetes-csi/csi-driver-nfs/issues/90 is fixed
+        # name: Go Lint
+        # runs-on: ubuntu-18.04
+        # steps:
+        #     - name: Checkout code
+        #       uses: actions/checkout@master
+        #     - name: Run linter
+        #       uses: golangci/golangci-lint-action@v1
+        #       with:
+        #           version: v1.29
+        #           args: -E=gofmt,golint,misspell --timeout=30m0s
+            - name: Verify Helm
+              run: |
+                hack/verify-helm-chart.sh
