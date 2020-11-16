@@ -21,6 +21,8 @@ function cleanup {
   pkill -f nfsplugin
   echo 'Deleting CSI sanity test binary'
   rm -rf csi-test
+  echo 'Uninstalling NFS server on localhost'
+  docker rm nfs -f
 }
 trap cleanup EXIT
 
@@ -36,7 +38,7 @@ function provision_nfs_server {
   echo 'Installing NFS server on localhost'
   apt-get update -y
   apt-get install -y nfs-common
-  docker run -d --name nfs --privileged -p 2049:2049 -v $(pwd):/nfsshare -e SHARED_DIRECTORY=/nfsshare itsthenetwork/nfs-server-alpine:latest
+  docker run -d --name nfs --privileged -p 2049:2049 -v $(pwd)/nfsshare:/nfsshare -e SHARED_DIRECTORY=/nfsshare itsthenetwork/nfs-server-alpine:latest
 }
 
 provision_nfs_server
@@ -52,4 +54,4 @@ bin/nfsplugin --endpoint "$endpoint" --nodeid "$nodeid" -v=5 &
 
 echo 'Begin to run sanity test...'
 readonly CSI_SANITY_BIN='csi-test/cmd/csi-sanity/csi-sanity'
-"$CSI_SANITY_BIN" --ginkgo.v --ginkgo.noColor --csi.testvolumeparameters="$(pwd)/test/sanity/params.yaml" --csi.endpoint="$endpoint" --ginkgo.skip="should not fail when requesting to create a volume with already existing name and same capacity|should fail when requesting to create a volume with already existing name and different capacity|should work|should fail when the requested volume does not exist"
+"$CSI_SANITY_BIN" --ginkgo.v --csi.testvolumeparameters="$(pwd)/test/sanity/params.yaml" --csi.endpoint="$endpoint" --ginkgo.skip="should not fail when requesting to create a volume with already existing name and same capacity|should fail when requesting to create a volume with already existing name and different capacity|should work|should fail when the requested volume does not exist"
