@@ -39,6 +39,13 @@ LDFLAGS = "-X ${PKG}/pkg/nfs.driverVersion=${IMAGE_VERSION} -s -w -extldflags '-
 
 all: nfs
 
+.PHONY: verify
+verify: unit-test
+	hack/verify-all.sh
+
+.PHONY: unit-test
+unit-test:
+	go test -covermode=count -coverprofile=profile.cov ./pkg/... -v
 
 .PHONY: sanity-test
 sanity-test: nfs

@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"fmt"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"k8s.io/utils/mount"
@@ -29,6 +30,24 @@ func initTestController(t *testing.T) *ControllerServer {
 	driver := NewNFSdriver("", "", perm)
 	driver.ns = NewNodeServer(driver, mounter)
 	return NewControllerServer(driver)
+}
+
+func teardown() {
+	err := os.RemoveAll("/tmp/" + testCSIVolume)
+
+	if err != nil {
+		fmt.Printf(err.Error())
+		fmt.Printf("\n")
+		fmt.Printf("\033[1;91m%s\033[0m\n", "> Teardown failed")
+	} else {
+		fmt.Printf("\033[1;36m%s\033[0m\n", "> Teardown completed")
+	}
+}
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	teardown()
+	os.Exit(code)
 }
 
 func TestCreateVolume(t *testing.T) {

@@ -18,13 +18,19 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+echo "Verifying boilerplate"
+
+if [[ -z "$(command -v python)" ]]; then
+  echo "Cannot find python. Make link to python3..."
+  update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+fi
 
 REPO_ROOT=$(dirname "${BASH_SOURCE}")/..
 
 boilerDir="${REPO_ROOT}/hack/boilerplate"
 boiler="${boilerDir}/boilerplate.py"
 
-files_need_boilerplate=($(${boiler} --rootdir=${REPO_ROOT}))
+files_need_boilerplate=($(${boiler} --rootdir=${REPO_ROOT} --verbose))
 
 # Run boilerplate.py unit tests
 unitTestOut="$(mktemp)"
@@ -41,3 +47,5 @@ if [[ ${#files_need_boilerplate[@]} -gt 0 ]]; then
 
   exit 1
 fi
+
+echo "Done"
