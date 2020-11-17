@@ -16,6 +16,7 @@
 
 set -euo pipefail
 
+echo "Verifying gomod"
 export GO111MODULE=on
 echo "go mod tidy"
 go mod tidy

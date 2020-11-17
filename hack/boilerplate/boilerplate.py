@@ -38,7 +38,7 @@ rootdir = os.path.abspath(rootdir)
 parser.add_argument(
     "--rootdir", default=rootdir, help="root directory to examine")
 
-default_boilerplate_dir = os.path.join(rootdir, "csi-driver-smb/hack/boilerplate")
+default_boilerplate_dir = os.path.join(rootdir, "csi-driver-nfs/hack/boilerplate")
 
 parser.add_argument(
     "--boilerplate-dir", default=default_boilerplate_dir)
