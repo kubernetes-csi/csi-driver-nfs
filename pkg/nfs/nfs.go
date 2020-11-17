@@ -22,7 +22,7 @@ import (
 	"k8s.io/utils/mount"
 )
 
-type nfsDriver struct {
+type Driver struct {
 	name    string
 	nodeID  string
 	version string
@@ -32,7 +32,7 @@ type nfsDriver struct {
 	perm *uint32
 
 	//ids *identityServer
-	ns    *nodeServer
+	ns    *NodeServer
 	cap   map[csi.VolumeCapability_AccessMode_Mode]bool
 	cscap []*csi.ControllerServiceCapability
 }
@@ -43,7 +43,7 @@ const (
 	paramServer = "server"
 	// Base directory of the NFS server to create volumes under.
 	// The base directory must be a direct child of the root directory.
-	// The root directory is ommitted from the string, for example:
+	// The root directory is omitted from the string, for example:
 	//     "base" instead of "/base"
 	paramShare = "share"
 )
@@ -52,10 +52,10 @@ var (
 	version = "2.0.0"
 )
 
-func NewNFSdriver(nodeID, endpoint string, perm *uint32) *nfsDriver {
+func NewNFSdriver(nodeID, endpoint string, perm *uint32) *Driver {
 	glog.Infof("Driver: %v version: %v", DriverName, version)
 
-	n := &nfsDriver{
+	n := &Driver{
 		name:     DriverName,
 		version:  version,
 		nodeID:   nodeID,
@@ -82,14 +82,14 @@ func NewNFSdriver(nodeID, endpoint string, perm *uint32) *nfsDriver {
 	return n
 }
 
-func NewNodeServer(n *nfsDriver, mounter mount.Interface) *nodeServer {
-	return &nodeServer{
+func NewNodeServer(n *Driver, mounter mount.Interface) *NodeServer {
+	return &NodeServer{
 		Driver:  n,
 		mounter: mounter,
 	}
 }
 
-func (n *nfsDriver) Run() {
+func (n *Driver) Run() {
 	n.ns = NewNodeServer(n, mount.New(""))
 	s := NewNonBlockingGRPCServer()
 	s.Start(n.endpoint,
@@ -101,7 +101,7 @@ func (n *nfsDriver) Run() {
 	s.Wait()
 }
 
-func (n *nfsDriver) AddVolumeCapabilityAccessModes(vc []csi.VolumeCapability_AccessMode_Mode) []*csi.VolumeCapability_AccessMode {
+func (n *Driver) AddVolumeCapabilityAccessModes(vc []csi.VolumeCapability_AccessMode_Mode) []*csi.VolumeCapability_AccessMode {
 	var vca []*csi.VolumeCapability_AccessMode
 	for _, c := range vc {
 		glog.Infof("Enabling volume access mode: %v", c.String())
@@ -111,7 +111,7 @@ func (n *nfsDriver) AddVolumeCapabilityAccessModes(vc []csi.VolumeCapability_Acc
 	return vca
 }
 
-func (n *nfsDriver) AddControllerServiceCapabilities(cl []csi.ControllerServiceCapability_RPC_Type) {
+func (n *Driver) AddControllerServiceCapabilities(cl []csi.ControllerServiceCapability_RPC_Type) {
 	var csc []*csi.ControllerServiceCapability
 
 	for _, c := range cl {
@@ -120,6 +120,4 @@ func (n *nfsDriver) AddControllerServiceCapabilities(cl []csi.ControllerServiceC
 	}
 
 	n.cscap = csc
-
-	return
 }

@@ -51,7 +51,6 @@ const (
 	slowPodStartTimeout = 15 * time.Minute
 	// Description that will printed during tests
 	failedConditionDescription = "Error status code"
-	pollLongTimeout            = 5 * time.Minute
 )
 
 type TestStorageClass struct {

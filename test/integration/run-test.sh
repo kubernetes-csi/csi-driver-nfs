@@ -46,7 +46,7 @@ install_csc_bin
 
 readonly volname="citest-$(date +%s)"
 readonly volsize="2147483648"
-readonly endpoint="tcp://127.0.0.1:10000"
+readonly endpoint="unix:///tmp/csi.sock"
 readonly target_path="/tmp/targetpath"
 readonly params="server=127.0.0.1,share=/"
 

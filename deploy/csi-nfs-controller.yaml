@@ -80,8 +80,6 @@ spec:
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
           volumeMounts:
-            - name: plugin-dir
-              mountPath: /plugin
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
@@ -95,10 +93,6 @@ spec:
               cpu: 10m
               memory: 20Mi
       volumes:
-        - name: plugin-dir
-          hostPath:
-            path: /var/lib/kubelet/plugins/csi-nfsplugin
-            type: DirectoryOrCreate
         - name: pods-mount-dir
           hostPath:
             path: /var/lib/kubelet/pods

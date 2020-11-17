@@ -1,3 +1,19 @@
+/*
+Copyright 2020 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package nfs
 
 import (
@@ -7,6 +23,7 @@ import (
 	"testing"
 
 	"fmt"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"k8s.io/utils/mount"
@@ -16,7 +33,7 @@ const (
 	testServer    = "test-server"
 	testBaseDir   = "test-base-dir"
 	testCSIVolume = "test-csi"
-	testVolumeId  = "test-server/test-base-dir/test-csi"
+	testVolumeID  = "test-server/test-base-dir/test-csi"
 )
 
 // for Windows support in the future
@@ -36,7 +53,7 @@ func teardown() {
 	err := os.RemoveAll("/tmp/" + testCSIVolume)
 
 	if err != nil {
-		fmt.Printf(err.Error())
+		fmt.Print(err.Error())
 		fmt.Printf("\n")
 		fmt.Printf("\033[1;91m%s\033[0m\n", "> Teardown failed")
 	} else {
@@ -78,7 +95,7 @@ func TestCreateVolume(t *testing.T) {
 			},
 			resp: &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
-					VolumeId: testVolumeId,
+					VolumeId: testVolumeID,
 					VolumeContext: map[string]string{
 						paramServer: testServer,
 						paramShare:  testShare,
