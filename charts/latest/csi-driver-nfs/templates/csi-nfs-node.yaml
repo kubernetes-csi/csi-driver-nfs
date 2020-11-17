@@ -57,7 +57,7 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix://plugin/csi.sock
-          imagePullPolicy: "IfNotPresent"
+          imagePullPolicy: {{ .Values.image.nfs.pullPolicy }}
           volumeMounts:
             - name: plugin-dir
               mountPath: /plugin

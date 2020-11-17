@@ -260,6 +260,7 @@ func (cs *ControllerServer) internalUnmount(ctx context.Context, vol *nfsVolume)
 	// Unmount nfs server at base-dir
 	glog.V(4).Infof("internally unmounting %v", targetPath)
 	_, err := cs.Driver.ns.NodeUnpublishVolume(ctx, &csi.NodeUnpublishVolumeRequest{
+		VolumeId:   vol.id,
 		TargetPath: cs.getInternalMountPath(vol),
 	})
 	return err
@@ -344,9 +345,9 @@ func (cs *ControllerServer) nfsVolToCSI(vol *nfsVolume, reqCapacity int64) *csi.
 // Given a nfsVolume, return a CSI volume id
 func (cs *ControllerServer) getVolumeIdFromNfsVol(vol *nfsVolume) string {
 	idElements := make([]string, totalIDElements)
-	idElements[idServer] = vol.server
-	idElements[idBaseDir] = vol.baseDir
-	idElements[idSubDir] = vol.subDir
+	idElements[idServer] = strings.Trim(vol.server, "/")
+	idElements[idBaseDir] = strings.Trim(vol.baseDir, "/")
+	idElements[idSubDir] = strings.Trim(vol.subDir, "/")
 	return strings.Join(idElements, "/")
 }
 
@@ -354,7 +355,7 @@ func (cs *ControllerServer) getVolumeIdFromNfsVol(vol *nfsVolume) string {
 func (cs *ControllerServer) getNfsVolFromId(id string) (*nfsVolume, error) {
 	tokens := strings.Split(id, "/")
 	if len(tokens) != totalIDElements {
-		return nil, fmt.Errorf("volume id %q unexpected format: got %v tokens", id, len(tokens))
+		return nil, fmt.Errorf("volume id %q unexpected format: got %v token(s) instead of %v", id, len(tokens), totalIDElements)
 	}
 
 	return &nfsVolume{
