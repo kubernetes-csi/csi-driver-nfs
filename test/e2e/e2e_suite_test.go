@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"time"
+
 	"github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -76,14 +78,45 @@ var _ = ginkgo.BeforeSuite(func() {
 })
 
 var _ = ginkgo.AfterSuite(func() {
+	createExampleDeployment := testCmd{
+		command:  "make",
+		args:     []string{"create-example-deployment"},
+		startLog: "create example deployments",
+		endLog:   "example deployments created",
+	}
+	execTestCmd([]testCmd{createExampleDeployment})
+	// sleep 120s waiting for deployment running complete
+	time.Sleep(120 * time.Second)
+
+	nfsLog := testCmd{
+		command:  "bash",
+		args:     []string{"test/utils/nfs_log.sh"},
+		startLog: "===================nfs log===================",
+		endLog:   "==================================================",
+	}
+
 	e2eTeardown := testCmd{
 		command:  "make",
 		args:     []string{"e2e-teardown"},
 		startLog: "Uninstalling NFS CSI Driver...",
 		endLog:   "NFS Driver uninstalled",
 	}
-	execTestCmd([]testCmd{e2eTeardown})
+	execTestCmd([]testCmd{nfsLog, e2eTeardown})
 
+	// install/uninstall CSI Driver deployment scripts test
+	installDriver := testCmd{
+		command:  "bash",
+		args:     []string{"deploy/install-driver.sh", "master", "local"},
+		startLog: "===================install CSI Driver deployment scripts test===================",
+		endLog:   "===================================================",
+	}
+	uninstallDriver := testCmd{
+		command:  "bash",
+		args:     []string{"deploy/uninstall-driver.sh", "master", "local"},
+		startLog: "===================uninstall CSI Driver deployment scripts test===================",
+		endLog:   "===================================================",
+	}
+	execTestCmd([]testCmd{installDriver, uninstallDriver})
 })
 
 // handleFlags sets up all flags and parses the command line.
