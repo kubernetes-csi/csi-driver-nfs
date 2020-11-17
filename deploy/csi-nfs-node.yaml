@@ -18,7 +18,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: node-driver-registrar
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
+          image: quay.io/k8scsi/csi-node-driver-registrar:v2.0.1
           lifecycle:
             preStop:
               exec:
@@ -43,7 +43,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: quay.io/k8scsi/nfsplugin:v2.0.0
+          image: gcr.io/k8s-staging-sig-storage/nfsplugin:amd64-linux-canary
           args :
             - "-v=5"
             - "--nodeid=$(NODE_ID)"
