@@ -51,6 +51,10 @@ unit-test:
 sanity-test: nfs
 	./test/sanity/run-test.sh
 
+.PHONY: integration-test
+integration-test: nfs
+	./test/integration/run-test.sh
+
 .PHONY: local-build-push
 local-build-push: nfs
 	docker build -t $(LOCAL_USER)/nfsplugin:latest .
@@ -76,7 +80,7 @@ local-k8s-uninstall:
 
 .PHONY: nfs
 nfs:
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags ${LDFLAGS} -o bin/nfsplugin ./cmd/nfsplugin
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags ${LDFLAGS} -mod vendor -o bin/nfsplugin ./cmd/nfsplugin
 
 .PHONY: container
 container: nfs
