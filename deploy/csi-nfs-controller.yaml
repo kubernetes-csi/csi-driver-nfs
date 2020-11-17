@@ -25,12 +25,11 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: csi-provisioner
-          image: mcr.microsoft.com/oss/kubernetes-csi/csi-provisioner:v1.4.0
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.0.4
           args:
             - "-v=5"
             - "--csi-address=$(ADDRESS)"
-            - "--enable-leader-election"
-            - "--leader-election-type=leases"
+            - "--leader-election"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
@@ -45,7 +44,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: liveness-probe
-          image: mcr.microsoft.com/oss/kubernetes-csi/livenessprobe:v2.0.0
+          image: k8s.gcr.io/sig-storage/livenessprobe:v2.1.0
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
@@ -62,7 +61,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: nfs
-          image: quay.io/k8scsi/nfsplugin:v2.0.0
+          image: gcr.io/k8s-staging-sig-storage/nfsplugin:amd64-linux-canary
           securityContext:
             privileged: true
             capabilities:
