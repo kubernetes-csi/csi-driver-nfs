@@ -92,7 +92,7 @@ push:
 
 .PHONY: install-nfs-server
 install-nfs-server:
-	kubectl apply -f ./examples/kubernetes/nfs-server/nfs-server.yaml
+	kubectl apply -f ./examples/nfs-server.yaml
 
 .PHONY: install-helm
 install-helm:
@@ -112,3 +112,9 @@ e2e-teardown:
 .PHONY: e2e-test
 e2e-test:
 	go test -v -timeout=0 ./test/e2e ${GINKGO_FLAGS}
+
+.PHONY: create-example-deployment
+create-example-deployment:
+	kubectl apply -f ./examples/storageclass-nfs.yaml
+	kubectl apply -f ./examples/deployment.yaml
+	kubectl apply -f ./examples/statefulset.yaml
