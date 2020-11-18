@@ -16,6 +16,15 @@ CMDS=nfsplugin
 DEPLOY_FOLDER = ./deploy/kubernetes
 CMDS=nfsplugin
 PKG = github.com/kubernetes-csi/csi-driver-nfs
+GINKGO_FLAGS = -ginkgo.v
+GO111MODULE = on
+GOPATH ?= $(shell go env GOPATH)
+GOBIN ?= $(GOPATH)/bin
+DOCKER_CLI_EXPERIMENTAL = enabled
+export GOPATH GOBIN GO111MODULE DOCKER_CLI_EXPERIMENTAL
+
+include release-tools/build.make
+LDFLAGS = "-X ${PKG}/pkg/nfs.driverVersion=${IMAGE_VERSION} -s -w -extldflags '-static'"
 GIT_COMMIT ?= $(shell git rev-parse HEAD)
 IMAGE_VERSION ?= v0.5.0
 # Use a custom version for E2E tests if we are testing in CI
@@ -28,14 +37,6 @@ IMAGE_NAME = nfsplugin
 REGISTRY ?= andyzhangx
 REGISTRY_NAME = $(shell echo $(REGISTRY) | sed "s/.azurecr.io//g")
 IMAGE_TAG = $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_VERSION)
-GINKGO_FLAGS = -ginkgo.v
-GO111MODULE = on
-GOPATH ?= $(shell go env GOPATH)
-GOBIN ?= $(GOPATH)/bin
-DOCKER_CLI_EXPERIMENTAL = enabled
-export GOPATH GOBIN GO111MODULE DOCKER_CLI_EXPERIMENTAL
-
-LDFLAGS = "-X ${PKG}/pkg/nfs.driverVersion=${IMAGE_VERSION} -s -w -extldflags '-static'"
 
 all: nfs
 
