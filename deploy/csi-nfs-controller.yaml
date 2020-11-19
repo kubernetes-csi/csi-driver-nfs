@@ -48,7 +48,7 @@ spec:
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
-            - --health-port=29642
+            - --health-port=29652
             - --v=5
           volumeMounts:
             - name: socket-dir
