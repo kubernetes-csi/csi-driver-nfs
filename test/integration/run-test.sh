@@ -16,6 +16,10 @@
 
 set -eo pipefail
 
+if [[ -z "$(command -v csc)" ]]; then
+  GO111MODULE=off go get github.com/rexray/gocsi/csc
+fi
+
 function cleanup {
   echo 'pkill -f nfsplugin'
   pkill -f nfsplugin
@@ -23,16 +27,6 @@ function cleanup {
   docker rm nfs -f
 }
 trap cleanup EXIT
-
-function install_csc_bin {
-  echo 'Installing CSC binary...'
-  export set GOPATH=$HOME/go
-  export set PATH=$PATH:$GOPATH/bin
-  go get github.com/rexray/gocsi/csc
-  pushd $GOPATH/src/github.com/rexray/gocsi/csc
-  make build
-  popd
-}
 
 function provision_nfs_server {
   echo 'Installing NFS server on localhost'
@@ -42,8 +36,9 @@ function provision_nfs_server {
 }
 
 provision_nfs_server
-install_csc_bin
 
+readonly CSC_BIN="$GOBIN/csc"
+readonly cap="1,mount,"
 readonly volname="citest-$(date +%s)"
 readonly volsize="2147483648"
 readonly endpoint="unix:///tmp/csi.sock"
@@ -63,34 +58,27 @@ echo 'Begin to run integration test...'
 
 # Begin to run CSI functions one by one
 echo "Create volume test:"
-value="$(csc controller new --endpoint "$endpoint" --cap 1,block "$volname" --req-bytes "$volsize" --params "$params")"
+value="$("$CSC_BIN" controller new --endpoint "$endpoint" --cap "$cap" "$volname" --req-bytes "$volsize" --params "$params")"
 sleep 15
 
 volumeid="$(echo "$value" | awk '{print $1}' | sed 's/"//g')"
 echo "Got volume id: $volumeid"
 
-csc controller validate-volume-capabilities --endpoint "$endpoint" --cap 1,block "$volumeid"
-
-echo "stage volume test:"
-csc node stage --endpoint "$endpoint" --cap 1,block --staging-target-path "$staging_target_path" "$volumeid"
+"$CSC_BIN" controller validate-volume-capabilities --endpoint "$endpoint" --cap "$cap" "$volumeid"
 
 echo "publish volume test:"
-csc node publish --endpoint "$endpoint" --cap 1,block --vol-context "$params" --target-path "$target_path" "$volumeid"
+"$CSC_BIN" node publish --endpoint "$endpoint" --cap "$cap" --vol-context "$params" --target-path "$target_path" "$volumeid"
 sleep 2
 
 echo "unpublish volume test:"
-csc node unpublish --endpoint "$endpoint" --target-path "$target_path" "$volumeid"
-sleep 2
-
-echo "unstage volume test:"
-csc node unstage --endpoint "$endpoint" --staging-target-path "$staging_target_path" "$volumeid"
+"$CSC_BIN" node unpublish --endpoint "$endpoint" --target-path "$target_path" "$volumeid"
 sleep 2
 
 echo "Delete volume test:"
-csc controller del --endpoint "$endpoint" "$volumeid"
+"$CSC_BIN" controller del --endpoint "$endpoint" "$volumeid" --timeout 10m
 sleep 15
 
-csc identity plugin-info --endpoint "$endpoint"
-csc node get-info --endpoint "$endpoint"
+"$CSC_BIN" identity plugin-info --endpoint "$endpoint"
+"$CSC_BIN" node get-info --endpoint "$endpoint"
 
 echo "Integration test is completed."
