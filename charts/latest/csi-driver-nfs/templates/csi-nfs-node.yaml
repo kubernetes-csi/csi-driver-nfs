@@ -18,6 +18,24 @@ spec:
       hostNetwork: true # original nfs connection would be broken without hostNetwork setting
       dnsPolicy: ClusterFirstWithHostNet
       containers:
+        - name: liveness-probe
+          image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
+          args:
+            - --csi-address=/csi/csi.sock
+            - --probe-timeout=3s
+            - --health-port=29642
+            - --v=5
+          imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              cpu: 100m
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
         - name: node-driver-registrar
           image: "{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
           lifecycle:
@@ -26,7 +44,7 @@ spec:
                 command: ["/bin/sh", "-c", "rm -rf /registration/csi-nfsplugin /registration/csi-nfsplugin-reg.sock"]
           args:
             - --v=5
-            - --csi-address=/plugin/csi.sock
+            - --csi-address=/csi/csi.sock
             - --kubelet-registration-path=/var/lib/kubelet/plugins/csi-nfsplugin/csi.sock
           env:
             - name: KUBE_NODE_NAME
@@ -35,8 +53,8 @@ spec:
                   fieldPath: spec.nodeName
           imagePullPolicy: {{ .Values.image.nodeDriverRegistrar.pullPolicy }}
           volumeMounts:
-            - name: plugin-dir
-              mountPath: /plugin
+            - name: socket-dir
+              mountPath: /csi
             - name: registration-dir
               mountPath: /registration
         - name: nfs
@@ -56,16 +74,16 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
-              value: unix://plugin/csi.sock
+              value: unix:///csi/csi.sock
           imagePullPolicy: {{ .Values.image.nfs.pullPolicy }}
           volumeMounts:
-            - name: plugin-dir
-              mountPath: /plugin
+            - name: socket-dir
+              mountPath: /csi
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
       volumes:
-        - name: plugin-dir
+        - name: socket-dir
           hostPath:
             path: /var/lib/kubelet/plugins/csi-nfsplugin
             type: DirectoryOrCreate

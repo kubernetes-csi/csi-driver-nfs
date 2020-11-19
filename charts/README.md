@@ -25,7 +25,7 @@ $ helm install --name csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace k
 $ helm search repo -l csi-driver-nfs
 ```
 
-### Install a specific verison
+### Install a specific version
 
 ```
 https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts --version v2.0.0

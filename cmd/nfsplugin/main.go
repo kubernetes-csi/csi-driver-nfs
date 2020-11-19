@@ -34,12 +34,12 @@ var (
 )
 
 func init() {
-	flag.Set("logtostderr", "true")
+	_ = flag.Set("logtostderr", "true")
 }
 
 func main() {
 
-	flag.CommandLine.Parse([]string{})
+	_ = flag.CommandLine.Parse([]string{})
 
 	cmd := &cobra.Command{
 		Use:   "NFS",
@@ -52,14 +52,14 @@ func main() {
 	cmd.Flags().AddGoFlagSet(flag.CommandLine)
 
 	cmd.PersistentFlags().StringVar(&nodeID, "nodeid", "", "node id")
-	cmd.MarkPersistentFlagRequired("nodeid")
+	_ = cmd.MarkPersistentFlagRequired("nodeid")
 
 	cmd.PersistentFlags().StringVar(&endpoint, "endpoint", "", "CSI endpoint")
-	cmd.MarkPersistentFlagRequired("endpoint")
+	_ = cmd.MarkPersistentFlagRequired("endpoint")
 
 	cmd.PersistentFlags().StringVar(&perm, "mount-permissions", "", "mounted folder permissions")
 
-	cmd.ParseFlags(os.Args[1:])
+	_ = cmd.ParseFlags(os.Args[1:])
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err.Error())
 		os.Exit(1)

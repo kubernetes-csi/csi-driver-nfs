@@ -1,3 +1,19 @@
+/*
+Copyright 2020 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package nfs
 
 import (
@@ -14,7 +30,7 @@ import (
 )
 
 type ControllerServer struct {
-	Driver *nfsDriver
+	Driver *Driver
 	// Working directory for the provisioner to temporarily mount nfs shares at
 	workingMountDir string
 }
@@ -87,32 +103,15 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return &csi.CreateVolumeResponse{Volume: cs.nfsVolToCSI(nfsVol, reqCapacity)}, nil
 }
 
-func validCapacity(requested int64, volumePath string) error {
-	metrics, err := getVolumeMetrics(volumePath)
-	if err != nil {
-		return err
-	}
-
-	capacity, ok := metrics.Capacity.AsInt64()
-	if !ok {
-		return status.Errorf(codes.Internal, "failed to get capacity")
-	}
-
-	if capacity != requested {
-		return status.Errorf(codes.AlreadyExists, "volume at this path exists with a different capacity")
-	}
-	return nil
-}
-
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	volumeId := req.GetVolumeId()
-	if volumeId == "" {
+	volumeID := req.GetVolumeId()
+	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "volume id is empty")
 	}
-	nfsVol, err := cs.getNfsVolFromId(volumeId)
+	nfsVol, err := cs.getNfsVolFromID(volumeID)
 	if err != nil {
 		// An invalid ID should be treated as doesn't exist
-		glog.V(5).Infof("failed to get nfs volume for volume id %v deletion: %v", volumeId, err)
+		glog.V(5).Infof("failed to get nfs volume for volume id %v deletion: %v", volumeID, err)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
@@ -300,7 +299,7 @@ func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[str
 		subDir:  name,
 		size:    size,
 	}
-	vol.id = cs.getVolumeIdFromNfsVol(vol)
+	vol.id = cs.getVolumeIDFromNfsVol(vol)
 
 	return vol, nil
 }
@@ -343,7 +342,7 @@ func (cs *ControllerServer) nfsVolToCSI(vol *nfsVolume, reqCapacity int64) *csi.
 }
 
 // Given a nfsVolume, return a CSI volume id
-func (cs *ControllerServer) getVolumeIdFromNfsVol(vol *nfsVolume) string {
+func (cs *ControllerServer) getVolumeIDFromNfsVol(vol *nfsVolume) string {
 	idElements := make([]string, totalIDElements)
 	idElements[idServer] = strings.Trim(vol.server, "/")
 	idElements[idBaseDir] = strings.Trim(vol.baseDir, "/")
@@ -352,7 +351,7 @@ func (cs *ControllerServer) getVolumeIdFromNfsVol(vol *nfsVolume) string {
 }
 
 // Given a CSI volume id, return a nfsVolume
-func (cs *ControllerServer) getNfsVolFromId(id string) (*nfsVolume, error) {
+func (cs *ControllerServer) getNfsVolFromID(id string) (*nfsVolume, error) {
 	tokens := strings.Split(id, "/")
 	if len(tokens) != totalIDElements {
 		return nil, fmt.Errorf("volume id %q unexpected format: got %v token(s) instead of %v", id, len(tokens), totalIDElements)
