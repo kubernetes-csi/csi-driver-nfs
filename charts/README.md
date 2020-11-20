@@ -37,21 +37,21 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 
 | Parameter                                         | Description                                                | Default                                                           |
 |---------------------------------------------------|------------------------------------------------------------|-------------------------------------------------------------------|
-| `image.nfs.repository`                            | csi-driver-nfs docker image                                | mcr.microsoft.com/k8s/csi/nfs-csi                                 |
-| `image.nfs.tag`                                   | csi-driver-nfs docker image tag                            | latest                                                            |
+| `image.nfs.repository`                            | csi-driver-nfs docker image                                | gcr.io/k8s-staging-sig-storage/nfsplugin                          |
+| `image.nfs.tag`                                   | csi-driver-nfs docker image tag                            | amd64-linux-canary                                                |
 | `image.nfs.pullPolicy`                            | csi-driver-nfs image pull policy                           | IfNotPresent                                                      |
-| `image.csiProvisioner.repository`                 | csi-provisioner docker image                               | mcr.microsoft.com/oss/kubernetes-csi/csi-provisioner              |
-| `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | v1.4.0                                                            |
+| `image.csiProvisioner.repository`                 | csi-provisioner docker image                               | k8s.gcr.io/sig-storage/csi-provisioner                            |
+| `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | v2.0.4                                                            |
 | `image.csiProvisioner.pullPolicy`                 | csi-provisioner image pull policy                          | IfNotPresent                                                      |
-| `image.livenessProbe.repository`                  | liveness-probe docker image                                | mcr.microsoft.com/oss/kubernetes-csi/livenessprobe                |
-| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | v1.1.0                                                            |
+| `image.livenessProbe.repository`                  | liveness-probe docker image                                | k8s.gcr.io/sig-storage/livenessprobe                              |
+| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | v2.1.0                                                            |
 | `image.livenessProbe.pullPolicy`                  | liveness-probe image pull policy                           | IfNotPresent                                                      |
-| `image.nodeDriverRegistrar.repository`            | csi-node-driver-registrar docker image                     | mcr.microsoft.com/oss/kubernetes-csi/csi-node-driver-registrar    |
-| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | v1.2.0                                                            |
+| `image.nodeDriverRegistrar.repository`            | csi-node-driver-registrar docker image                     | k8s.gcr.io/sig-storage/csi-node-driver-registrar                  |
+| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | v2.0.1                                                            |
 | `image.nodeDriverRegistrar.pullPolicy`            | csi-node-driver-registrar image pull policy                | IfNotPresent                                                      |
 | `serviceAccount.create`                           | whether create service account of csi-nfs-controller       | true                                                              |
 | `rbac.create`                                     | whether create rbac of csi-nfs-controller                  | true                                                              |
-| `controller.replicas`                             | the replicas of csi-nfs-controller                                  | 2                                                   |
+| `controller.replicas`                             | the replicas of csi-nfs-controller                         | 2                                                                 |
 
 ## Troubleshooting
 

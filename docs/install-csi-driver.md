@@ -5,14 +5,14 @@ If you have already installed Helm, you can also use it to install NFS CSI drive
 ## Install with kubectl
  - remote install
 ```console
-curl -skSL https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/kubernetes/install-driver.sh | bash -s master --
+curl -skSL https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/install-driver.sh | bash -s master --
 ```
 
  - local install
 ```console
 git clone https://github.com/kubernetes-csi/csi-driver-nfs.git
 cd csi-driver-nfs
-./deploy/kubernetes/install-driver.sh master local
+./deploy/install-driver.sh master local
 ```
 
 - check pods status:
@@ -33,5 +33,5 @@ csi-nfs-node-dr4s4                        3/3     Running   0          35s     1
 
 - clean up NFS CSI driver
 ```console
-curl -skSL https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/kubernetes/uninstall-driver.sh | bash -s master --
+curl -skSL https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/uninstall-driver.sh | bash -s master --
 ```
