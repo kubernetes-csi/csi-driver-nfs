@@ -81,7 +81,7 @@ local-k8s-uninstall:
 
 .PHONY: nfs
 nfs:
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags ${LDFLAGS} -mod vendor -o bin/nfsplugin ./cmd/nfsplugin
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags ${LDFLAGS} -mod vendor -o bin/nfsplugin ./pkg/nfsplugin
 
 .PHONY: container
 container: nfs
