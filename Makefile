@@ -13,7 +13,7 @@
 # limitations under the License.
 
 CMDS=nfsplugin
-DEPLOY_FOLDER = ./deploy/kubernetes
+DEPLOY_FOLDER = ./deploy
 CMDS=nfsplugin
 PKG = github.com/kubernetes-csi/csi-driver-nfs
 GINKGO_FLAGS = -ginkgo.v
@@ -93,7 +93,7 @@ push:
 
 .PHONY: install-nfs-server
 install-nfs-server:
-	kubectl apply -f ./examples/nfs-server.yaml
+	kubectl apply -f ./deploy/example/nfs-provisioner/nfs-server.yaml
 
 .PHONY: install-helm
 install-helm:
@@ -117,6 +117,6 @@ e2e-test:
 
 .PHONY: create-example-deployment
 create-example-deployment:
-	kubectl apply -f ./examples/storageclass-nfs.yaml
-	kubectl apply -f ./examples/deployment.yaml
-	kubectl apply -f ./examples/statefulset.yaml
+	kubectl apply -f ./deploy/example/storageclass-nfs.yaml
+	kubectl apply -f ./deploy/example/deployment.yaml
+	kubectl apply -f ./deploy/example/statefulset.yaml
