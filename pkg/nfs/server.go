@@ -20,6 +20,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
@@ -30,7 +31,7 @@ import (
 // Defines Non blocking GRPC server interfaces
 type NonBlockingGRPCServer interface {
 	// Start services at the endpoint
-	Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer)
+	Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, testMode bool)
 	// Waits for the service to stop
 	Wait()
 	// Stops the service gracefully
@@ -49,11 +50,11 @@ type nonBlockingGRPCServer struct {
 	server *grpc.Server
 }
 
-func (s *nonBlockingGRPCServer) Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer) {
+func (s *nonBlockingGRPCServer) Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, testMode bool) {
 
 	s.wg.Add(1)
 
-	go s.serve(endpoint, ids, cs, ns)
+	go s.serve(endpoint, ids, cs, ns, testMode)
 }
 
 func (s *nonBlockingGRPCServer) Wait() {
@@ -68,7 +69,7 @@ func (s *nonBlockingGRPCServer) ForceStop() {
 	s.server.Stop()
 }
 
-func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer) {
+func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, testMode bool) {
 
 	proto, addr, err := ParseEndpoint(endpoint)
 	if err != nil {
@@ -101,6 +102,17 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, c
 	}
 	if ns != nil {
 		csi.RegisterNodeServer(server, ns)
+	}
+
+	// Used to stop the server while running tests
+	if testMode {
+		s.wg.Done()
+		go func() {
+			// make sure Serve() is called
+			s.wg.Wait()
+			time.Sleep(time.Millisecond * 1000)
+			s.server.GracefulStop()
+		}()
 	}
 
 	glog.Infof("Listening for connections on address: %#v", listener.Addr())
