@@ -89,7 +89,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	execTestCmd([]testCmd{installNFSServer, e2eBootstrap})
 	go func() {
-		nfsDriver.Run()
+		nfsDriver.Run(false)
 	}()
 
 })

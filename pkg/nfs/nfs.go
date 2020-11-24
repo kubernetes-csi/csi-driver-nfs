@@ -17,6 +17,8 @@ limitations under the License.
 package nfs
 
 import (
+	"fmt"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/glog"
 	"k8s.io/utils/mount"
@@ -89,7 +91,7 @@ func NewNodeServer(n *Driver, mounter mount.Interface) *NodeServer {
 	}
 }
 
-func (n *Driver) Run() {
+func (n *Driver) Run(testMode bool) {
 	n.ns = NewNodeServer(n, mount.New(""))
 	s := NewNonBlockingGRPCServer()
 	s.Start(n.endpoint,
@@ -97,7 +99,8 @@ func (n *Driver) Run() {
 		// NFS plugin has not implemented ControllerServer
 		// using default controllerserver.
 		NewControllerServer(n),
-		n.ns)
+		n.ns,
+		testMode)
 	s.Wait()
 }
 
@@ -120,4 +123,10 @@ func (n *Driver) AddControllerServiceCapabilities(cl []csi.ControllerServiceCapa
 	}
 
 	n.cscap = csc
+}
+
+func IsCorruptedDir(dir string) bool {
+	_, pathErr := mount.PathExists(dir)
+	fmt.Printf("IsCorruptedDir(%s) returned with error: %v", dir, pathErr)
+	return pathErr != nil && mount.IsCorruptedMnt(pathErr)
 }

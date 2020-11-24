@@ -82,5 +82,5 @@ func handle() {
 	}
 
 	d := nfs.NewNFSdriver(nodeID, endpoint, parsedPerm)
-	d.Run()
+	d.Run(false)
 }
