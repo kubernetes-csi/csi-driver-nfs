@@ -33,10 +33,11 @@ ifndef PUBLISH
 override IMAGE_VERSION := e2e-$(GIT_COMMIT)
 endif
 endif
-IMAGE_NAME = nfsplugin
+IMAGENAME ?= nfsplugin
 REGISTRY ?= andyzhangx
-REGISTRY_NAME = $(shell echo $(REGISTRY) | sed "s/.azurecr.io//g")
-IMAGE_TAG = $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_VERSION)
+REGISTRY_NAME ?= $(shell echo $(REGISTRY) | sed "s/.azurecr.io//g")
+IMAGE_TAG = $(REGISTRY)/$(IMAGENAME):$(IMAGE_VERSION)
+IMAGE_TAG_LATEST = $(REGISTRY)/$(IMAGENAME):latest
 
 all: nfs
 
@@ -91,6 +92,11 @@ container: nfs
 push:
 	docker push $(IMAGE_TAG)
 
+.PHONY: push-latest
+push-latest:
+	docker tag $(IMAGE_TAG) $(IMAGE_TAG_LATEST)
+	docker push $(IMAGE_TAG_LATEST)
+
 .PHONY: install-nfs-server
 install-nfs-server:
 	kubectl apply -f ./deploy/example/nfs-provisioner/nfs-server.yaml
@@ -103,7 +109,7 @@ install-helm:
 e2e-bootstrap: install-helm
 	docker pull $(IMAGE_TAG) || make container push
 	helm install csi-driver-nfs ./charts/latest/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
-	--set image.nfs.repository=$(REGISTRY)/$(IMAGE_NAME) \
+	--set image.nfs.repository=$(REGISTRY)/$(IMAGENAME) \
 	--set image.nfs.tag=$(IMAGE_VERSION) \
 	--set image.nfs.pullPolicy=Always
 
