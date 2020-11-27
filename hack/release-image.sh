@@ -23,15 +23,14 @@ fi
 
 export REGISTRY_NAME="$1"
 export REGISTRY=$REGISTRY_NAME.azurecr.io
-export IMAGE_NAME=gcr.io/k8s-staging-sig-storage/nfsplugin
+export IMAGENAME=public/k8s/csi/nfs-csi
 export CI=1
 export PUBLISH=1
 az acr login --name $REGISTRY_NAME
-make container
-make push
+make container push push-latest
 
 echo "sleep 60s ..."
 sleep 60
-image="gcr.io/k8s-staging-sig-storage/nfsplugin:latest"
+image="mcr.microsoft.com/k8s/csi/nfs-csi:latest"
 docker pull $image
 docker inspect $image | grep Created
