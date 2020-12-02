@@ -4,17 +4,23 @@ on:
     push: {}
 jobs:
     go_lint:
-        # Enable once https://github.com/kubernetes-csi/csi-driver-nfs/issues/90 is fixed
-        # name: Go Lint
-        # runs-on: ubuntu-18.04
-        # steps:
-        #     - name: Checkout code
-        #       uses: actions/checkout@master
-        #     - name: Run linter
-        #       uses: golangci/golangci-lint-action@v1
-        #       with:
-        #           version: v1.29
-        #           args: -E=gofmt,golint,misspell --timeout=30m0s
+        name: Go Lint
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@master
+            - name: Run linter
+              uses: golangci/golangci-lint-action@v2
+              with:
+                  version: v1.29
+                  args: -E=gofmt,golint,misspell --timeout=30m0s
+    verify-helm:
+        name: Verify Helm
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@master
             - name: Verify Helm
               run: |
-                hack/verify-helm-chart.sh
+                sudo snap install yq
+                sudo hack/verify-helm-chart.sh
