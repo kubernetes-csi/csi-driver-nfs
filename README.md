@@ -12,7 +12,6 @@ of the development.
 |--------------------|---------------------------|----------------------------|----------------------|--------|-----------|-----------|--------------------------|------------------------------------------------------------------------------|
 |master              | 1.14 +                    | v1.0 +                     |  yes                 |  no    |  no       |  no       | Read/Write Multiple Pods | Alpha                                                                        |
 |v2.0.0              | 1.14 +                    | v1.0 +                     |  no                  |  no    |  no       |  no       | Read/Write Multiple Pods | Alpha                                                                        |
-|v1.0.0              | 1.9 - 1.15                | v1.0                       |  no                  |  no    |  no       |  no       | Read/Write Multiple Pods | [deprecated](https://github.com/kubernetes-csi/drivers/tree/master/pkg/nfs)  |
 
 ### Requirements
 
@@ -21,8 +20,9 @@ preexisting NFS server, whether it is deployed on cluster or provisioned
 independently. The plugin itself provides only a communication layer between 
 resources in the cluser and the NFS server.
 
-### Install NFS CSI driver on a kubernetes cluster
-Please refer to [install NFS CSI driver](./docs/install-csi-driver.md).
+### Install driver on a Kubernetes cluster
+ - install by [kubectl](./docs/install-csi-driver.md)
+ - install by [helm charts](./charts)
 
 ### Driver parameters
 Please refer to [`nfs.csi.k8s.io` driver parameters](./docs/driver-parameters.md)
