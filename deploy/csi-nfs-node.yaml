@@ -17,6 +17,8 @@ spec:
     spec:
       hostNetwork: true  # original nfs connection would be broken without hostNetwork setting
       dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/os: linux
       containers:
         - name: liveness-probe
           image: k8s.gcr.io/sig-storage/livenessprobe:v2.1.0

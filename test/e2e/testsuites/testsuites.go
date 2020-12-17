@@ -323,6 +323,7 @@ func NewTestPod(c clientset.Interface, ns *v1.Namespace, command string) *TestPo
 				GenerateName: "nfs-volume-tester-",
 			},
 			Spec: v1.PodSpec{
+				NodeSelector: map[string]string{"kubernetes.io/os": "linux"},
 				Containers: []v1.Container{
 					{
 						Name:         "volume-tester",
@@ -446,6 +447,7 @@ func NewTestDeployment(c clientset.Interface, ns *v1.Namespace, command string, 
 						Labels: map[string]string{"app": selectorValue},
 					},
 					Spec: v1.PodSpec{
+						NodeSelector: map[string]string{"kubernetes.io/os": "linux"},
 						Containers: []v1.Container{
 							{
 								Name:    "volume-tester",
