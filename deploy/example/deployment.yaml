@@ -26,7 +26,8 @@ spec:
         labels:
             name: deployment-nfs
     spec:
-      containers:
+      nodeSelector:
+        "kubernetes.io/os": linux
       containers:
       - name: deployment-nfs
         image: mcr.microsoft.com/oss/nginx/nginx:1.17.3-alpine
