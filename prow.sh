@@ -796,16 +796,17 @@ install_snapshot_controller() {
 	  echo "kubectl apply -f ${SNAPSHOT_CONTROLLER_YAML}(modified)"
       done
   else
-      echo "kubectl apply -f ${CONTROLLER_DIR}/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml"
-      kubectl apply -f "${CONTROLLER_DIR}/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml"
+      echo "kubectl apply -f $SNAPSHOT_CONTROLLER_YAML"
+      kubectl apply -f "$SNAPSHOT_CONTROLLER_YAML"
   fi
 
   cnt=0
-  expected_running_pods=$(curl https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/"${CSI_SNAPSHOTTER_VERSION}"/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml | grep replicas | cut -d ':' -f 2-)
-  while [ "$(kubectl get pods -l app=snapshot-controller | grep 'Running' -c)" -lt "$expected_running_pods" ]; do
+  expected_running_pods=$(kubectl apply --dry-run=client -o "jsonpath={.spec.replicas}" -f "$SNAPSHOT_CONTROLLER_YAML")
+  expected_namespace=$(kubectl apply --dry-run=client -o "jsonpath={.metadata.namespace}" -f "$SNAPSHOT_CONTROLLER_YAML")
+  while [ "$(kubectl get pods -n "$expected_namespace" -l app=snapshot-controller | grep 'Running' -c)" -lt "$expected_running_pods" ]; do
     if [ $cnt -gt 30 ]; then
         echo "snapshot-controller pod status:"
-        kubectl describe pods -l app=snapshot-controller
+        kubectl describe pods -n "$expected_namespace" -l app=snapshot-controller
         echo >&2 "ERROR: snapshot controller not ready after over 5 min"
         exit 1
     fi
