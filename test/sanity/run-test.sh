@@ -28,9 +28,13 @@ trap cleanup EXIT
 
 function install_csi_sanity_bin {
   echo 'Installing CSI sanity test binary...'
+  mkdir -p $GOPATH/src/github.com/kubernetes-csi
+  pushd $GOPATH/src/github.com/kubernetes-csi
+  export GO111MODULE=off
   git clone https://github.com/kubernetes-csi/csi-test.git -b v2.2.0
   pushd csi-test/cmd/csi-sanity
-  make
+  make install
+  popd
   popd
 }
 
@@ -53,5 +57,5 @@ fi
 bin/nfsplugin --endpoint "$endpoint" --nodeid "$nodeid" -v=5 &
 
 echo 'Begin to run sanity test...'
-readonly CSI_SANITY_BIN='csi-test/cmd/csi-sanity/csi-sanity'
+readonly CSI_SANITY_BIN='csi-sanity'
 "$CSI_SANITY_BIN" --ginkgo.v --csi.testvolumeparameters="$(pwd)/test/sanity/params.yaml" --csi.endpoint="$endpoint" --ginkgo.skip="should not fail when requesting to create a volume with already existing name and same capacity|should fail when requesting to create a volume with already existing name and different capacity|should work|should fail when the requested volume does not exist"
