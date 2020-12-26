@@ -43,6 +43,7 @@ function provision_nfs_server {
   apt-get update -y
   apt-get install -y nfs-common
   docker run -d --name nfs --privileged -p 2049:2049 -v $(pwd)/nfsshare:/nfsshare -e SHARED_DIRECTORY=/nfsshare itsthenetwork/nfs-server-alpine:latest
+  sleep 10
 }
 
 provision_nfs_server

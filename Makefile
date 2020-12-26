@@ -26,7 +26,7 @@ export GOPATH GOBIN GO111MODULE DOCKER_CLI_EXPERIMENTAL
 include release-tools/build.make
 LDFLAGS = "-X ${PKG}/pkg/nfs.driverVersion=${IMAGE_VERSION} -s -w -extldflags '-static'"
 GIT_COMMIT ?= $(shell git rev-parse HEAD)
-IMAGE_VERSION ?= v0.5.0
+IMAGE_VERSION ?= v3.0.0
 # Use a custom version for E2E tests if we are testing in CI
 ifdef CI
 ifndef PUBLISH
