@@ -7,7 +7,7 @@ metadata:
     app: nginx
 spec:
   serviceName: statefulset-nfs
-  replicas: 3
+  replicas: 1
   template:
     metadata:
       labels:
@@ -17,11 +17,11 @@ spec:
         "kubernetes.io/os": linux
       containers:
         - name: statefulset-nfs
-          image: mcr.microsoft.com/oss/nginx/nginx:1.17.3-alpine
+          image: mcr.microsoft.com/oss/nginx/nginx:1.19.5
           command:
-            - "/bin/sh"
+            - "/bin/bash"
             - "-c"
-            - while true; do echo $(date) >> /mnt/nfs/outfile; sleep 1; done
+            - set -euo pipefail; while true; do echo $(date) >> /mnt/nfs/outfile; sleep 1; done
           volumeMounts:
             - name: persistent-storage
               mountPath: /mnt/nfs
