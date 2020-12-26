@@ -31,7 +31,7 @@ function install_csi_sanity_bin {
   mkdir -p $GOPATH/src/github.com/kubernetes-csi
   pushd $GOPATH/src/github.com/kubernetes-csi
   export GO111MODULE=off
-  git clone https://github.com/kubernetes-csi/csi-test.git -b v2.2.0
+  git clone https://github.com/kubernetes-csi/csi-test.git -b v4.0.2
   pushd csi-test/cmd/csi-sanity
   make install
   popd
@@ -43,10 +43,11 @@ function provision_nfs_server {
   apt-get update -y
   apt-get install -y nfs-common
   docker run -d --name nfs --privileged -p 2049:2049 -v $(pwd)/nfsshare:/nfsshare -e SHARED_DIRECTORY=/nfsshare itsthenetwork/nfs-server-alpine:latest
-  sleep 10
 }
 
 provision_nfs_server
+# wait for nfs-server running complete
+sleep 10
 install_csi_sanity_bin
 
 readonly endpoint='unix:///tmp/csi.sock'
