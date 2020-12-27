@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// ControllerServer controller server setting
 type ControllerServer struct {
 	Driver *Driver
 	// Working directory for the provisioner to temporarily mount nfs shares at
@@ -65,13 +66,12 @@ const (
 	totalIDElements // Always last
 )
 
+// CreateVolume create a volume
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	// Validate arguments
 	name := req.GetName()
 	if len(name) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "CreateVolume name must be provided")
 	}
-
 	if err := cs.validateVolumeCapabilities(req.GetVolumeCapabilities()); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -82,8 +82,12 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	var volCap *csi.VolumeCapability
+	if len(req.GetVolumeCapabilities()) > 0 {
+		volCap = req.GetVolumeCapabilities()[0]
+	}
 	// Mount nfs base share so we can create a subdirectory
-	if err = cs.internalMount(ctx, nfsVol); err != nil {
+	if err = cs.internalMount(ctx, nfsVol, volCap); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
 	}
 	defer func() {
@@ -103,6 +107,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return &csi.CreateVolumeResponse{Volume: cs.nfsVolToCSI(nfsVol, reqCapacity)}, nil
 }
 
+// DeleteVolume delete a volume
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
@@ -111,12 +116,12 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	nfsVol, err := cs.getNfsVolFromID(volumeID)
 	if err != nil {
 		// An invalid ID should be treated as doesn't exist
-		glog.V(5).Infof("failed to get nfs volume for volume id %v deletion: %v", volumeID, err)
+		glog.Warningf("failed to get nfs volume for volume id %v deletion: %v", volumeID, err)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
 	// Mount nfs base share so we can delete the subdirectory
-	if err = cs.internalMount(ctx, nfsVol); err != nil {
+	if err = cs.internalMount(ctx, nfsVol, nil); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
 	}
 	defer func() {
@@ -128,7 +133,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	// Delete subdirectory under base-dir
 	internalVolumePath := cs.getInternalVolumePath(nfsVol)
 
-	glog.V(4).Infof("Removing subdirectory at %v", internalVolumePath)
+	glog.V(2).Infof("Removing subdirectory at %v", internalVolumePath)
 	if err = os.RemoveAll(internalVolumePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete subdirectory: %v", err.Error())
 	}
@@ -171,8 +176,6 @@ func (cs *ControllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacit
 // ControllerGetCapabilities implements the default GRPC callout.
 // Default supports all capabilities
 func (cs *ControllerServer) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	glog.V(5).Infof("Using default ControllerGetCapabilities")
-
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: cs.Driver.cscap,
 	}, nil
@@ -230,13 +233,16 @@ func (cs *ControllerServer) validateVolumeCapability(c *csi.VolumeCapability) er
 }
 
 // Mount nfs server at base-dir
-func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume) error {
+func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, volCap *csi.VolumeCapability) error {
 	sharePath := filepath.Join(string(filepath.Separator) + vol.baseDir)
 	targetPath := cs.getInternalMountPath(vol)
-	stdVolCap := csi.VolumeCapability{
-		AccessType: &csi.VolumeCapability_Mount{
-			Mount: &csi.VolumeCapability_MountVolume{},
-		},
+
+	if volCap == nil {
+		volCap = &csi.VolumeCapability{
+			AccessType: &csi.VolumeCapability_Mount{
+				Mount: &csi.VolumeCapability_MountVolume{},
+			},
+		}
 	}
 
 	glog.V(4).Infof("internally mounting %v:%v at %v", vol.server, sharePath, targetPath)
@@ -246,7 +252,7 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume) e
 			paramServer: vol.server,
 			paramShare:  sharePath,
 		},
-		VolumeCapability: &stdVolCap,
+		VolumeCapability: volCap,
 		VolumeId:         vol.id,
 	})
 	return err

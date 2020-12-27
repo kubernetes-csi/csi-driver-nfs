@@ -18,10 +18,7 @@ package nfs
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
-
-	"github.com/kubernetes-csi/csi-driver-nfs/pkg/mounter"
 
 	"k8s.io/utils/mount"
 )
@@ -64,9 +61,6 @@ func (f *fakeMounter) IsLikelyNotMountPoint(file string) (bool, error) {
 }
 
 func NewFakeMounter() (*mount.SafeFormatAndMount, error) {
-	if runtime.GOOS == "windows" {
-		return mounter.NewSafeMounter()
-	}
 	return &mount.SafeFormatAndMount{
 		Interface: &fakeMounter{},
 	}, nil
