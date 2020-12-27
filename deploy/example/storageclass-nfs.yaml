@@ -7,7 +7,7 @@ provisioner: nfs.csi.k8s.io
 parameters:
   server: nfs-server.default.svc.cluster.local
   share: /
-reclaimPolicy: Retain  # only retain is supported
+reclaimPolicy: Retain
 volumeBindingMode: Immediate
 mountOptions:
   - hard

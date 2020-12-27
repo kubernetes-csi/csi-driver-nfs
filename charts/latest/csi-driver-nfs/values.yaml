@@ -1,7 +1,7 @@
 image:
     nfs:
-        repository: gcr.io/k8s-staging-sig-storage/nfsplugin
-        tag: amd64-linux-canary
+        repository: mcr.microsoft.com/k8s/csi/nfs-csi
+        tag: latest
         pullPolicy: IfNotPresent
     csiProvisioner:
         repository: k8s.gcr.io/sig-storage/csi-provisioner

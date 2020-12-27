@@ -61,7 +61,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: nfs
-          image: gcr.io/k8s-staging-sig-storage/nfsplugin:amd64-linux-canary
+          image: mcr.microsoft.com/k8s/csi/nfs-csi:latest
           securityContext:
             privileged: true
             capabilities:

@@ -63,7 +63,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: gcr.io/k8s-staging-sig-storage/nfsplugin:amd64-linux-canary
+          image: mcr.microsoft.com/k8s/csi/nfs-csi:latest
           args:
             - "-v=5"
             - "--nodeid=$(NODE_ID)"
