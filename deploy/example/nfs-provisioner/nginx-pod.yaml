@@ -39,15 +39,15 @@ metadata:
   name: nginx-nfs-example
 spec:
   containers:
-  - image: nginx
-    name: nginx
-    ports:
-    - containerPort: 80
-      protocol: TCP
-    volumeMounts:
-      - mountPath: /var/www
-        name: pvc-nginx
+    - image: nginx
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      volumeMounts:
+        - mountPath: /var/www
+          name: pvc-nginx
   volumes:
-  - name: pvc-nginx
-    persistentVolumeClaim:
-      claimName: pvc-nginx
+    - name: pvc-nginx
+      persistentVolumeClaim:
+        claimName: pvc-nginx
