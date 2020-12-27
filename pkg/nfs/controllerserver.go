@@ -82,8 +82,12 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	var volCap *csi.VolumeCapability
+	if len(req.GetVolumeCapabilities()) > 0 {
+		volCap = req.GetVolumeCapabilities()[0]
+	}
 	// Mount nfs base share so we can create a subdirectory
-	if err = cs.internalMount(ctx, nfsVol); err != nil {
+	if err = cs.internalMount(ctx, nfsVol, volCap); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
 	}
 	defer func() {
@@ -116,7 +120,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	// Mount nfs base share so we can delete the subdirectory
-	if err = cs.internalMount(ctx, nfsVol); err != nil {
+	if err = cs.internalMount(ctx, nfsVol, nil); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
 	}
 	defer func() {
@@ -230,13 +234,16 @@ func (cs *ControllerServer) validateVolumeCapability(c *csi.VolumeCapability) er
 }
 
 // Mount nfs server at base-dir
-func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume) error {
+func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, volCap *csi.VolumeCapability) error {
 	sharePath := filepath.Join(string(filepath.Separator) + vol.baseDir)
 	targetPath := cs.getInternalMountPath(vol)
-	stdVolCap := csi.VolumeCapability{
-		AccessType: &csi.VolumeCapability_Mount{
-			Mount: &csi.VolumeCapability_MountVolume{},
-		},
+
+	if volCap == nil {
+		volCap = &csi.VolumeCapability{
+			AccessType: &csi.VolumeCapability_Mount{
+				Mount: &csi.VolumeCapability_MountVolume{},
+			},
+		}
 	}
 
 	glog.V(4).Infof("internally mounting %v:%v at %v", vol.server, sharePath, targetPath)
@@ -246,7 +253,7 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume) e
 			paramServer: vol.server,
 			paramShare:  sharePath,
 		},
-		VolumeCapability: &stdVolCap,
+		VolumeCapability: volCap,
 		VolumeId:         vol.id,
 	})
 	return err
