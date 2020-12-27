@@ -73,7 +73,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	ep := req.GetVolumeContext()[paramShare]
 	source := fmt.Sprintf("%s:%s", s, ep)
 
-	glog.V(2).Infof("source(%s) targetPath(%s) volumeID(%v) mountflags(%v)", source, targetPath, volumeID, mountOptions)
+	glog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)
 	err = ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
 	if err != nil {
 		if os.IsPermission(err) {
@@ -116,7 +116,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.NotFound, "Volume not mounted")
 	}
 
-	glog.V(2).Infof("NodeUnpublishVolume(%s): CleanupMountPoint %s", volumeID, targetPath)
+	glog.V(2).Infof("NodeUnpublishVolume: CleanupMountPoint %s on volumeID(%s)", targetPath, volumeID)
 	err = mount.CleanupMountPoint(targetPath, ns.mounter, false)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
