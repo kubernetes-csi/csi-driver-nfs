@@ -136,15 +136,7 @@ func (ns *NodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoReque
 // NodeGetCapabilities return the capabilities of the Node plugin
 func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
-		Capabilities: []*csi.NodeServiceCapability{
-			{
-				Type: &csi.NodeServiceCapability_Rpc{
-					Rpc: &csi.NodeServiceCapability_RPC{
-						Type: csi.NodeServiceCapability_RPC_UNKNOWN,
-					},
-				},
-			},
-		},
+		Capabilities: ns.Driver.nscap,
 	}, nil
 }
 

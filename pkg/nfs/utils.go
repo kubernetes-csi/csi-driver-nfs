@@ -49,6 +49,16 @@ func NewControllerServiceCapability(cap csi.ControllerServiceCapability_RPC_Type
 	}
 }
 
+func NewNodeServiceCapability(cap csi.NodeServiceCapability_RPC_Type) *csi.NodeServiceCapability {
+	return &csi.NodeServiceCapability{
+		Type: &csi.NodeServiceCapability_Rpc{
+			Rpc: &csi.NodeServiceCapability_RPC{
+				Type: cap,
+			},
+		},
+	}
+}
+
 func ParseEndpoint(ep string) (string, string, error) {
 	if strings.HasPrefix(strings.ToLower(ep), "unix://") || strings.HasPrefix(strings.ToLower(ep), "tcp://") {
 		s := strings.SplitN(ep, "://", 2)
