@@ -70,6 +70,10 @@ echo "publish volume test:"
 "$CSC_BIN" node publish --endpoint "$endpoint" --cap "$cap" --vol-context "$params" --target-path "$target_path" "$volumeid"
 sleep 2
 
+echo "node stats test:"
+csc node stats --endpoint "$endpoint" "$volumeid:$target_path:$staging_target_path"
+sleep 2
+
 echo "unpublish volume test:"
 "$CSC_BIN" node unpublish --endpoint "$endpoint" --target-path "$target_path" "$volumeid"
 sleep 2

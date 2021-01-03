@@ -37,6 +37,7 @@ type Driver struct {
 	ns    *NodeServer
 	cap   map[csi.VolumeCapability_AccessMode_Mode]bool
 	cscap []*csi.ControllerServiceCapability
+	nscap []*csi.NodeServiceCapability
 }
 
 const (
@@ -81,6 +82,11 @@ func NewNFSdriver(nodeID, endpoint string, perm *uint32) *Driver {
 	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 	})
+
+	n.AddNodeServiceCapabilities([]csi.NodeServiceCapability_RPC_Type{
+		csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+		csi.NodeServiceCapability_RPC_UNKNOWN,
+	})
 	return n
 }
 
@@ -123,6 +129,15 @@ func (n *Driver) AddControllerServiceCapabilities(cl []csi.ControllerServiceCapa
 	}
 
 	n.cscap = csc
+}
+
+func (n *Driver) AddNodeServiceCapabilities(nl []csi.NodeServiceCapability_RPC_Type) {
+	var nsc []*csi.NodeServiceCapability
+	for _, n := range nl {
+		glog.Infof("Enabling node service capability: %v", n.String())
+		nsc = append(nsc, NewNodeServiceCapability(n))
+	}
+	n.nscap = nsc
 }
 
 func IsCorruptedDir(dir string) bool {
