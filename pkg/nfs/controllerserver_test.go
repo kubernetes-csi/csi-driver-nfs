@@ -26,6 +26,8 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"k8s.io/utils/mount"
 )
 
@@ -46,7 +48,9 @@ func initTestController(t *testing.T) *ControllerServer {
 	mounter := &mount.FakeMounter{MountPoints: []mount.MountPoint{}}
 	driver := NewNFSdriver("", "", perm)
 	driver.ns = NewNodeServer(driver, mounter)
-	return NewControllerServer(driver)
+	cs := NewControllerServer(driver)
+	cs.workingMountDir = "/tmp"
+	return cs
 }
 
 func teardown() {
@@ -189,6 +193,165 @@ func TestCreateVolume(t *testing.T) {
 				if !info.IsDir() {
 					t.Errorf("test %q failed: subfile not a directory", test.name)
 				}
+			}
+		})
+	}
+}
+
+func TestDeleteVolume(t *testing.T) {
+	cases := []struct {
+		desc        string
+		req         *csi.DeleteVolumeRequest
+		resp        *csi.DeleteVolumeResponse
+		expectedErr error
+	}{
+		{
+			desc:        "Volume ID missing",
+			req:         &csi.DeleteVolumeRequest{},
+			resp:        nil,
+			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
+		},
+		{
+			desc:        "Valid request",
+			req:         &csi.DeleteVolumeRequest{VolumeId: testVolumeID},
+			resp:        &csi.DeleteVolumeResponse{},
+			expectedErr: nil,
+		},
+	}
+
+	for _, test := range cases {
+		test := test //pin
+		t.Run(test.desc, func(t *testing.T) {
+			// Setup
+			cs := initTestController(t)
+			_ = os.MkdirAll(filepath.Join(cs.workingMountDir, testCSIVolume), os.ModePerm)
+			_, _ = os.Create(filepath.Join(cs.workingMountDir, testCSIVolume, testCSIVolume))
+
+			// Run
+			resp, err := cs.DeleteVolume(context.TODO(), test.req)
+
+			// Verify
+			if test.expectedErr == nil && err != nil {
+				t.Errorf("test %q failed: %v", test.desc, err)
+			}
+			if test.expectedErr != nil && err == nil {
+				t.Errorf("test %q failed; expected error %v, got success", test.desc, test.expectedErr)
+			}
+			if !reflect.DeepEqual(resp, test.resp) {
+				t.Errorf("test %q failed: got resp %+v, expected %+v", test.desc, resp, test.resp)
+			}
+			if _, err := os.Stat(filepath.Join(cs.workingMountDir, testCSIVolume, testCSIVolume)); test.expectedErr == nil && !os.IsNotExist(err) {
+				t.Errorf("test %q failed: expected volume subdirectory deleted, it still exists", test.desc)
+			}
+		})
+	}
+}
+
+func TestValidateVolumeCapabilities(t *testing.T) {
+	cases := []struct {
+		desc        string
+		req         *csi.ValidateVolumeCapabilitiesRequest
+		resp        *csi.ValidateVolumeCapabilitiesResponse
+		expectedErr error
+	}{
+		{
+			desc:        "Volume ID missing",
+			req:         &csi.ValidateVolumeCapabilitiesRequest{},
+			resp:        nil,
+			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
+		},
+		{
+			desc:        "Volume capabilities missing",
+			req:         &csi.ValidateVolumeCapabilitiesRequest{VolumeId: testVolumeID},
+			resp:        nil,
+			expectedErr: status.Error(codes.InvalidArgument, "Volume capabilities missing in request"),
+		},
+		{
+			desc: "valid request",
+			req: &csi.ValidateVolumeCapabilitiesRequest{
+				VolumeId: testVolumeID,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+			},
+			resp:        &csi.ValidateVolumeCapabilitiesResponse{Message: ""},
+			expectedErr: nil,
+		},
+	}
+
+	for _, test := range cases {
+		test := test //pin
+		t.Run(test.desc, func(t *testing.T) {
+			// Setup
+			cs := initTestController(t)
+
+			// Run
+			resp, err := cs.ValidateVolumeCapabilities(context.TODO(), test.req)
+
+			// Verify
+			if test.expectedErr == nil && err != nil {
+				t.Errorf("test %q failed: %v", test.desc, err)
+			}
+			if test.expectedErr != nil && err == nil {
+				t.Errorf("test %q failed; expected error %v, got success", test.desc, test.expectedErr)
+			}
+			if !reflect.DeepEqual(resp, test.resp) {
+				t.Errorf("test %q failed: got resp %+v, expected %+v", test.desc, resp, test.resp)
+			}
+		})
+	}
+}
+
+func TestControllerGetCapabilities(t *testing.T) {
+	cases := []struct {
+		desc        string
+		req         *csi.ControllerGetCapabilitiesRequest
+		resp        *csi.ControllerGetCapabilitiesResponse
+		expectedErr error
+	}{
+		{
+			desc: "valid request",
+			req:  &csi.ControllerGetCapabilitiesRequest{},
+			resp: &csi.ControllerGetCapabilitiesResponse{
+				Capabilities: []*csi.ControllerServiceCapability{
+					{
+						Type: &csi.ControllerServiceCapability_Rpc{
+							Rpc: &csi.ControllerServiceCapability_RPC{
+								Type: csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+							},
+						},
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+	}
+
+	for _, test := range cases {
+		test := test //pin
+		t.Run(test.desc, func(t *testing.T) {
+			// Setup
+			cs := initTestController(t)
+
+			// Run
+			resp, err := cs.ControllerGetCapabilities(context.TODO(), test.req)
+
+			// Verify
+			if test.expectedErr == nil && err != nil {
+				t.Errorf("test %q failed: %v", test.desc, err)
+			}
+			if test.expectedErr != nil && err == nil {
+				t.Errorf("test %q failed; expected error %v, got success", test.desc, test.expectedErr)
+			}
+			if !reflect.DeepEqual(resp, test.resp) {
+				t.Errorf("test %q failed: got resp %+v, expected %+v", test.desc, resp, test.resp)
 			}
 		})
 	}
