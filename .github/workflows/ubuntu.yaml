@@ -1,9 +1,7 @@
 name: Linux Unit tests
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    pull_request: {}
+    push: {}
 
 jobs:
 
