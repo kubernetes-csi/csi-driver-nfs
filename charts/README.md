@@ -20,7 +20,7 @@ Specify the version of the chart to be installed using the `--version` parameter
 helm install --name csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version v0.2.0
 ```
 
-### Search for available versions
+### Search for available chart versions
 
 ```console
 $ helm search repo -l csi-driver-nfs
@@ -48,10 +48,5 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.replicas`                             | the replicas of csi-nfs-controller                         | 2                                                                 |
 
 ## Troubleshooting
-
-If there are some errors when using helm to install, follow the steps to debug:
-
-1. Add `--wait -v=5 --debug` in `helm install` command.
-2. Then the error pods  can be located.
-3. Use `kubectl describe` to acquire more info.
-4. Check the related resource of the pod, such as serviceaacount, rbac, etc.
+ - Add `--wait -v=5 --debug` in `helm install` command to get detailed error
+ - Use `kubectl describe` to acquire more info
