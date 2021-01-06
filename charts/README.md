@@ -4,33 +4,27 @@ Follow this guide to install the NFS Driver for Kubernetes.
 
 ## Prerequisites
 
-- [Install Helm 3](https://helm.sh/docs/intro/quickstart/#install-helm)
+ - [install Helm Client 3.0+ ](https://helm.sh/docs/intro/quickstart/#install-helm)
 
-## Install via `helm install`
+## Install latest CSI Driver via `helm install`
 
+```console
+$ cd $GOPATH/src/github.com/kubernetes-csi/csi-driver-nfs/charts/latest
+$ helm package csi-driver-nfs
+$ helm install csi-driver-nfs csi-driver-nfs-latest.tgz --namespace kube-system
 ```
-$ cd charts/latest
-$ helm install csi-driver-nfs ./csi-driver-nfs -n kube-system
-```
-## Install via Helm repository
 
-```
-$ helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
-$ helm install --name csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system
+### Install a specific version
+Specify the version of the chart to be installed using the `--version` parameter.
+```console
+helm install --name csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version v0.2.0
 ```
 
 ### Search for available versions
 
-```
+```console
 $ helm search repo -l csi-driver-nfs
 ```
-
-### Install a specific version
-
-```
-https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts --version v2.0.0
-```
-
 ## Chart configuration
 
 The following table lists the configurable parameters of the latest NFS CSI Driver chart and their default values.
