@@ -4,7 +4,7 @@ Follow this guide to install the NFS Driver for Kubernetes.
 
 ## Prerequisites
 
- - [install Helm Client 3.0+ ](https://helm.sh/docs/intro/quickstart/#install-helm)
+ - [install Helm](https://helm.sh/docs/intro/quickstart/#install-helm)
 
 ## Install latest CSI Driver via `helm install`
 
