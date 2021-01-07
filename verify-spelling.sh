@@ -20,9 +20,11 @@ set -o pipefail
 
 TOOL_VERSION="v0.3.4"
 
-# cd to the root path
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-cd "${ROOT}"
+# The csi-release-tools directory.
+TOOLS="$(dirname "${BASH_SOURCE[0]}")"
+
+# Directory to check. Default is the parent of the tools themselves.
+ROOT="${1:-${TOOLS}/..}"
 
 # create a temporary directory
 TMP_DIR=$(mktemp -d)
@@ -42,12 +44,12 @@ if [[ -z "$(command -v misspell)" ]]; then
   GO111MODULE=on GOBIN="${TMP_DIR}" go get "github.com/client9/misspell/cmd/misspell@${TOOL_VERSION}"
   export PATH="${TMP_DIR}:${PATH}"
 fi
-cd "${ROOT}"
 
 # check spelling
 RES=0
 echo "Checking spelling..."
 ERROR_LOG="${TMP_DIR}/errors.log"
+cd "${ROOT}"
 git ls-files | grep -v vendor | xargs misspell > "${ERROR_LOG}"
 if [[ -s "${ERROR_LOG}" ]]; then
   sed 's/^/error: /' "${ERROR_LOG}" # add 'error' to each line to highlight in e2e status

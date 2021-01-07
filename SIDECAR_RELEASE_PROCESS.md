@@ -11,7 +11,7 @@ The release manager must:
   kubernetes/org to request membership
 * Be a top level approver for the repository. To become a top level approver,
   the candidate must demonstrate ownership and deep knowledge of the repository
-  through active maintainence, responding to and fixing issues, reviewing PRs,
+  through active maintenance, responding to and fixing issues, reviewing PRs,
   test triage.
 * Be part of the maintainers or admin group for the repository. admin is a
   superset of maintainers, only maintainers level is required for cutting a
