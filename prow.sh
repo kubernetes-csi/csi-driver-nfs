@@ -1,5 +1,5 @@
 #! /bin/bash
-#
+
 # Copyright 2019 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,7 +73,7 @@ configvar CSI_PROW_BUILD_PLATFORMS "linux amd64; windows amd64 .exe; linux ppc64
 # which is disabled with GOFLAGS=-mod=vendor).
 configvar GOFLAGS_VENDOR "$( [ -d vendor ] && echo '-mod=vendor' )" "Go flags for using the vendor directory"
 
-# Go versions can be specified seperately for different tasks
+# Go versions can be specified separately for different tasks
 # If the pre-installed Go is missing or a different
 # version, the required version here will get installed
 # from https://golang.org/dl/.
@@ -293,7 +293,7 @@ configvar CSI_PROW_E2E_FOCUS_LATEST '\[Feature:VolumeSnapshotDataSource\]' "non-
 configvar CSI_PROW_E2E_FOCUS "$(get_versioned_variable CSI_PROW_E2E_FOCUS "${csi_prow_kubernetes_version_suffix}")" "non-alpha, feature-tagged tests"
 
 # Serial vs. parallel is always determined by these regular expressions.
-# Individual regular expressions are seperated by spaces for readability
+# Individual regular expressions are separated by spaces for readability
 # and expected to not contain spaces. Use dots instead. The complete
 # regex for Ginkgo will be created by joining the individual terms.
 configvar CSI_PROW_E2E_SERIAL '\[Serial\] \[Disruptive\]' "tags for serial E2E tests"
@@ -998,7 +998,7 @@ make_test_to_junit () {
         echo "$line" # pass through
         if echo "$line" | grep -q "^### [^ ]*:$"; then
             if [ "$testname" ]; then
-                # previous test succesful
+                # previous test successful
                 echo "    </system-out>" >>"$out"
                 echo "  </testcase>" >>"$out"
             fi

@@ -25,12 +25,16 @@ if [[ -z "$(command -v python)" ]]; then
   update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 fi
 
-REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")
+# The csi-release-tools directory.
+TOOLS="$(dirname "${BASH_SOURCE[0]}")"
 
-boilerDir="${REPO_ROOT}/boilerplate"
+# Directory to check. Default is the parent of the tools themselves.
+ROOT="${1:-${TOOLS}/..}"
+
+boilerDir="${ROOT}/boilerplate"
 boiler="${boilerDir}/boilerplate.py"
 
-files_need_boilerplate=("$("${boiler}" --rootdir="${REPO_ROOT}" --verbose)")
+mapfile -t files_need_boilerplate < <("${boiler}" --rootdir="${ROOT}" --verbose)
 
 # Run boilerplate.py unit tests
 unitTestOut="$(mktemp)"
