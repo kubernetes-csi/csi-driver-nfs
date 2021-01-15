@@ -20,8 +20,8 @@ set -o pipefail
 
 TOOL_VERSION="v0.3.4"
 
-# The csi-release-tools directory.
-TOOLS="$(dirname "${BASH_SOURCE[0]}")"
+# The csi-release-tools directory (absolute path).
+TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
 # Directory to check. Default is the parent of the tools themselves.
 ROOT="${1:-${TOOLS}/..}"
