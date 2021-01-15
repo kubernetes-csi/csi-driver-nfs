@@ -278,15 +278,13 @@ check-go-version-%:
 
 # Test for spelling errors.
 .PHONY: test-spelling
-test: test-spelling
 test-spelling:
 	@ echo; echo "### $@:"
-	@ ./release-tools/verify-spelling.sh
+	@ ./release-tools/verify-spelling.sh "$(pwd)"
 
 # Test the boilerplates of the files.
 .PHONY: test-boilerplate
-test: test-boilerplate
 test-boilerplate:
 	@ echo; echo "### $@:"
-	@ ./release-tools/verify-boilerplate.sh
+	@ ./release-tools/verify-boilerplate.sh "$(pwd)"
 

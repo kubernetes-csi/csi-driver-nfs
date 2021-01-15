@@ -25,8 +25,8 @@ if [[ -z "$(command -v python)" ]]; then
   update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 fi
 
-# The csi-release-tools directory.
-TOOLS="$(dirname "${BASH_SOURCE[0]}")"
+# The csi-release-tools directory (absolute path).
+TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
 # Directory to check. Default is the parent of the tools themselves.
 ROOT="${1:-${TOOLS}/..}"
