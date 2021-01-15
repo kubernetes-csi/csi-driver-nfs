@@ -20,7 +20,7 @@
 
 # This is the default. It can be overridden in the main Makefile after
 # including build.make.
-REGISTRY_NAME=quay.io/k8scsi
+REGISTRY_NAME?=quay.io/k8scsi
 
 # Can be set to -mod=vendor to ensure that the "vendor" directory is used.
 GOFLAGS_VENDOR=
@@ -275,3 +275,16 @@ test-shellcheck:
 .PHONY: check-go-version-%
 check-go-version-%:
 	./release-tools/verify-go-version.sh "$*"
+
+# Test for spelling errors.
+.PHONY: test-spelling
+test-spelling:
+	@ echo; echo "### $@:"
+	@ ./release-tools/verify-spelling.sh "$(pwd)"
+
+# Test the boilerplates of the files.
+.PHONY: test-boilerplate
+test-boilerplate:
+	@ echo; echo "### $@:"
+	@ ./release-tools/verify-boilerplate.sh "$(pwd)"
+
