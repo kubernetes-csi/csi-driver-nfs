@@ -275,3 +275,16 @@ test-shellcheck:
 .PHONY: check-go-version-%
 check-go-version-%:
 	./release-tools/verify-go-version.sh "$*"
+
+# Test for spelling errors.
+.PHONY: test-spelling
+test-spelling:
+	@ echo; echo "### $@:"
+	@ ./release-tools/verify-spelling.sh "$(pwd)"
+
+# Test the boilerplates of the files.
+.PHONY: test-boilerplate
+test-boilerplate:
+	@ echo; echo "### $@:"
+	@ ./release-tools/verify-boilerplate.sh "$(pwd)"
+
