@@ -35,7 +35,7 @@ $ cd $GOPATH/src/github.com/kubernetes-csi/csi-driver-nfs
 $ ./_output/nfsplugin --endpoint tcp://127.0.0.1:10000 --nodeid CSINode -v=5 &
 ```
 
-#### 0. Set environmnet variables
+#### 0. Set environment variables
 ```console
 $ cap="1,mount,"
 $ volname="test-$(date +%s)"
@@ -86,7 +86,7 @@ CSINode
 ```
 
 ## How to test CSI driver in a Kubernetes cluster
-- Set environmnet variable
+- Set environment variable
 ```console
 export REGISTRY=<dockerhub-alias>
 export IMAGE_VERSION=latest
