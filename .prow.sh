@@ -22,4 +22,7 @@
 
 . release-tools/prow.sh
 
+./release-tools/verify-boilerplate.sh "$(pwd)"
+./release-tools/verify-spelling.sh "$(pwd)"
+
 main
