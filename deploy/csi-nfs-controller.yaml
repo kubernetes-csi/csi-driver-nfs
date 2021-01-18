@@ -14,6 +14,8 @@ spec:
       labels:
         app: csi-nfs-controller
     spec:
+      hostNetwork: true  # original nfs connection would be broken without hostNetwork setting
+      dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: csi-nfs-controller-sa
       nodeSelector:
         kubernetes.io/os: linux
