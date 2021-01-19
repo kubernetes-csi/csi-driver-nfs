@@ -44,10 +44,17 @@ is the recommended way of maintaining a copy of the rules inside the
 changes also locally, test them and then push them back to the shared
 repository at a later time.
 
+We no longer care about importing the full commit history, so `--squash` should be used
+when submitting a `release-tools` update. Also make sure that the PR for that
+contains the automatically generated commit message in the PR description.
+It contains the list of individual commits that were squashed. The script from
+https://github.com/kubernetes-csi/csi-release-tools/issues/7 can create such
+PRs automatically.
+
 Cheat sheet:
 
-- `git subtree add --prefix=release-tools https://github.com/kubernetes-csi/csi-release-tools.git master` - add release tools to a repo which does not have them yet (only once)
-- `git subtree pull --prefix=release-tools https://github.com/kubernetes-csi/csi-release-tools.git master` - update local copy to latest upstream (whenever upstream changes)
+- `git subtree add --squash --prefix=release-tools https://github.com/kubernetes-csi/csi-release-tools.git master` - add release tools to a repo which does not have them yet (only once)
+- `git subtree pull --squash --prefix=release-tools https://github.com/kubernetes-csi/csi-release-tools.git master` - update local copy to latest upstream (whenever upstream changes)
 - edit, `git commit`, `git subtree push --prefix=release-tools git@github.com:<user>/csi-release-tools.git <my-new-or-existing-branch>` - push to a new branch before submitting a PR
 
 verify-shellcheck.sh
