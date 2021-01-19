@@ -30,7 +30,7 @@ spec:
         "kubernetes.io/os": linux
       containers:
         - name: deployment-nfs
-          image: mcr.icrosoft.com/oss/nginx/nginx:1.19.5
+          image: mcr.microsoft.com/oss/nginx/nginx:1.19.5
           command:
             - "/bin/bash"
             - "-c"

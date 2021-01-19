@@ -120,9 +120,3 @@ e2e-teardown:
 .PHONY: e2e-test
 e2e-test:
 	go test -v -timeout=0 ./test/e2e ${GINKGO_FLAGS}
-
-.PHONY: create-example-deployment
-create-example-deployment:
-	kubectl apply -f ./deploy/example/storageclass-nfs.yaml
-	kubectl apply -f ./deploy/example/deployment.yaml
-	kubectl apply -f ./deploy/example/statefulset.yaml
