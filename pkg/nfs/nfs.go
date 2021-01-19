@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/golang/glog"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/mount"
 )
 
@@ -56,7 +56,7 @@ var (
 )
 
 func NewNFSdriver(nodeID, endpoint string, perm *uint32) *Driver {
-	glog.Infof("Driver: %v version: %v", DriverName, version)
+	klog.Infof("Driver: %v version: %v", DriverName, version)
 
 	n := &Driver{
 		name:     DriverName,
@@ -113,7 +113,7 @@ func (n *Driver) Run(testMode bool) {
 func (n *Driver) AddVolumeCapabilityAccessModes(vc []csi.VolumeCapability_AccessMode_Mode) []*csi.VolumeCapability_AccessMode {
 	var vca []*csi.VolumeCapability_AccessMode
 	for _, c := range vc {
-		glog.Infof("Enabling volume access mode: %v", c.String())
+		klog.Infof("Enabling volume access mode: %v", c.String())
 		vca = append(vca, &csi.VolumeCapability_AccessMode{Mode: c})
 		n.cap[c] = true
 	}
@@ -124,7 +124,7 @@ func (n *Driver) AddControllerServiceCapabilities(cl []csi.ControllerServiceCapa
 	var csc []*csi.ControllerServiceCapability
 
 	for _, c := range cl {
-		glog.Infof("Enabling controller service capability: %v", c.String())
+		klog.Infof("Enabling controller service capability: %v", c.String())
 		csc = append(csc, NewControllerServiceCapability(c))
 	}
 
@@ -134,7 +134,7 @@ func (n *Driver) AddControllerServiceCapabilities(cl []csi.ControllerServiceCapa
 func (n *Driver) AddNodeServiceCapabilities(nl []csi.NodeServiceCapability_RPC_Type) {
 	var nsc []*csi.NodeServiceCapability
 	for _, n := range nl {
-		glog.Infof("Enabling node service capability: %v", n.String())
+		klog.Infof("Enabling node service capability: %v", n.String())
 		nsc = append(nsc, NewNodeServiceCapability(n))
 	}
 	n.nscap = nsc
