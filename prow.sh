@@ -228,7 +228,7 @@ configvar CSI_PROW_E2E_IMPORT_PATH "k8s.io/kubernetes" "E2E package"
 # and install it inside the cluster, which is not necessarily easier.
 configvar CSI_PROW_SANITY_REPO https://github.com/kubernetes-csi/csi-test "csi-test repo"
 configvar CSI_PROW_SANITY_VERSION v4.0.2 "csi-test version" # v4.0.2
-configvar CSI_PROW_SANITY_IMPORT_PATH github.com/kubernetes-csi/csi-test/v4 "csi-test package"
+configvar CSI_PROW_SANITY_PACKAGE_PATH github.com/kubernetes-csi/csi-test "csi-test package"
 configvar CSI_PROW_SANITY_SERVICE "hostpath-service" "Kubernetes TCP service name that exposes csi.sock"
 configvar CSI_PROW_SANITY_POD "csi-hostpathplugin-0" "Kubernetes pod with CSI driver"
 configvar CSI_PROW_SANITY_CONTAINER "hostpath" "Kubernetes container with CSI driver"
@@ -879,8 +879,8 @@ install_sanity () (
         return
     fi
 
-    git_checkout "${CSI_PROW_SANITY_REPO}" "${GOPATH}/src/${CSI_PROW_SANITY_IMPORT_PATH}" "${CSI_PROW_SANITY_VERSION}" --depth=1 || die "checking out csi-sanity failed"
-    run_with_go "${CSI_PROW_GO_VERSION_SANITY}" go test -c -o "${CSI_PROW_WORK}/csi-sanity" "${CSI_PROW_SANITY_IMPORT_PATH}/cmd/csi-sanity" || die "building csi-sanity failed"
+    git_checkout "${CSI_PROW_SANITY_REPO}" "${GOPATH}/src/${CSI_PROW_SANITY_PACKAGE_PATH}" "${CSI_PROW_SANITY_VERSION}" --depth=1 || die "checking out csi-sanity failed"
+    ( cd "${GOPATH}/src/${CSI_PROW_SANITY_PACKAGE_PATH}/cmd/csi-sanity" && run_with_go "${CSI_PROW_GO_VERSION_SANITY}" go build -o "${CSI_PROW_WORK}/csi-sanity" ) || die "building csi-sanity failed"
 )
 
 # Captures pod output while running some other command.
