@@ -23,10 +23,11 @@ import (
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"k8s.io/klog/v2"
 )
 
 // ControllerServer controller server setting
@@ -92,7 +93,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	defer func() {
 		if err = cs.internalUnmount(ctx, nfsVol); err != nil {
-			glog.Warningf("failed to unmount nfs server: %v", err.Error())
+			klog.Warningf("failed to unmount nfs server: %v", err.Error())
 		}
 	}()
 
@@ -116,7 +117,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	nfsVol, err := cs.getNfsVolFromID(volumeID)
 	if err != nil {
 		// An invalid ID should be treated as doesn't exist
-		glog.Warningf("failed to get nfs volume for volume id %v deletion: %v", volumeID, err)
+		klog.Warningf("failed to get nfs volume for volume id %v deletion: %v", volumeID, err)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
@@ -126,14 +127,14 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	defer func() {
 		if err = cs.internalUnmount(ctx, nfsVol); err != nil {
-			glog.Warningf("failed to unmount nfs server: %v", err.Error())
+			klog.Warningf("failed to unmount nfs server: %v", err.Error())
 		}
 	}()
 
 	// Delete subdirectory under base-dir
 	internalVolumePath := cs.getInternalVolumePath(nfsVol)
 
-	glog.V(2).Infof("Removing subdirectory at %v", internalVolumePath)
+	klog.V(2).Infof("Removing subdirectory at %v", internalVolumePath)
 	if err = os.RemoveAll(internalVolumePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete subdirectory: %v", err.Error())
 	}
@@ -245,7 +246,7 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 		}
 	}
 
-	glog.V(4).Infof("internally mounting %v:%v at %v", vol.server, sharePath, targetPath)
+	klog.V(4).Infof("internally mounting %v:%v at %v", vol.server, sharePath, targetPath)
 	_, err := cs.Driver.ns.NodePublishVolume(ctx, &csi.NodePublishVolumeRequest{
 		TargetPath: targetPath,
 		VolumeContext: map[string]string{
@@ -263,7 +264,7 @@ func (cs *ControllerServer) internalUnmount(ctx context.Context, vol *nfsVolume)
 	targetPath := cs.getInternalMountPath(vol)
 
 	// Unmount nfs server at base-dir
-	glog.V(4).Infof("internally unmounting %v", targetPath)
+	klog.V(4).Infof("internally unmounting %v", targetPath)
 	_, err := cs.Driver.ns.NodeUnpublishVolume(ctx, &csi.NodeUnpublishVolumeRequest{
 		VolumeId:   vol.id,
 		TargetPath: cs.getInternalMountPath(vol),
