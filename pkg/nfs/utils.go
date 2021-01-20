@@ -70,14 +70,25 @@ func ParseEndpoint(ep string) (string, string, error) {
 	return "", "", fmt.Errorf("Invalid endpoint: %v", ep)
 }
 
+func getLogLevel(method string) int32 {
+	if method == "/csi.v1.Identity/Probe" ||
+		method == "/csi.v1.Node/NodeGetCapabilities" ||
+		method == "/csi.v1.Node/NodeGetVolumeStats" {
+		return 10
+	}
+	return 2
+}
+
 func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	klog.V(3).Infof("GRPC call: %s", info.FullMethod)
-	klog.V(5).Infof("GRPC request: %s", protosanitizer.StripSecrets(req))
+	level := klog.Level(getLogLevel(info.FullMethod))
+	klog.V(level).Infof("GRPC call: %s", info.FullMethod)
+	klog.V(level).Infof("GRPC request: %s", protosanitizer.StripSecrets(req))
+
 	resp, err := handler(ctx, req)
 	if err != nil {
 		klog.Errorf("GRPC error: %v", err)
 	} else {
-		klog.V(5).Infof("GRPC response: %s", protosanitizer.StripSecrets(resp))
+		klog.V(level).Infof("GRPC response: %s", protosanitizer.StripSecrets(resp))
 	}
 	return resp, err
 }
