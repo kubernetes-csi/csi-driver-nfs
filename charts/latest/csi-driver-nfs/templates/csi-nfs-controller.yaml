@@ -28,7 +28,7 @@ spec:
         - name: csi-provisioner
           image: "{{ .Values.image.csiProvisioner.repository }}:{{ .Values.image.csiProvisioner.tag }}"
           args:
-            - "-v=5"
+            - "-v=2"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election"
           env:
@@ -51,7 +51,7 @@ spec:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
             - --health-port=29652
-            - --v=5
+            - --v=2
           imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
           volumeMounts:
             - name: socket-dir
