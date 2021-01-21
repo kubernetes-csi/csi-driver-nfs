@@ -83,3 +83,38 @@ func TestParseEndpoint(t *testing.T) {
 		})
 	}
 }
+
+func TestGetLogLevel(t *testing.T) {
+	tests := []struct {
+		method string
+		level  int32
+	}{
+		{
+			method: "/csi.v1.Identity/Probe",
+			level:  10,
+		},
+		{
+			method: "/csi.v1.Node/NodeGetCapabilities",
+			level:  10,
+		},
+		{
+			method: "/csi.v1.Node/NodeGetVolumeStats",
+			level:  10,
+		},
+		{
+			method: "",
+			level:  2,
+		},
+		{
+			method: "unknown",
+			level:  2,
+		},
+	}
+
+	for _, test := range tests {
+		level := getLogLevel(test.method)
+		if level != test.level {
+			t.Errorf("returned level: (%v), expected level: (%v)", level, test.level)
+		}
+	}
+}

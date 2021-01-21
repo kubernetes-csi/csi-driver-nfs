@@ -24,6 +24,9 @@ kubectl apply -f ./deploy/example/statefulset.yaml
 echo "sleep 60s ..."
 sleep 60
 
+echo "begin to check pod status ..."
+kubectl get pods -o wide
+
 kubectl get pods --field-selector status.phase=Running | grep deployment-nfs
 kubectl get pods --field-selector status.phase=Running | grep statefulset-nfs-0
 
