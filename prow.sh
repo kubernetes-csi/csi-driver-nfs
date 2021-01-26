@@ -65,6 +65,18 @@ get_versioned_variable () {
     echo "$value"
 }
 
+# This takes a version string like CSI_PROW_KUBERNETES_VERSION and
+# maps it to the corresponding git tag, branch or commit.
+version_to_git () {
+    version="$1"
+    shift
+    case "$version" in
+        latest) echo "master";;
+        release-*) echo "$version";;
+        *) echo "v$version";;
+    esac
+}
+
 configvar CSI_PROW_BUILD_PLATFORMS "linux amd64; windows amd64 .exe; linux ppc64le -ppc64le; linux s390x -s390x; linux arm64 -arm64" "Go target platforms (= GOOS + GOARCH) and file suffix of the resulting binaries"
 
 # If we have a vendor directory, then use it. We must be careful to only
@@ -208,16 +220,7 @@ configvar CSI_PROW_DRIVER_CANARY_REGISTRY "gcr.io/k8s-staging-sig-storage" "regi
 # all generated files are present.
 #
 # CSI_PROW_E2E_REPO=none disables E2E testing.
-tag_from_version () {
-    version="$1"
-    shift
-    case "$version" in
-        latest) echo "master";;
-        release-*) echo "$version";;
-        *) echo "v$version";;
-    esac
-}
-configvar CSI_PROW_E2E_VERSION "$(tag_from_version "${CSI_PROW_KUBERNETES_VERSION}")"  "E2E version"
+configvar CSI_PROW_E2E_VERSION "$(version_to_git "${CSI_PROW_KUBERNETES_VERSION}")"  "E2E version"
 configvar CSI_PROW_E2E_REPO "https://github.com/kubernetes/kubernetes" "E2E repo"
 configvar CSI_PROW_E2E_IMPORT_PATH "k8s.io/kubernetes" "E2E package"
 
@@ -465,20 +468,22 @@ git_checkout () {
 
 # This clones a repo ("https://github.com/kubernetes/kubernetes")
 # in a certain location ("$GOPATH/src/k8s.io/kubernetes") at
-# a the head of a specific branch (i.e., release-1.13, master).
-# The directory cannot exist.
-git_clone_branch () {
-    local repo path branch parent
+# a the head of a specific branch (i.e., release-1.13, master),
+# tag (v1.20.0) or commit.
+#
+# The directory must not exist.
+git_clone () {
+    local repo path name parent
     repo="$1"
     shift
     path="$1"
     shift
-    branch="$1"
+    name="$1"
     shift
 
     parent="$(dirname "$path")"
     mkdir -p "$parent"
-    (cd "$parent" && run git clone --single-branch --branch "$branch" "$repo" "$path") || die "cloning $repo" failed
+    (cd "$parent" && run git clone --single-branch --branch "$name" "$repo" "$path") || die "cloning $repo" failed
     # This is useful for local testing or when switching between different revisions in the same
     # repo.
     (cd "$path" && run git clean -fdx) || die "failed to clean $path"
@@ -567,7 +572,7 @@ start_cluster () {
             else
                 type="docker"
             fi
-            git_clone_branch https://github.com/kubernetes/kubernetes "${CSI_PROW_WORK}/src/kubernetes" "$version" || die "checking out Kubernetes $version failed"
+            git_clone https://github.com/kubernetes/kubernetes "${CSI_PROW_WORK}/src/kubernetes" "$(version_to_git "$version")" || die "checking out Kubernetes $version failed"
 
             go_version="$(go_version_for_kubernetes "${CSI_PROW_WORK}/src/kubernetes" "$version")" || die "cannot proceed without knowing Go version for Kubernetes"
             # Changing into the Kubernetes source code directory is a workaround for https://github.com/kubernetes-sigs/kind/issues/1910
