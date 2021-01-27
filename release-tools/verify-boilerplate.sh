@@ -31,8 +31,7 @@ TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # Directory to check. Default is the parent of the tools themselves.
 ROOT="${1:-${TOOLS}/..}"
 
-boilerDir="${ROOT}/boilerplate"
-boiler="${boilerDir}/boilerplate.py"
+boiler="${TOOLS}/boilerplate/boilerplate.py"
 
 mapfile -t files_need_boilerplate < <("${boiler}" --rootdir="${ROOT}" --verbose)
 
