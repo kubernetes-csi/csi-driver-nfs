@@ -78,3 +78,16 @@ validate_image "${expected_node_driver_registrar}" "${node_driver_registrar}"
 validate_image "${expected_nfs_image}" "${nfs_image}"
 
 echo "Images in deploy/ matches those in the latest helm chart."
+
+# verify whether latest chart config has changed
+tar -xvf charts/latest/*.tgz -C charts/latest/
+
+diff=`git diff`
+if [[ -n "${diff}" ]]; then
+  echo "${diff}"
+  echo
+  echo "latest chart config has changed, pls run \"helm package charts/latest/csi-driver-nfs -d charts/latest/\" to update tgz file"
+  exit 1
+fi
+
+echo "latest chart tgz file verified."

@@ -17,6 +17,6 @@ entries:
     digest: 0e85c143ff5bc783089d2439e6b533949916657d50e9267d10b8add3dff027eb
     name: csi-driver-nfs
     urls:
-    - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts/latest/csi-driver-nfs-latest.tgz
-    version: latest
+    - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts/latest/csi-driver-nfs-v3.0.0.tgz
+    version: v3.0.0
 generated: "2020-11-13T16:06:53.1665574+05:30"
