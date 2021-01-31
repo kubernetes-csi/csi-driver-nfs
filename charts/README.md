@@ -1,33 +1,33 @@
-# Installation with Helm 3
-
-Follow this guide to install the NFS Driver for Kubernetes.
+# Install CSI driver with Helm 3
 
 ## Prerequisites
-
  - [install Helm](https://helm.sh/docs/intro/quickstart/#install-helm)
 
-## Install latest CSI Driver via `helm install`
-
+## install latest version
 ```console
-$ cd $GOPATH/src/github.com/kubernetes-csi/csi-driver-nfs/charts/latest
-$ helm package csi-driver-nfs
-$ helm install csi-driver-nfs csi-driver-nfs-latest.tgz --namespace kube-system
+helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
+helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system
 ```
 
-### Install a specific version
-Specify the version of the chart to be installed using the `--version` parameter.
+### install a specific version
 ```console
-helm install --name csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version v0.2.0
+helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
+helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version v3.0.0
 ```
 
-### Search for available chart versions
-
+### search for all available chart versions
 ```console
-$ helm search repo -l csi-driver-nfs
+helm search repo -l csi-driver-nfs
 ```
-## Chart configuration
 
-The following table lists the configurable parameters of the latest NFS CSI Driver chart and their default values.
+## uninstall CSI driver
+```console
+helm uninstall csi-driver-nfs -n kube-system
+```
+
+## latest chart configuration
+
+The following table lists the configurable parameters of the latest NFS CSI Driver chart and default values.
 
 | Parameter                                         | Description                                                | Default                                                           |
 |---------------------------------------------------|------------------------------------------------------------|-------------------------------------------------------------------|
@@ -47,6 +47,6 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `rbac.create`                                     | whether create rbac of csi-nfs-controller                  | true                                                              |
 | `controller.replicas`                             | the replicas of csi-nfs-controller                         | 2                                                                 |
 
-## Troubleshooting
+## troubleshooting
  - Add `--wait -v=5 --debug` in `helm install` command to get detailed error
  - Use `kubectl describe` to acquire more info
