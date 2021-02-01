@@ -71,7 +71,7 @@ version_to_git () {
     version="$1"
     shift
     case "$version" in
-        latest) echo "master";;
+        latest|master) echo "master";;
         release-*) echo "$version";;
         *) echo "v$version";;
     esac
