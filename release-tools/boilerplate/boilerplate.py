@@ -19,8 +19,6 @@ from __future__ import print_function
 import argparse
 import difflib
 import glob
-import json
-import mmap
 import os
 import re
 import sys
@@ -33,12 +31,12 @@ parser.add_argument(
     nargs='*')
 
 # Rootdir defaults to the directory **above** the repo-infra dir.
-rootdir = os.path.dirname(__file__) + "./../../../"
+rootdir = os.path.dirname(__file__) + "./../../"
 rootdir = os.path.abspath(rootdir)
 parser.add_argument(
     "--rootdir", default=rootdir, help="root directory to examine")
 
-default_boilerplate_dir = os.path.join(rootdir, "csi-driver-nfs/hack/boilerplate")
+default_boilerplate_dir = os.path.abspath(os.path.dirname(__file__))
 
 parser.add_argument(
     "--boilerplate-dir", default=default_boilerplate_dir)
