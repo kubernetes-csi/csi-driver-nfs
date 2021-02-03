@@ -46,6 +46,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `serviceAccount.create`                           | whether create service account of csi-nfs-controller       | true                                                              |
 | `rbac.create`                                     | whether create rbac of csi-nfs-controller                  | true                                                              |
 | `controller.replicas`                             | the replicas of csi-nfs-controller                         | 2                                                                 |
+| `controller.runOnMaster`                          | run controller on master node                              | false                                                             |
 
 ## troubleshooting
  - Add `--wait -v=5 --debug` in `helm install` command to get detailed error
