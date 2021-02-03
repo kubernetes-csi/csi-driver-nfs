@@ -21,3 +21,4 @@ rbac:
   create: true
 controller:
   replicas: 2
+  runOnMaster: false
