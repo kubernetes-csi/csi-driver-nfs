@@ -98,6 +98,12 @@ func NewNodeServer(n *Driver, mounter mount.Interface) *NodeServer {
 }
 
 func (n *Driver) Run(testMode bool) {
+	versionMeta, err := GetVersionYAML()
+	if err != nil {
+		klog.Fatalf("%v", err)
+	}
+	klog.Infof("\nDRIVER INFORMATION:\n-------------------\n%s\n\nStreaming logs below:", versionMeta)
+
 	n.ns = NewNodeServer(n, mount.New(""))
 	s := NewNonBlockingGRPCServer()
 	s.Start(n.endpoint,
