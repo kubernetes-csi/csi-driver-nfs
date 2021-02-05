@@ -24,9 +24,12 @@ DOCKER_CLI_EXPERIMENTAL = enabled
 export GOPATH GOBIN GO111MODULE DOCKER_CLI_EXPERIMENTAL
 
 include release-tools/build.make
-LDFLAGS = "-X ${PKG}/pkg/nfs.driverVersion=${IMAGE_VERSION} -s -w -extldflags '-static'"
-GIT_COMMIT ?= $(shell git rev-parse HEAD)
-IMAGE_VERSION ?= v3.0.0
+
+GIT_COMMIT = $(shell git rev-parse HEAD)
+BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+IMAGE_VERSION = v3.0.0
+LDFLAGS = -X ${PKG}/pkg/nfs.driverVersion=${IMAGE_VERSION} -X ${PKG}/pkg/nfs.gitCommit=${GIT_COMMIT} -X ${PKG}/pkg/nfs.buildDate=${BUILD_DATE}
+EXT_LDFLAGS = -s -w -extldflags "-static"
 # Use a custom version for E2E tests if we are testing in CI
 ifdef CI
 ifndef PUBLISH
@@ -82,7 +85,7 @@ local-k8s-uninstall:
 
 .PHONY: nfs
 nfs:
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags ${LDFLAGS} -mod vendor -o bin/nfsplugin ./cmd/nfsplugin
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/nfsplugin ./cmd/nfsplugin
 
 .PHONY: container
 container: nfs

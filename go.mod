@@ -19,6 +19,7 @@ require (
 	k8s.io/klog/v2 v2.4.0
 	k8s.io/kubernetes v1.21.0-alpha.0.0.20201210005053-f58c4d8cd725
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
+	sigs.k8s.io/yaml v1.2.0
 )
 
 replace k8s.io/api => k8s.io/api v0.20.0
