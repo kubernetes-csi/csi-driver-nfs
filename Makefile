@@ -115,6 +115,8 @@ e2e-bootstrap: install-helm
 	--set image.nfs.repository=$(REGISTRY)/$(IMAGENAME) \
 	--set image.nfs.tag=$(IMAGE_VERSION) \
 	--set image.nfs.pullPolicy=Always
+	--set controller.logLevel=8
+	--set node.logLevel=8
 
 .PHONY: e2e-teardown
 e2e-teardown:

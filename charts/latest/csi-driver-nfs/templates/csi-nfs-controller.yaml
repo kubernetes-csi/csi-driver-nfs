@@ -75,7 +75,7 @@ spec:
             allowPrivilegeEscalation: true
           imagePullPolicy: {{ .Values.image.nfs.pullPolicy }}
           args:
-            - "-v=5"
+            - "--v={{ .Values.controller.logLevel }}"
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
           env:

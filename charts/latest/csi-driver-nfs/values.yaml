@@ -22,3 +22,7 @@ rbac:
 controller:
   replicas: 2
   runOnMaster: false
+  logLevel: 5
+
+node:
+  logLevel: 5

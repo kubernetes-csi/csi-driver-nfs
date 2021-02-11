@@ -67,7 +67,7 @@ spec:
             allowPrivilegeEscalation: true
           image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
           args :
-            - "-v=5"
+            - "--v={{ .Values.node.logLevel }}"
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
           env:

@@ -47,6 +47,8 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `rbac.create`                                     | whether create rbac of csi-nfs-controller                  | true                                                              |
 | `controller.replicas`                             | the replicas of csi-nfs-controller                         | 2                                                                 |
 | `controller.runOnMaster`                          | run controller on master node                              | false                                                             |
+| `controller.logLevel`                             | controller driver log level                                                          |`5`                                                           |
+| `node.logLevel`                                   | node driver log level                                                          |`5`                                                           |
 
 ## troubleshooting
  - Add `--wait -v=5 --debug` in `helm install` command to get detailed error
