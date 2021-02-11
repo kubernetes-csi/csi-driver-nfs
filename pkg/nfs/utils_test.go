@@ -91,15 +91,15 @@ func TestGetLogLevel(t *testing.T) {
 	}{
 		{
 			method: "/csi.v1.Identity/Probe",
-			level:  10,
+			level:  8,
 		},
 		{
 			method: "/csi.v1.Node/NodeGetCapabilities",
-			level:  10,
+			level:  8,
 		},
 		{
 			method: "/csi.v1.Node/NodeGetVolumeStats",
-			level:  10,
+			level:  8,
 		},
 		{
 			method: "",
