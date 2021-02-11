@@ -100,7 +100,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	// Create subdirectory under base-dir
 	// TODO: revisit permissions
 	internalVolumePath := cs.getInternalVolumePath(nfsVol)
-	if err = os.Mkdir(internalVolumePath, 0777); err != nil {
+	if err = os.Mkdir(internalVolumePath, 0777); err != nil && !os.IsExist(err) {
 		return nil, status.Errorf(codes.Internal, "failed to make subdirectory: %v", err.Error())
 	}
 	// Remove capacity setting when provisioner 1.4.0 is available with fix for
