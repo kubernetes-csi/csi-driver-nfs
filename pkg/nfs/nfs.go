@@ -34,10 +34,11 @@ type Driver struct {
 	perm *uint32
 
 	//ids *identityServer
-	ns    *NodeServer
-	cap   map[csi.VolumeCapability_AccessMode_Mode]bool
-	cscap []*csi.ControllerServiceCapability
-	nscap []*csi.NodeServiceCapability
+	ns          *NodeServer
+	cap         map[csi.VolumeCapability_AccessMode_Mode]bool
+	cscap       []*csi.ControllerServiceCapability
+	nscap       []*csi.NodeServiceCapability
+	volumeLocks *VolumeLocks
 }
 
 const (
@@ -87,6 +88,7 @@ func NewNFSdriver(nodeID, endpoint string, perm *uint32) *Driver {
 		csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
 		csi.NodeServiceCapability_RPC_UNKNOWN,
 	})
+	n.volumeLocks = NewVolumeLocks()
 	return n
 }
 

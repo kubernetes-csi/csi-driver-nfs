@@ -19,6 +19,7 @@ package nfs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -35,15 +36,22 @@ const (
 )
 
 func TestNodePublishVolume(t *testing.T) {
+	ns, err := getTestNodeServer()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
 	volumeCap := csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER}
 	alreadyMountedTarget := testutil.GetWorkDirPath("false_is_likely_exist_target", t)
 	targetTest := testutil.GetWorkDirPath("target_test", t)
 
 	tests := []struct {
 		desc          string
+		setup         func()
 		req           csi.NodePublishVolumeRequest
 		skipOnWindows bool
 		expectedErr   error
+		cleanup       func()
 	}{
 		{
 			desc:        "[Error] Volume capabilities missing",
@@ -60,6 +68,19 @@ func TestNodePublishVolume(t *testing.T) {
 			req: csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId: "vol_1"},
 			expectedErr: status.Error(codes.InvalidArgument, "Target path not provided"),
+		},
+		{
+			desc: "[Error] Volume operation in progress",
+			setup: func() {
+				ns.Driver.volumeLocks.TryAcquire("vol_1")
+			},
+			req: csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:   "vol_1",
+				TargetPath: targetTest},
+			expectedErr: status.Error(codes.Aborted, fmt.Sprintf(volumeOperationAlreadyExistsFmt, "vol_1")),
+			cleanup: func() {
+				ns.Driver.volumeLocks.Release("vol_1")
+			},
 		},
 		{
 			desc: "[Success] Stage target path missing",
@@ -97,15 +118,16 @@ func TestNodePublishVolume(t *testing.T) {
 	// setup
 	_ = makeDir(alreadyMountedTarget)
 
-	ns, err := getTestNodeServer()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-
 	for _, tc := range tests {
+		if tc.setup != nil {
+			tc.setup()
+		}
 		_, err := ns.NodePublishVolume(context.Background(), &tc.req)
 		if !reflect.DeepEqual(err, tc.expectedErr) {
 			t.Errorf("Desc:%v\nUnexpected error: %v\nExpected: %v", tc.desc, err, tc.expectedErr)
+		}
+		if tc.cleanup != nil {
+			tc.cleanup()
 		}
 	}
 
@@ -118,14 +140,22 @@ func TestNodePublishVolume(t *testing.T) {
 }
 
 func TestNodeUnpublishVolume(t *testing.T) {
+	ns, err := getTestNodeServer()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
 	errorTarget := testutil.GetWorkDirPath("error_is_likely_target", t)
 	targetTest := testutil.GetWorkDirPath("target_test", t)
 	targetFile := testutil.GetWorkDirPath("abc.go", t)
+	alreadyMountedTarget := testutil.GetWorkDirPath("false_is_likely_exist_target", t)
 
 	tests := []struct {
 		desc        string
+		setup       func()
 		req         csi.NodeUnpublishVolumeRequest
 		expectedErr error
+		cleanup     func()
 	}{
 		{
 			desc:        "[Error] Volume ID missing",
@@ -147,20 +177,32 @@ func TestNodeUnpublishVolume(t *testing.T) {
 			req:         csi.NodeUnpublishVolumeRequest{TargetPath: targetFile, VolumeId: "vol_1"},
 			expectedErr: status.Error(codes.NotFound, "Volume not mounted"),
 		},
+		{
+			desc: "[Error] Volume operation in progress",
+			setup: func() {
+				ns.Driver.volumeLocks.TryAcquire("vol_1")
+			},
+			req:         csi.NodeUnpublishVolumeRequest{TargetPath: alreadyMountedTarget, VolumeId: "vol_1"},
+			expectedErr: status.Error(codes.Aborted, fmt.Sprintf(volumeOperationAlreadyExistsFmt, "vol_1")),
+			cleanup: func() {
+				ns.Driver.volumeLocks.Release("vol_1")
+			},
+		},
 	}
 
 	// Setup
 	_ = makeDir(errorTarget)
 
-	ns, err := getTestNodeServer()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-
 	for _, tc := range tests {
+		if tc.setup != nil {
+			tc.setup()
+		}
 		_, err := ns.NodeUnpublishVolume(context.Background(), &tc.req)
 		if !reflect.DeepEqual(err, tc.expectedErr) {
 			t.Errorf("Desc:%v\nUnexpected error: %v\nExpected: %v", tc.desc, err, tc.expectedErr)
+		}
+		if tc.cleanup != nil {
+			tc.cleanup()
 		}
 	}
 

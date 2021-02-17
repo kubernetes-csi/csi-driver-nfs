@@ -59,7 +59,7 @@ func NewEmptyDriver(emptyField string) *Driver {
 			perm:    perm,
 		}
 	}
-
+	d.volumeLocks = NewVolumeLocks()
 	return d
 }
 
