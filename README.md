@@ -11,7 +11,7 @@ of the development.
 
 | **nfs.csi.k8s.io** | K8s version compatibility | CSI versions compatibility | Dynamic Provisioning | Resize | Snapshots | Raw Block | AccessModes              | Status                                                                       |
 |--------------------|---------------------------|----------------------------|----------------------|--------|-----------|-----------|--------------------------|------------------------------------------------------------------------------|
-|master              | 1.14 +                    | v1.0 +                     |  yes                 |  no    |  no       |  no       | Read/Write Multiple Pods | Alpha                                                                        |
+|master              | 1.16 +                    | v1.0 +                     |  yes                 |  no    |  no       |  no       | Read/Write Multiple Pods | Alpha                                                                        |
 |v2.0.0              | 1.14 +                    | v1.0 +                     |  no                  |  no    |  no       |  no       | Read/Write Multiple Pods | Alpha                                                                        |
 
 ### Requirements
