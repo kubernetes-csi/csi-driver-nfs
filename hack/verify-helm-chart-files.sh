@@ -17,6 +17,7 @@
 set -euo pipefail
 
 echo "begin to verify chart tgz files ..."
+git config core.filemode false
 
 # verify whether chart config has changed
 diff=`git diff`
@@ -46,3 +47,9 @@ if [[ -n "${diff}" ]]; then
 fi
 
 echo "chart tgz files verified."
+
+echo "verify helm chart index ..."
+curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+helm repo add csi-driver-smb https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
+helm search repo -l csi-driver-nfs
+echo "helm chart index verified."
