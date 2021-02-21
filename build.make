@@ -149,6 +149,7 @@ $(CMDS:%=push-multiarch-%): push-multiarch-%: check-pull-base-ref build-%
 				--platform=$$os/$$arch \
 				--file $$(eval echo \$${dockerfile_$$os}) \
 				--build-arg binary=./bin/$*$$suffix \
+				--build-arg ARCH=$$arch \
 				--label revision=$(REV) \
 				.; \
 		done; \
