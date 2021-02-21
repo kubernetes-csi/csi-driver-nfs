@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM centos:latest
+FROM k8s.gcr.io/build-image/debian-base-amd64:v2.1.3
 
 # Copy nfsplugin from build _output directory
 COPY bin/nfsplugin /nfsplugin
 
-RUN yum -y install nfs-utils epel-release jq && yum clean all
+# this is a workaround to install nfs-common & nfs-kernel-server and don't quit with error
+# https://github.com/kubernetes-sigs/blob-csi-driver/issues/214#issuecomment-781602430
+RUN apt update && apt install ca-certificates mount nfs-common nfs-kernel-server -y || true
 
 ENTRYPOINT ["/nfsplugin"]
