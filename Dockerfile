@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM k8s.gcr.io/build-image/debian-base-amd64:v2.1.3
+ARG ARCH=amd64
+
+FROM k8s.gcr.io/build-image/debian-base-${ARCH}:v2.1.3
 
 # Copy nfsplugin from build _output directory
 COPY bin/nfsplugin /nfsplugin
