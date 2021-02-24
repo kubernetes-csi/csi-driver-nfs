@@ -1,32 +1,33 @@
----
 # This YAML file contains driver-registrar & csi driver nodeplugin API objects
 # that are necessary to run CSI nodeplugin for nfs
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: csi-nfs-node
-  namespace: kube-system
+  namespace: {{ .Release.Namespace }}
+{{ include "nfs.labels" . | indent 2 }}
 spec:
   selector:
     matchLabels:
       app: csi-nfs-node
   template:
     metadata:
-      labels:
+{{ include "nfs.labels" . | indent 6 }}
         app: csi-nfs-node
     spec:
-      hostNetwork: true  # original nfs connection would be broken without hostNetwork setting
+      hostNetwork: true # original nfs connection would be broken without hostNetwork setting
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
         kubernetes.io/os: linux
       containers:
         - name: liveness-probe
-          image: k8s.gcr.io/sig-storage/livenessprobe:v2.1.0
+          image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
             - --health-port=29653
             - --v=2
+          imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -38,7 +39,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: node-driver-registrar
-          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.0.1
+          image: "{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
           lifecycle:
             preStop:
               exec:
@@ -52,6 +53,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+          imagePullPolicy: {{ .Values.image.nodeDriverRegistrar.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -63,9 +65,9 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: mcr.microsoft.com/k8s/csi/nfs-csi:v3.0.0
-          args:
-            - "-v=5"
+          image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
+          args :
+            - "--v={{ .Values.node.logLevel }}"
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
           env:
@@ -75,7 +77,7 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
-          imagePullPolicy: "IfNotPresent"
+          imagePullPolicy: {{ .Values.image.nfs.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi

@@ -3,22 +3,26 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: csi-nfs-controller
-  namespace: kube-system
+  namespace: {{ .Release.Namespace }}
+{{ include "nfs.labels" . | indent 2 }}
 spec:
-  replicas: 2
+  replicas: {{ .Values.controller.replicas }}
   selector:
     matchLabels:
       app: csi-nfs-controller
   template:
     metadata:
-      labels:
+{{ include "nfs.labels" . | indent 6 }}
         app: csi-nfs-controller
     spec:
       hostNetwork: true  # controller also needs to mount nfs to create dir
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: csi-nfs-controller-sa
       nodeSelector:
-        kubernetes.io/os: linux  # add "kubernetes.io/role: master" to run controller on master node
+        kubernetes.io/os: linux
+        {{- if .Values.controller.runOnMaster}}
+        kubernetes.io/role: master
+        {{- end}}
       priorityClassName: system-cluster-critical
       tolerations:
         - key: "node-role.kubernetes.io/master"
@@ -27,7 +31,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: csi-provisioner
-          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.0.4
+          image: "{{ .Values.image.csiProvisioner.repository }}:{{ .Values.image.csiProvisioner.tag }}"
           args:
             - "-v=2"
             - "--csi-address=$(ADDRESS)"
@@ -35,6 +39,7 @@ spec:
           env:
             - name: ADDRESS
               value: /csi/csi.sock
+          imagePullPolicy: {{ .Values.image.csiProvisioner.pullPolicy }}
           volumeMounts:
             - mountPath: /csi
               name: socket-dir
@@ -46,12 +51,13 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: liveness-probe
-          image: k8s.gcr.io/sig-storage/livenessprobe:v2.1.0
+          image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
             - --health-port=29652
             - --v=2
+          imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -63,15 +69,15 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: nfs
-          image: mcr.microsoft.com/k8s/csi/nfs-csi:v3.0.0
+          image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
           securityContext:
             privileged: true
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: {{ .Values.image.nfs.pullPolicy }}
           args:
-            - "-v=5"
+            - "--v={{ .Values.controller.logLevel }}"
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
           env:
