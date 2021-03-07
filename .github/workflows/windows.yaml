@@ -6,7 +6,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go-versions: [1.15.x]
+        go-versions: [1.16.x]
         platform: [windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
