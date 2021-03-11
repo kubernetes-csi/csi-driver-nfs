@@ -14,5 +14,5 @@ share | NFS share path | `/` | Yes |
 
 Name | Meaning | Example Value | Mandatory | Default value
 --- | --- | --- | --- | ---
-volumeAttributes.source | NFS Server endpoint | Domain name `nfs-server.default.svc.cluster.local` <br>Or IP address `127.0.0.1` | Yes |
+volumeAttributes.server | NFS Server endpoint | Domain name `nfs-server.default.svc.cluster.local` <br>Or IP address `127.0.0.1` | Yes |
 volumeAttributes.share | NFS share path | `/` |  Yes  |
