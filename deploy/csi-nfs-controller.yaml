@@ -27,7 +27,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: csi-provisioner
-          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.0.4
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.1.0
           args:
             - "-v=2"
             - "--csi-address=$(ADDRESS)"
@@ -41,7 +41,7 @@ spec:
           resources:
             limits:
               cpu: 100m
-              memory: 100Mi
+              memory: 300Mi
             requests:
               cpu: 10m
               memory: 20Mi
