@@ -4,6 +4,8 @@ apiVersion: apps/v1
 metadata:
   name: csi-nfs-controller
   namespace: kube-system
+  labels:
+    app: csi-nfs-controller
 spec:
   replicas: 2
   selector:
@@ -14,6 +16,16 @@ spec:
       labels:
         app: csi-nfs-controller
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - csi-nfs-controller
+              topologyKey: kubernetes.io/hostname
       hostNetwork: true  # controller also needs to mount nfs to create dir
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: csi-nfs-controller-sa

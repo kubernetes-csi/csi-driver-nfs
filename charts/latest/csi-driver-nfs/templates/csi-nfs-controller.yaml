@@ -5,6 +5,7 @@ metadata:
   name: csi-nfs-controller
   namespace: {{ .Release.Namespace }}
 {{ include "nfs.labels" . | indent 2 }}
+    app: csi-nfs-controller
 spec:
   replicas: {{ .Values.controller.replicas }}
   selector:
@@ -15,6 +16,16 @@ spec:
 {{ include "nfs.labels" . | indent 6 }}
         app: csi-nfs-controller
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - csi-nfs-controller
+            topologyKey: kubernetes.io/hostname
       hostNetwork: true  # controller also needs to mount nfs to create dir
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: csi-nfs-controller-sa
