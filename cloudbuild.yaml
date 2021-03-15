@@ -25,7 +25,7 @@ options:
   substitution_option: ALLOW_LOOSE
 steps:
   # The image must contain bash and curl. Ideally it should also contain
-  # the desired version of Go (currently defined in release-tools/travis.yml),
+  # the desired version of Go (currently defined in release-tools/prow.sh),
   # but that just speeds up the build and is not required.
   - name: 'gcr.io/k8s-testimages/gcb-docker-gcloud:v20200421-a2bf5f8'
     entrypoint: ./.cloudbuild.sh
