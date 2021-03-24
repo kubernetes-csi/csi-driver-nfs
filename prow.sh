@@ -91,24 +91,6 @@ configvar CSI_PROW_GO_VERSION_SANITY "${CSI_PROW_GO_VERSION_BUILD}" "Go version 
 configvar CSI_PROW_GO_VERSION_KIND "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building 'kind'" # depends on CSI_PROW_KIND_VERSION below
 configvar CSI_PROW_GO_VERSION_GINKGO "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building ginkgo" # depends on CSI_PROW_GINKGO_VERSION below
 
-# kind version to use. If the pre-installed version is different,
-# the desired version is downloaded from https://github.com/kubernetes-sigs/kind/releases
-# (if available), otherwise it is built from source.
-configvar CSI_PROW_KIND_VERSION "v0.10.0" "kind"
-
-# kind images to use. Must match the kind version.
-# The release notes of each kind release list the supported images.
-configvar CSI_PROW_KIND_IMAGES "kindest/node:v1.20.2@sha256:8f7ea6e7642c0da54f04a7ee10431549c0257315b3a634f6ef2fecaaedb19bab
-kindest/node:v1.19.7@sha256:a70639454e97a4b733f9d9b67e12c01f6b0297449d5b9cbbef87473458e26dca
-kindest/node:v1.18.15@sha256:5c1b980c4d0e0e8e7eb9f36f7df525d079a96169c8a8f20d8bd108c0d0889cc4
-kindest/node:v1.17.17@sha256:7b6369d27eee99c7a85c48ffd60e11412dc3f373658bc59b7f4d530b7056823e
-kindest/node:v1.16.15@sha256:c10a63a5bda231c0a379bf91aebf8ad3c79146daca59db816fb963f731852a99
-kindest/node:v1.15.12@sha256:67181f94f0b3072fb56509107b380e38c55e23bf60e6f052fbd8052d26052fb5
-kindest/node:v1.14.10@sha256:3fbed72bcac108055e46e7b4091eb6858ad628ec51bf693c21f5ec34578f6180" "kind images"
-
-# Use kind node-image --type=bazel by default, but allow to disable that.
-configvar CSI_PROW_USE_BAZEL true "use Bazel during 'kind node-image' invocation"
-
 # ginkgo test runner version to use. If the pre-installed version is
 # different, the desired version is built from source.
 configvar CSI_PROW_GINKGO_VERSION v1.7.0 "Ginkgo"
@@ -144,6 +126,38 @@ configvar CSI_PROW_KUBERNETES_VERSION 1.17.0 "Kubernetes"
 # This is used to derive the right defaults for the variables below
 # when a Prow job just defines the Kubernetes version.
 csi_prow_kubernetes_version_suffix="$(echo "${CSI_PROW_KUBERNETES_VERSION}" | tr . _ | tr '[:lower:]' '[:upper:]' | sed -e 's/^RELEASE-//' -e 's/\([0-9]*\)_\([0-9]*\).*/\1_\2/')"
+
+# Only the latest KinD is (eventually) guaranteed to work with the
+# latest Kubernetes. For example, KinD 0.10.0 failed with Kubernetes
+# 1.21.0-beta1.  Therefore the default version of KinD is "main"
+# for that, otherwise the latest stable release for which we then
+# list the officially supported images below.
+kind_version_default () {
+    case "${CSI_PROW_KUBERNETES_VERSION}" in
+        latest|master)
+            echo main;;
+        *)
+            echo v0.10.0;;
+    esac
+}
+
+# kind version to use. If the pre-installed version is different,
+# the desired version is downloaded from https://github.com/kubernetes-sigs/kind/releases
+# (if available), otherwise it is built from source.
+configvar CSI_PROW_KIND_VERSION "$(kind_version_default)" "kind"
+
+# kind images to use. Must match the kind version.
+# The release notes of each kind release list the supported images.
+configvar CSI_PROW_KIND_IMAGES "kindest/node:v1.20.2@sha256:8f7ea6e7642c0da54f04a7ee10431549c0257315b3a634f6ef2fecaaedb19bab
+kindest/node:v1.19.7@sha256:a70639454e97a4b733f9d9b67e12c01f6b0297449d5b9cbbef87473458e26dca
+kindest/node:v1.18.15@sha256:5c1b980c4d0e0e8e7eb9f36f7df525d079a96169c8a8f20d8bd108c0d0889cc4
+kindest/node:v1.17.17@sha256:7b6369d27eee99c7a85c48ffd60e11412dc3f373658bc59b7f4d530b7056823e
+kindest/node:v1.16.15@sha256:c10a63a5bda231c0a379bf91aebf8ad3c79146daca59db816fb963f731852a99
+kindest/node:v1.15.12@sha256:67181f94f0b3072fb56509107b380e38c55e23bf60e6f052fbd8052d26052fb5
+kindest/node:v1.14.10@sha256:3fbed72bcac108055e46e7b4091eb6858ad628ec51bf693c21f5ec34578f6180" "kind images"
+
+# Use kind node-image --type=bazel by default, but allow to disable that.
+configvar CSI_PROW_USE_BAZEL true "use Bazel during 'kind node-image' invocation"
 
 # Work directory. It has to allow running executables, therefore /tmp
 # is avoided. Cleaning up after the script is intentionally left to
@@ -403,7 +417,7 @@ install_kind () {
         chmod u+x "${CSI_PROW_WORK}/bin/kind"
     else
         git_checkout https://github.com/kubernetes-sigs/kind "${GOPATH}/src/sigs.k8s.io/kind" "${CSI_PROW_KIND_VERSION}" --depth=1 &&
-        (cd "${GOPATH}/src/sigs.k8s.io/kind" && make install INSTALL_DIR="${CSI_PROW_WORK}/bin")
+        (cd "${GOPATH}/src/sigs.k8s.io/kind" && run_with_go "$CSI_PROW_GO_VERSION_KIND" make install INSTALL_DIR="${CSI_PROW_WORK}/bin")
     fi
 }
 
@@ -569,7 +583,8 @@ start_cluster () {
 
             go_version="$(go_version_for_kubernetes "${CSI_PROW_WORK}/src/kubernetes" "$version")" || die "cannot proceed without knowing Go version for Kubernetes"
             # Changing into the Kubernetes source code directory is a workaround for https://github.com/kubernetes-sigs/kind/issues/1910
-            (cd "${CSI_PROW_WORK}/src/kubernetes" && run_with_go "$go_version" kind build node-image --image csiprow/node:latest --type="$type" --kube-root "${CSI_PROW_WORK}/src/kubernetes") || die "'kind build node-image' failed"
+            # shellcheck disable=SC2046
+            (cd "${CSI_PROW_WORK}/src/kubernetes" && run_with_go "$go_version" kind build node-image --image csiprow/node:latest $(if [ "$CSI_PROW_KIND_VERSION" != "main" ]; then echo --type="$type"; fi) --kube-root "${CSI_PROW_WORK}/src/kubernetes") || die "'kind build node-image' failed"
             csi_prow_kind_have_kubernetes=true
         fi
         image="csiprow/node:latest"
