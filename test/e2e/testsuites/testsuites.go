@@ -573,3 +573,25 @@ func (t *TestPersistentVolumeClaim) DeleteBackingVolume(cs *nfs.ControllerServer
 		ginkgo.Fail(fmt.Sprintf("could not delete volume %q: %v", volumeID, err))
 	}
 }
+
+func (t *TestPod) SetupVolumeMountWithSubpath(pvc *v1.PersistentVolumeClaim, name, mountPath string, subpath string, readOnly bool) {
+	volumeMount := v1.VolumeMount{
+		Name:      name,
+		MountPath: mountPath,
+		SubPath:   subpath,
+		ReadOnly:  readOnly,
+	}
+
+	t.pod.Spec.Containers[0].VolumeMounts = append(t.pod.Spec.Containers[0].VolumeMounts, volumeMount)
+
+	volume := v1.Volume{
+		Name: name,
+		VolumeSource: v1.VolumeSource{
+			PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+				ClaimName: pvc.Name,
+			},
+		},
+	}
+
+	t.pod.Spec.Volumes = append(t.pod.Spec.Volumes, volume)
+}
