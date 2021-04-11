@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"fmt"
@@ -32,10 +33,12 @@ import (
 )
 
 const (
-	testServer    = "test-server"
-	testBaseDir   = "test-base-dir"
-	testCSIVolume = "test-csi"
-	testVolumeID  = "test-server/test-base-dir/test-csi"
+	testServer         = "test-server"
+	testBaseDir        = "test-base-dir"
+	testBaseDirNested  = "test/base/dir"
+	testCSIVolume      = "test-csi"
+	testVolumeID       = "test-server/test-base-dir/test-csi"
+	testVolumeIDNested = "test-server/test/base/dir/test-csi"
 )
 
 // for Windows support in the future
@@ -352,6 +355,72 @@ func TestControllerGetCapabilities(t *testing.T) {
 			}
 			if !reflect.DeepEqual(resp, test.resp) {
 				t.Errorf("test %q failed: got resp %+v, expected %+v", test.desc, resp, test.resp)
+			}
+		})
+	}
+}
+
+func TestNfsVolFromId(t *testing.T) {
+	cases := []struct {
+		name      string
+		req       string
+		resp      *nfsVolume
+		expectErr bool
+	}{
+		{
+			name:      "ID only server",
+			req:       testServer,
+			resp:      nil,
+			expectErr: true,
+		},
+		{
+			name:      "ID missing subDir",
+			req:       strings.Join([]string{testServer, testBaseDir}, "/"),
+			resp:      nil,
+			expectErr: true,
+		},
+		{
+			name: "valid request single baseDir",
+			req:  testVolumeID,
+			resp: &nfsVolume{
+				id:      testVolumeID,
+				server:  testServer,
+				baseDir: testBaseDir,
+				subDir:  testCSIVolume,
+			},
+			expectErr: false,
+		},
+		{
+			name: "valid request nested baseDir",
+			req:  testVolumeIDNested,
+			resp: &nfsVolume{
+				id:      testVolumeIDNested,
+				server:  testServer,
+				baseDir: testBaseDirNested,
+				subDir:  testCSIVolume,
+			},
+			expectErr: false,
+		},
+	}
+
+	for _, test := range cases {
+		test := test //pin
+		t.Run(test.name, func(t *testing.T) {
+			// Setup
+			cs := initTestController(t)
+
+			// Run
+			resp, err := cs.getNfsVolFromID(test.req)
+
+			// Verify
+			if !test.expectErr && err != nil {
+				t.Errorf("test %q failed: %v", test.name, err)
+			}
+			if test.expectErr && err == nil {
+				t.Errorf("test %q failed; got success", test.name)
+			}
+			if !reflect.DeepEqual(resp, test.resp) {
+				t.Errorf("test %q failed: got resp %+v, expected %+v", test.name, resp, test.resp)
 			}
 		})
 	}
