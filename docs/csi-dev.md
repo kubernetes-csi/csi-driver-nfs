@@ -18,6 +18,11 @@ $ make
 $ make verify
 ```
 
+ - If there is config file changed under `charts` directory, run following command to update chart file
+```console
+helm package charts/latest/csi-driver-nfs -d charts/latest/
+```
+
 ## How to test CSI driver in local environment
 
 Install `csc` tool according to https://github.com/rexray/gocsi/tree/master/csc
@@ -65,7 +70,7 @@ $ csc node publish --endpoint "$endpoint" --cap "$cap" --vol-context "$params" -
 ```
 
 #### 4. Unpublish a nfs volume
-```
+```console
 $ csc node unpublish --endpoint "$endpoint" --target-path "$target_path" "$volumeid"
 ```
 
