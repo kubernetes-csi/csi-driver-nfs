@@ -38,7 +38,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: node-driver-registrar
-          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.0.1
+          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.1.0
           lifecycle:
             preStop:
               exec:
