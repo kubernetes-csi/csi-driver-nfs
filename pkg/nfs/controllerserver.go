@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -359,15 +360,16 @@ func (cs *ControllerServer) getVolumeIDFromNfsVol(vol *nfsVolume) string {
 
 // Given a CSI volume id, return a nfsVolume
 func (cs *ControllerServer) getNfsVolFromID(id string) (*nfsVolume, error) {
-	tokens := strings.Split(id, "/")
-	if len(tokens) != totalIDElements {
-		return nil, fmt.Errorf("volume id %q unexpected format: got %v token(s) instead of %v", id, len(tokens), totalIDElements)
+	volRegex := regexp.MustCompile("^([^/]+)/(.*)/([^/]+)$")
+	tokens := volRegex.FindStringSubmatch(id)
+	if tokens == nil {
+		return nil, fmt.Errorf("Could not split %q into server, baseDir and subDir", id)
 	}
 
 	return &nfsVolume{
 		id:      id,
-		server:  tokens[idServer],
-		baseDir: tokens[idBaseDir],
-		subDir:  tokens[idSubDir],
+		server:  tokens[1],
+		baseDir: tokens[2],
+		subDir:  tokens[3],
 	}, nil
 }
