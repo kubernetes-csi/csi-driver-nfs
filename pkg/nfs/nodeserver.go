@@ -27,7 +27,7 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/volume"
-	"k8s.io/utils/mount"
+	mount "k8s.io/mount-utils"
 )
 
 // NodeServer driver
