@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/utils/mount"
+	mount "k8s.io/mount-utils"
 )
 
 type fakeMounter struct {

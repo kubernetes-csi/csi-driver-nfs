@@ -722,15 +722,14 @@ k8s.io/kubernetes/test/e2e/storage/utils
 k8s.io/kubernetes/test/utils
 k8s.io/kubernetes/test/utils/image
 # k8s.io/mount-utils v0.0.0 => k8s.io/mount-utils v0.21.0-alpha.0
+## explicit
 k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20201110183641-67b214c5f920
-## explicit
 k8s.io/utils/buffer
 k8s.io/utils/exec
 k8s.io/utils/integer
 k8s.io/utils/io
 k8s.io/utils/keymutex
-k8s.io/utils/mount
 k8s.io/utils/net
 k8s.io/utils/nsenter
 k8s.io/utils/path
