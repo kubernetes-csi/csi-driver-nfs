@@ -15,6 +15,10 @@ spec:
 {{ include "nfs.labels" . | indent 6 }}
         app: csi-nfs-node
     spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{- end }}
       hostNetwork: true # original nfs connection would be broken without hostNetwork setting
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
