@@ -159,11 +159,6 @@ kindest/node:v1.14.10@sha256:3fbed72bcac108055e46e7b4091eb6858ad628ec51bf693c21f
 # Use kind node-image --type=bazel by default, but allow to disable that.
 configvar CSI_PROW_USE_BAZEL true "use Bazel during 'kind node-image' invocation"
 
-# Work directory. It has to allow running executables, therefore /tmp
-# is avoided. Cleaning up after the script is intentionally left to
-# the caller.
-configvar CSI_PROW_WORK "$(mkdir -p "$GOPATH/pkg" && mktemp -d "$GOPATH/pkg/csiprow.XXXXXXXXXX")" "work directory"
-
 # By default, this script tests sidecars with the CSI hostpath driver,
 # using the install_csi_driver function. That function depends on
 # a deployment script that it searches for in several places:
@@ -361,10 +356,23 @@ configvar CSI_SNAPSHOTTER_VERSION "$(default_csi_snapshotter_version)" "external
 # to all the K8s versions we test against
 configvar CSI_PROW_E2E_SKIP 'Disruptive|different\s+node' "tests that need to be skipped"
 
-# This is the directory for additional result files. Usually set by Prow, but
-# if not (for example, when invoking manually) it defaults to the work directory.
-configvar ARTIFACTS "${CSI_PROW_WORK}/artifacts" "artifacts"
-mkdir -p "${ARTIFACTS}"
+# This creates directories that are required for testing.
+ensure_paths () {
+    # Work directory. It has to allow running executables, therefore /tmp
+    # is avoided. Cleaning up after the script is intentionally left to
+    # the caller.
+    configvar CSI_PROW_WORK "$(mkdir -p "$GOPATH/pkg" && mktemp -d "$GOPATH/pkg/csiprow.XXXXXXXXXX")" "work directory"
+
+    # This is the directory for additional result files. Usually set by Prow, but
+    # if not (for example, when invoking manually) it defaults to the work directory.
+    configvar ARTIFACTS "${CSI_PROW_WORK}/artifacts" "artifacts"
+    mkdir -p "${ARTIFACTS}"
+
+    # For additional tools.
+    CSI_PROW_BIN="${CSI_PROW_WORK}/bin"
+    mkdir -p "${CSI_PROW_BIN}"
+    PATH="${CSI_PROW_BIN}:$PATH"
+}
 
 run () {
     echo "$(date) $(go version | sed -e 's/.*version \(go[^ ]*\).*/\1/') $(if [ "$(pwd)" != "${REPO_DIR}" ]; then pwd; fi)\$" "$@" >&2
@@ -383,11 +391,6 @@ die () {
     echo >&2 ERROR: "$@"
     exit 1
 }
-
-# For additional tools.
-CSI_PROW_BIN="${CSI_PROW_WORK}/bin"
-mkdir -p "${CSI_PROW_BIN}"
-PATH="${CSI_PROW_BIN}:$PATH"
 
 # Ensure that PATH has the desired version of the Go tools, then run command given as argument.
 # Empty parameter uses the already installed Go. In Prow, that version is kept up-to-date by
@@ -1098,6 +1101,9 @@ main () {
     local images ret
     ret=0
 
+    # Set up work directory.
+    ensure_paths
+
     images=
     if ${CSI_PROW_BUILD_JOB}; then
         # A successful build is required for testing.
@@ -1258,6 +1264,9 @@ gcr_cloud_build () {
     # Register gcloud as a Docker credential helper.
     # Required for "docker buildx build --push".
     gcloud auth configure-docker
+
+    # Might not be needed here, but call it just in case.
+    ensure_paths
 
     if find . -name Dockerfile | grep -v ^./vendor | xargs --no-run-if-empty cat | grep -q ^RUN; then
         # Needed for "RUN" steps on non-linux/amd64 platforms.
