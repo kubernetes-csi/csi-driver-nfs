@@ -43,6 +43,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `image.nodeDriverRegistrar.repository`            | csi-node-driver-registrar docker image                     | k8s.gcr.io/sig-storage/csi-node-driver-registrar                  |
 | `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | v2.0.1                                                            |
 | `image.nodeDriverRegistrar.pullPolicy`            | csi-node-driver-registrar image pull policy                | IfNotPresent                                                      |
+| `imagePullSecrets`                                | Specify docker-registry secret names as an array           | [] (does not add image pull secrets to deployed pods)                                                           |
 | `serviceAccount.create`                           | whether create service account of csi-nfs-controller       | true                                                              |
 | `rbac.create`                                     | whether create rbac of csi-nfs-controller                  | true                                                              |
 | `controller.replicas`                             | the replicas of csi-nfs-controller                         | 2                                                                 |

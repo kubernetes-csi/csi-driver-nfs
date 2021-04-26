@@ -15,6 +15,10 @@ spec:
 {{ include "nfs.labels" . | indent 6 }}
         app: csi-nfs-controller
     spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{- end }}
       hostNetwork: true  # controller also needs to mount nfs to create dir
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: csi-nfs-controller-sa
