@@ -1,0 +1,34 @@
+image:
+    nfs:
+        repository: mcr.microsoft.com/k8s/csi/nfs-csi
+        tag: latest
+        pullPolicy: IfNotPresent
+    csiProvisioner:
+        repository: k8s.gcr.io/sig-storage/csi-provisioner
+        tag: v2.1.0
+        pullPolicy: IfNotPresent
+    livenessProbe:
+        repository: k8s.gcr.io/sig-storage/livenessprobe
+        tag: v2.1.0
+        pullPolicy: IfNotPresent
+    nodeDriverRegistrar:
+        repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
+        tag: v2.1.0
+        pullPolicy: IfNotPresent
+serviceAccount:
+  create: true
+rbac:
+  create: true
+controller:
+  replicas: 2
+  runOnMaster: false
+  logLevel: 5
+
+node:
+  logLevel: 5
+
+## Reference to one or more secrets to be used when pulling images
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+##
+imagePullSecrets: []
+# - name: "image-pull-secret"

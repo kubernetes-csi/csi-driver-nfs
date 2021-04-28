@@ -1,5 +1,5 @@
 #! /bin/bash
-#
+
 # Copyright 2019 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,9 +33,9 @@
 # The expected environment is:
 # - $GOPATH/src/<import path> for the repository that is to be tested,
 #   with PR branch merged (when testing a PR)
+# - optional: bazel installed (when testing against Kubernetes master),
+#   must be recent enough for Kubernetes master
 # - running on linux-amd64
-# - bazel installed (when testing against Kubernetes master), must be recent
-#   enough for Kubernetes master
 # - kind (https://github.com/kubernetes-sigs/kind) installed
 # - optional: Go already installed
 
@@ -52,26 +52,6 @@ configvar () {
     eval echo "\$3:" "$1=\${$1}"
 }
 
-# Takes the minor version of $CSI_PROW_KUBERNETES_VERSION and overrides it to
-# $1 if they are equal minor versions. Ignores versions that begin with
-# "release-".
-override_k8s_version () {
-    local current_minor_version
-    local override_minor_version
-
-    # Ignore: See if you can use ${variable//search/replace} instead.
-    # shellcheck disable=SC2001
-    current_minor_version="$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1\.\2/')"
-
-    # Ignore: See if you can use ${variable//search/replace} instead.
-    # shellcheck disable=SC2001
-    override_minor_version="$(echo "${1}" | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1\.\2/')"
-    if [ "${current_minor_version}" == "${override_minor_version}" ]; then
-      CSI_PROW_KUBERNETES_VERSION="$1"
-      echo "Overriding CSI_PROW_KUBERNETES_VERSION with $1: $CSI_PROW_KUBERNETES_VERSION"
-    fi
-}
-
 # Prints the value of a variable + version suffix, falling back to variable + "LATEST".
 get_versioned_variable () {
     local var="$1"
@@ -85,6 +65,18 @@ get_versioned_variable () {
     echo "$value"
 }
 
+# This takes a version string like CSI_PROW_KUBERNETES_VERSION and
+# maps it to the corresponding git tag, branch or commit.
+version_to_git () {
+    version="$1"
+    shift
+    case "$version" in
+        latest|master) echo "master";;
+        release-*) echo "$version";;
+        *) echo "v$version";;
+    esac
+}
+
 configvar CSI_PROW_BUILD_PLATFORMS "linux amd64; windows amd64 .exe; linux ppc64le -ppc64le; linux s390x -s390x; linux arm64 -arm64" "Go target platforms (= GOOS + GOARCH) and file suffix of the resulting binaries"
 
 # If we have a vendor directory, then use it. We must be careful to only
@@ -93,23 +85,11 @@ configvar CSI_PROW_BUILD_PLATFORMS "linux amd64; windows amd64 .exe; linux ppc64
 # which is disabled with GOFLAGS=-mod=vendor).
 configvar GOFLAGS_VENDOR "$( [ -d vendor ] && echo '-mod=vendor' )" "Go flags for using the vendor directory"
 
-# Go versions can be specified seperately for different tasks
-# If the pre-installed Go is missing or a different
-# version, the required version here will get installed
-# from https://golang.org/dl/.
-go_from_travis_yml () {
-    grep "^ *- go:" "${RELEASE_TOOLS_ROOT}/travis.yml" | sed -e 's/.*go: *//'
-}
-configvar CSI_PROW_GO_VERSION_BUILD "$(go_from_travis_yml)" "Go version for building the component" # depends on component's source code
+configvar CSI_PROW_GO_VERSION_BUILD "1.16" "Go version for building the component" # depends on component's source code
 configvar CSI_PROW_GO_VERSION_E2E "" "override Go version for building the Kubernetes E2E test suite" # normally doesn't need to be set, see install_e2e
 configvar CSI_PROW_GO_VERSION_SANITY "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building the csi-sanity test suite" # depends on CSI_PROW_SANITY settings below
 configvar CSI_PROW_GO_VERSION_KIND "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building 'kind'" # depends on CSI_PROW_KIND_VERSION below
 configvar CSI_PROW_GO_VERSION_GINKGO "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building ginkgo" # depends on CSI_PROW_GINKGO_VERSION below
-
-# kind version to use. If the pre-installed version is different,
-# the desired version is downloaded from https://github.com/kubernetes-sigs/kind/releases/download/
-# (if available), otherwise it is built from source.
-configvar CSI_PROW_KIND_VERSION "v0.6.0" "kind"
 
 # ginkgo test runner version to use. If the pre-installed version is
 # different, the desired version is built from source.
@@ -124,10 +104,13 @@ configvar CSI_PROW_GINKO_PARALLEL "-p" "Ginko parallelism parameter(s)"
 configvar CSI_PROW_BUILD_JOB true "building code in repo enabled"
 
 # Kubernetes version to test against. This must be a version number
-# (like 1.13.3) for which there is a pre-built kind image (see
-# https://hub.docker.com/r/kindest/node/tags), "latest" (builds
-# Kubernetes from the master branch) or "release-x.yy" (builds
-# Kubernetes from a release branch).
+# (like 1.13.3), "latest" (builds Kubernetes from the master branch)
+# or "release-x.yy" (builds Kubernetes from a release branch).
+#
+# The patch version is only relevant for picking the E2E test suite
+# that is used for testing. The script automatically picks
+# the kind images for the major/minor version of Kubernetes
+# that the kind release supports.
 #
 # This can also be a version that was not released yet at the time
 # that the settings below were chose. The script will then
@@ -136,16 +119,6 @@ configvar CSI_PROW_BUILD_JOB true "building code in repo enabled"
 # deprecating or changing the implementation of an alpha feature.
 configvar CSI_PROW_KUBERNETES_VERSION 1.17.0 "Kubernetes"
 
-# This is a hack to workaround the issue that each version
-# of kind currently only supports specific patch versions of
-# Kubernetes. We need to override CSI_PROW_KUBERNETES_VERSION
-# passed in by our CI/pull jobs to the versions that
-# kind v0.5.0 supports.
-#
-# If the version is prefixed with "release-", then nothing
-# is overridden.
-override_k8s_version "1.15.3"
-
 # CSI_PROW_KUBERNETES_VERSION reduced to first two version numbers and
 # with underscore (1_13 instead of 1.13.3) and in uppercase (LATEST
 # instead of latest).
@@ -153,6 +126,38 @@ override_k8s_version "1.15.3"
 # This is used to derive the right defaults for the variables below
 # when a Prow job just defines the Kubernetes version.
 csi_prow_kubernetes_version_suffix="$(echo "${CSI_PROW_KUBERNETES_VERSION}" | tr . _ | tr '[:lower:]' '[:upper:]' | sed -e 's/^RELEASE-//' -e 's/\([0-9]*\)_\([0-9]*\).*/\1_\2/')"
+
+# Only the latest KinD is (eventually) guaranteed to work with the
+# latest Kubernetes. For example, KinD 0.10.0 failed with Kubernetes
+# 1.21.0-beta1.  Therefore the default version of KinD is "main"
+# for that, otherwise the latest stable release for which we then
+# list the officially supported images below.
+kind_version_default () {
+    case "${CSI_PROW_KUBERNETES_VERSION}" in
+        latest|master)
+            echo main;;
+        *)
+            echo v0.10.0;;
+    esac
+}
+
+# kind version to use. If the pre-installed version is different,
+# the desired version is downloaded from https://github.com/kubernetes-sigs/kind/releases
+# (if available), otherwise it is built from source.
+configvar CSI_PROW_KIND_VERSION "$(kind_version_default)" "kind"
+
+# kind images to use. Must match the kind version.
+# The release notes of each kind release list the supported images.
+configvar CSI_PROW_KIND_IMAGES "kindest/node:v1.20.2@sha256:8f7ea6e7642c0da54f04a7ee10431549c0257315b3a634f6ef2fecaaedb19bab
+kindest/node:v1.19.7@sha256:a70639454e97a4b733f9d9b67e12c01f6b0297449d5b9cbbef87473458e26dca
+kindest/node:v1.18.15@sha256:5c1b980c4d0e0e8e7eb9f36f7df525d079a96169c8a8f20d8bd108c0d0889cc4
+kindest/node:v1.17.17@sha256:7b6369d27eee99c7a85c48ffd60e11412dc3f373658bc59b7f4d530b7056823e
+kindest/node:v1.16.15@sha256:c10a63a5bda231c0a379bf91aebf8ad3c79146daca59db816fb963f731852a99
+kindest/node:v1.15.12@sha256:67181f94f0b3072fb56509107b380e38c55e23bf60e6f052fbd8052d26052fb5
+kindest/node:v1.14.10@sha256:3fbed72bcac108055e46e7b4091eb6858ad628ec51bf693c21f5ec34578f6180" "kind images"
+
+# Use kind node-image --type=bazel by default, but allow to disable that.
+configvar CSI_PROW_USE_BAZEL true "use Bazel during 'kind node-image' invocation"
 
 # Work directory. It has to allow running executables, therefore /tmp
 # is avoided. Cleaning up after the script is intentionally left to
@@ -211,6 +216,10 @@ configvar CSI_PROW_DRIVER_INSTALL "install_csi_driver" "name of the shell functi
 # still use that name.
 configvar CSI_PROW_DRIVER_CANARY "${CSI_PROW_HOSTPATH_CANARY}" "driver image override for canary images"
 
+# Image registry to use for canary images.
+# Only valid if CSI_PROW_DRIVER_CANARY == "canary".
+configvar CSI_PROW_DRIVER_CANARY_REGISTRY "gcr.io/k8s-staging-sig-storage" "registry for canary images"
+
 # The E2E testing can come from an arbitrary repo. The expectation is that
 # the repo supports "go test ./test/e2e -args --storage.testdriver" (https://github.com/kubernetes/kubernetes/pull/72836)
 # after setting KUBECONFIG. As a special case, if the repository is Kubernetes,
@@ -218,17 +227,9 @@ configvar CSI_PROW_DRIVER_CANARY "${CSI_PROW_HOSTPATH_CANARY}" "driver image ove
 # all generated files are present.
 #
 # CSI_PROW_E2E_REPO=none disables E2E testing.
-# TOOO: remove versioned variables and make e2e version match k8s version
-configvar CSI_PROW_E2E_VERSION_1_15 v1.15.0 "E2E version for Kubernetes 1.15.x"
-configvar CSI_PROW_E2E_VERSION_1_16 v1.16.0 "E2E version for Kubernetes 1.16.x"
-configvar CSI_PROW_E2E_VERSION_1_17 v1.17.0 "E2E version for Kubernetes 1.17.x"
-# TODO: add new CSI_PROW_E2E_VERSION entry for future Kubernetes releases
-configvar CSI_PROW_E2E_VERSION_LATEST master "E2E version for Kubernetes master" # testing against Kubernetes master is already tracking a moving target, so we might as well use a moving E2E version
-configvar CSI_PROW_E2E_REPO_LATEST https://github.com/kubernetes/kubernetes "E2E repo for Kubernetes >= 1.13.x" # currently the same for all versions
-configvar CSI_PROW_E2E_IMPORT_PATH_LATEST k8s.io/kubernetes "E2E package for Kubernetes >= 1.13.x" # currently the same for all versions
-configvar CSI_PROW_E2E_VERSION "$(get_versioned_variable CSI_PROW_E2E_VERSION "${csi_prow_kubernetes_version_suffix}")"  "E2E version"
-configvar CSI_PROW_E2E_REPO "$(get_versioned_variable CSI_PROW_E2E_REPO "${csi_prow_kubernetes_version_suffix}")" "E2E repo"
-configvar CSI_PROW_E2E_IMPORT_PATH "$(get_versioned_variable CSI_PROW_E2E_IMPORT_PATH "${csi_prow_kubernetes_version_suffix}")" "E2E package"
+configvar CSI_PROW_E2E_VERSION "$(version_to_git "${CSI_PROW_KUBERNETES_VERSION}")"  "E2E version"
+configvar CSI_PROW_E2E_REPO "https://github.com/kubernetes/kubernetes" "E2E repo"
+configvar CSI_PROW_E2E_IMPORT_PATH "k8s.io/kubernetes" "E2E package"
 
 # csi-sanity testing from the csi-test repo can be run against the installed
 # CSI driver. For this to work, deploying the driver must expose the Unix domain
@@ -236,8 +237,8 @@ configvar CSI_PROW_E2E_IMPORT_PATH "$(get_versioned_variable CSI_PROW_E2E_IMPORT
 # of the cluster. The alternative would have been to (cross-)compile csi-sanity
 # and install it inside the cluster, which is not necessarily easier.
 configvar CSI_PROW_SANITY_REPO https://github.com/kubernetes-csi/csi-test "csi-test repo"
-configvar CSI_PROW_SANITY_VERSION 5421d9f3c37be3b95b241b44a094a3db11bee789 "csi-test version" # latest master
-configvar CSI_PROW_SANITY_IMPORT_PATH github.com/kubernetes-csi/csi-test "csi-test package"
+configvar CSI_PROW_SANITY_VERSION v4.0.2 "csi-test version" # v4.0.2
+configvar CSI_PROW_SANITY_PACKAGE_PATH github.com/kubernetes-csi/csi-test "csi-test package"
 configvar CSI_PROW_SANITY_SERVICE "hostpath-service" "Kubernetes TCP service name that exposes csi.sock"
 configvar CSI_PROW_SANITY_POD "csi-hostpathplugin-0" "Kubernetes pod with CSI driver"
 configvar CSI_PROW_SANITY_CONTAINER "hostpath" "Kubernetes container with CSI driver"
@@ -257,11 +258,16 @@ configvar CSI_PROW_DEP_VERSION v0.5.1 "golang dep version to be used for vendor 
 #
 # Unknown or unsupported entries are ignored.
 #
+# Testing of alpha features is only supported for CSI_PROW_KUBERNETES_VERSION=latest
+# because CSI_PROW_E2E_ALPHA and CSI_PROW_E2E_ALPHA_GATES are not set for
+# older Kubernetes releases. The script supports that, it just isn't done because
+# it is not needed and would cause additional maintenance effort.
+#
 # Sanity testing with csi-sanity only covers the CSI driver itself and
 # thus only makes sense in repos which provide their own CSI
 # driver. Repos can enable sanity testing by setting
 # CSI_PROW_TESTS_SANITY=sanity.
-configvar CSI_PROW_TESTS "unit parallel serial parallel-alpha serial-alpha sanity" "tests to run"
+configvar CSI_PROW_TESTS "unit parallel serial $(if [ "${CSI_PROW_KUBERNETES_VERSION}" = "latest" ]; then echo parallel-alpha serial-alpha; fi) sanity" "tests to run"
 tests_enabled () {
     local t1 t2
     # We want word-splitting here, so ignore: Quote to prevent word splitting, or split robustly with mapfile or read -a.
@@ -293,15 +299,11 @@ tests_need_alpha_cluster () {
 
 # Regex for non-alpha, feature-tagged tests that should be run.
 #
-# Starting with 1.17, snapshots is beta, but the E2E tests still have the
-# [Feature:] tag. They need to be explicitly enabled.
-configvar CSI_PROW_E2E_FOCUS_1_15 '^' "non-alpha, feature-tagged tests for Kubernetes = 1.15" # no tests to run, match nothing
-configvar CSI_PROW_E2E_FOCUS_1_16 '^' "non-alpha, feature-tagged tests for Kubernetes = 1.16" # no tests to run, match nothing
-configvar CSI_PROW_E2E_FOCUS_LATEST '\[Feature:VolumeSnapshotDataSource\]' "non-alpha, feature-tagged tests for Kubernetes >= 1.17"
+configvar CSI_PROW_E2E_FOCUS_LATEST '\[Feature:VolumeSnapshotDataSource\]' "non-alpha, feature-tagged tests for latest Kubernetes version"
 configvar CSI_PROW_E2E_FOCUS "$(get_versioned_variable CSI_PROW_E2E_FOCUS "${csi_prow_kubernetes_version_suffix}")" "non-alpha, feature-tagged tests"
 
 # Serial vs. parallel is always determined by these regular expressions.
-# Individual regular expressions are seperated by spaces for readability
+# Individual regular expressions are separated by spaces for readability
 # and expected to not contain spaces. Use dots instead. The complete
 # regex for Ginkgo will be created by joining the individual terms.
 configvar CSI_PROW_E2E_SERIAL '\[Serial\] \[Disruptive\]' "tags for serial E2E tests"
@@ -319,7 +321,7 @@ regex_join () {
 # alpha in previous Kubernetes releases. This was considered too
 # error prone. Therefore we use E2E tests that match the Kubernetes
 # version that is getting tested.
-configvar CSI_PROW_E2E_ALPHA_LATEST '\[Feature:' "alpha tests for Kubernetes >= 1.14" # there's no need to update this, adding a new case for CSI_PROW_E2E for a new Kubernetes is enough
+configvar CSI_PROW_E2E_ALPHA_LATEST '\[Feature:' "alpha tests for latest Kubernetes version" # there's no need to update this, adding a new case for CSI_PROW_E2E for a new Kubernetes is enough
 configvar CSI_PROW_E2E_ALPHA "$(get_versioned_variable CSI_PROW_E2E_ALPHA "${csi_prow_kubernetes_version_suffix}")" "alpha tests"
 
 # After the parallel E2E test without alpha features, a test cluster
@@ -334,15 +336,18 @@ configvar CSI_PROW_E2E_ALPHA "$(get_versioned_variable CSI_PROW_E2E_ALPHA "${csi
 # kubernetes-csi components must be updated, either by disabling
 # the failing test for "latest" or by updating the test and not running
 # it anymore for older releases.
-configvar CSI_PROW_E2E_ALPHA_GATES_1_15 'VolumeSnapshotDataSource=true,ExpandCSIVolumes=true' "alpha feature gates for Kubernetes 1.15"
-configvar CSI_PROW_E2E_ALPHA_GATES_1_16 'VolumeSnapshotDataSource=true' "alpha feature gates for Kubernetes 1.16"
-# TODO: add new CSI_PROW_ALPHA_GATES_xxx entry for future Kubernetes releases and
-# add new gates to CSI_PROW_E2E_ALPHA_GATES_LATEST.
-configvar CSI_PROW_E2E_ALPHA_GATES_LATEST '' "alpha feature gates for latest Kubernetes"
+configvar CSI_PROW_E2E_ALPHA_GATES_LATEST 'GenericEphemeralVolume=true,CSIStorageCapacity=true' "alpha feature gates for latest Kubernetes"
 configvar CSI_PROW_E2E_ALPHA_GATES "$(get_versioned_variable CSI_PROW_E2E_ALPHA_GATES "${csi_prow_kubernetes_version_suffix}")" "alpha E2E feature gates"
 
 # Which external-snapshotter tag to use for the snapshotter CRD and snapshot-controller deployment
-configvar CSI_SNAPSHOTTER_VERSION 'v2.0.1' "external-snapshotter version tag"
+default_csi_snapshotter_version () {
+	if [ "${CSI_PROW_KUBERNETES_VERSION}" = "latest" ] || [ "${CSI_PROW_DRIVER_CANARY}" = "canary" ]; then
+		echo "master"
+	else
+		echo "v3.0.2"
+	fi
+}
+configvar CSI_SNAPSHOTTER_VERSION "$(default_csi_snapshotter_version)" "external-snapshotter version tag"
 
 # Some tests are known to be unusable in a KinD cluster. For example,
 # stopping kubelet with "ssh <node IP> systemctl stop kubelet" simply
@@ -412,7 +417,7 @@ install_kind () {
         chmod u+x "${CSI_PROW_WORK}/bin/kind"
     else
         git_checkout https://github.com/kubernetes-sigs/kind "${GOPATH}/src/sigs.k8s.io/kind" "${CSI_PROW_KIND_VERSION}" --depth=1 &&
-        (cd "${GOPATH}/src/sigs.k8s.io/kind" && make install INSTALL_DIR="${CSI_PROW_WORK}/bin")
+        (cd "${GOPATH}/src/sigs.k8s.io/kind" && run_with_go "$CSI_PROW_GO_VERSION_KIND" make install INSTALL_DIR="${CSI_PROW_WORK}/bin")
     fi
 }
 
@@ -470,20 +475,22 @@ git_checkout () {
 
 # This clones a repo ("https://github.com/kubernetes/kubernetes")
 # in a certain location ("$GOPATH/src/k8s.io/kubernetes") at
-# a the head of a specific branch (i.e., release-1.13, master).
-# The directory cannot exist.
-git_clone_branch () {
-    local repo path branch parent
+# a the head of a specific branch (i.e., release-1.13, master),
+# tag (v1.20.0) or commit.
+#
+# The directory must not exist.
+git_clone () {
+    local repo path name parent
     repo="$1"
     shift
     path="$1"
     shift
-    branch="$1"
+    name="$1"
     shift
 
     parent="$(dirname "$path")"
     mkdir -p "$parent"
-    (cd "$parent" && run git clone --single-branch --branch "$branch" "$repo" "$path") || die "cloning $repo" failed
+    (cd "$parent" && run git clone --single-branch --branch "$name" "$repo" "$path") || die "cloning $repo" failed
     # This is useful for local testing or when switching between different revisions in the same
     # repo.
     (cd "$path" && run git clean -fdx) || die "failed to clean $path"
@@ -502,6 +509,22 @@ list_gates () (
     done
 )
 
+# Turn feature gates in the format foo=true,bar=false into
+# a YAML map with the corresponding API groups for use
+# with https://kind.sigs.k8s.io/docs/user/configuration/#runtime-config
+list_api_groups () (
+    set -f; IFS=','
+    # Ignore: Double quote to prevent globbing and word splitting.
+    # shellcheck disable=SC2086
+    set -- $1
+    while [ "$1" ]; do
+        if [ "$1" = 'CSIStorageCapacity=true' ]; then
+            echo '   "storage.k8s.io/v1alpha1": "true"'
+        fi
+        shift
+    done
+)
+
 go_version_for_kubernetes () (
     local path="$1"
     local version="$2"
@@ -513,6 +536,10 @@ go_version_for_kubernetes () (
     if ! [ "$go_version" ]; then
         die "Unable to determine Go version for Kubernetes $version from hack/lib/golang.sh."
     fi
+    # Strip the trailing .0. Kubernetes includes it, Go itself doesn't.
+    # Ignore: See if you can use ${variable//search/replace} instead.
+    # shellcheck disable=SC2001
+    go_version="$(echo "$go_version" | sed -e 's/\.0$//')"
     echo "$go_version"
 )
 
@@ -527,77 +554,53 @@ start_cluster () {
         run kind delete cluster --name=csi-prow || die "kind delete failed"
     fi
 
-    # Build from source?
-    if [[ "${CSI_PROW_KUBERNETES_VERSION}" =~ ^release-|^latest$ ]]; then
+    # Try to find a pre-built kind image if asked to use a specific version.
+    if ! [[ "${CSI_PROW_KUBERNETES_VERSION}" =~ ^release-|^latest$ ]]; then
+        # Ignore: See if you can use ${variable//search/replace} instead.
+        # shellcheck disable=SC2001
+        major_minor=$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/^\([0-9]*\)\.\([0-9]*\).*/\1.\2/')
+        for i in ${CSI_PROW_KIND_IMAGES}; do
+            if echo "$i" | grep -q "kindest/node:v${major_minor}"; then
+                image="$i"
+                break
+            fi
+        done
+    fi
+
+    # Need to build from source?
+    if ! [ "$image" ]; then
         if ! ${csi_prow_kind_have_kubernetes}; then
             local version="${CSI_PROW_KUBERNETES_VERSION}"
             if [ "$version" = "latest" ]; then
                 version=master
             fi
-            git_clone_branch https://github.com/kubernetes/kubernetes "${CSI_PROW_WORK}/src/kubernetes" "$version" || die "checking out Kubernetes $version failed"
+            if ${CSI_PROW_USE_BAZEL}; then
+                type="bazel"
+            else
+                type="docker"
+            fi
+            git_clone https://github.com/kubernetes/kubernetes "${CSI_PROW_WORK}/src/kubernetes" "$(version_to_git "$version")" || die "checking out Kubernetes $version failed"
 
             go_version="$(go_version_for_kubernetes "${CSI_PROW_WORK}/src/kubernetes" "$version")" || die "cannot proceed without knowing Go version for Kubernetes"
-            run_with_go "$go_version" kind build node-image --type bazel --image csiprow/node:latest --kube-root "${CSI_PROW_WORK}/src/kubernetes" || die "'kind build node-image' failed"
+            # Changing into the Kubernetes source code directory is a workaround for https://github.com/kubernetes-sigs/kind/issues/1910
+            # shellcheck disable=SC2046
+            (cd "${CSI_PROW_WORK}/src/kubernetes" && run_with_go "$go_version" kind build node-image --image csiprow/node:latest $(if [ "$CSI_PROW_KIND_VERSION" != "main" ]; then echo --type="$type"; fi) --kube-root "${CSI_PROW_WORK}/src/kubernetes") || die "'kind build node-image' failed"
             csi_prow_kind_have_kubernetes=true
         fi
         image="csiprow/node:latest"
-    else
-        image="kindest/node:v${CSI_PROW_KUBERNETES_VERSION}"
     fi
     cat >"${CSI_PROW_WORK}/kind-config.yaml" <<EOF
 kind: Cluster
-apiVersion: kind.sigs.k8s.io/v1alpha3
+apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
 - role: worker
 - role: worker
-EOF
-
-    # kubeadm has API dependencies between apiVersion and Kubernetes version
-    # 1.15+ requires kubeadm.k8s.io/v1beta2
-    # We only run alpha tests against master so we don't need to maintain
-    # different patches for different Kubernetes releases.
-    if [[ -n "$gates" ]]; then
-        cat >>"${CSI_PROW_WORK}/kind-config.yaml" <<EOF
-kubeadmConfigPatches:
-- |
-  apiVersion: kubeadm.k8s.io/v1beta2
-  kind: ClusterConfiguration
-  metadata:
-    name: config
-  apiServer:
-    extraArgs:
-      "feature-gates": "$gates"
-  controllerManager:
-    extraArgs:
-      "feature-gates": "$gates"
-  scheduler:
-    extraArgs:
-      "feature-gates": "$gates"
-- |
-  apiVersion: kubeadm.k8s.io/v1beta2
-  kind: InitConfiguration
-  metadata:
-    name: config
-  nodeRegistration:
-    kubeletExtraArgs:
-      "feature-gates": "$gates"
-- |
-  apiVersion: kubelet.config.k8s.io/v1beta1
-  kind: KubeletConfiguration
-  metadata:
-    name: config
-  featureGates:
+featureGates:
 $(list_gates "$gates")
-- |
-  apiVersion: kubeproxy.config.k8s.io/v1alpha1
-  kind: KubeProxyConfiguration
-  metadata:
-    name: config
-  featureGates:
-$(list_gates "$gates")
+runtimeConfig:
+$(list_api_groups "$gates")
 EOF
-    fi
 
     info "kind-config.yaml:"
     cat "${CSI_PROW_WORK}/kind-config.yaml"
@@ -688,7 +691,11 @@ install_csi_driver () {
     fi
 
     if [ "${CSI_PROW_DRIVER_CANARY}" != "stable" ]; then
+      if [ "${CSI_PROW_DRIVER_CANARY}" == "canary" ]; then
+        images="$images IMAGE_TAG=${CSI_PROW_DRIVER_CANARY} IMAGE_REGISTRY=${CSI_PROW_DRIVER_CANARY_REGISTRY}"
+      else
         images="$images IMAGE_TAG=${CSI_PROW_DRIVER_CANARY}"
+      fi
     fi
     # Ignore: Double quote to prevent globbing and word splitting.
     # It's intentional here for $images.
@@ -705,7 +712,11 @@ install_csi_driver () {
 # Installs all nessesary snapshotter CRDs  
 install_snapshot_crds() {
   # Wait until volumesnapshot CRDs are in place.
-  CRD_BASE_DIR="https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${CSI_SNAPSHOTTER_VERSION}/config/crd"
+  CRD_BASE_DIR="https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${CSI_SNAPSHOTTER_VERSION}/client/config/crd"
+  if [[ ${REPO_DIR} == *"external-snapshotter"* ]]; then
+      CRD_BASE_DIR="${REPO_DIR}/client/config/crd"
+  fi
+  echo "Installing snapshot CRDs from ${CRD_BASE_DIR}"
   kubectl apply -f "${CRD_BASE_DIR}/snapshot.storage.k8s.io_volumesnapshotclasses.yaml" --validate=false
   kubectl apply -f "${CRD_BASE_DIR}/snapshot.storage.k8s.io_volumesnapshots.yaml" --validate=false
   kubectl apply -f "${CRD_BASE_DIR}/snapshot.storage.k8s.io_volumesnapshotcontents.yaml" --validate=false
@@ -725,7 +736,16 @@ install_snapshot_crds() {
 
 # Install snapshot controller and associated RBAC, retrying until the pod is running.
 install_snapshot_controller() {
-  kubectl apply -f "https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${CSI_SNAPSHOTTER_VERSION}/deploy/kubernetes/snapshot-controller/rbac-snapshot-controller.yaml"
+  CONTROLLER_DIR="https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${CSI_SNAPSHOTTER_VERSION}"
+  if [[ ${REPO_DIR} == *"external-snapshotter"* ]]; then
+      CONTROLLER_DIR="${REPO_DIR}"
+  fi
+  SNAPSHOT_RBAC_YAML="${CONTROLLER_DIR}/deploy/kubernetes/snapshot-controller/rbac-snapshot-controller.yaml"
+  echo "kubectl apply -f ${SNAPSHOT_RBAC_YAML}"
+  # Ignore: Double quote to prevent globbing and word splitting.
+  # shellcheck disable=SC2086
+  kubectl apply -f ${SNAPSHOT_RBAC_YAML}
+
   cnt=0
   until kubectl get clusterrolebinding snapshot-controller-role; do
      if [ $cnt -gt 30 ]; then
@@ -739,14 +759,67 @@ install_snapshot_controller() {
     sleep 10   
   done
 
+  SNAPSHOT_CONTROLLER_YAML="${CONTROLLER_DIR}/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml"
+  if [[ ${REPO_DIR} == *"external-snapshotter"* ]]; then
+      # snapshot-controller image built from the PR will get a "csiprow" tag.
+      # Load it into the "kind" cluster so that we can deploy it.
+      NEW_TAG="csiprow"
+      NEW_IMG="snapshot-controller:${NEW_TAG}"
+      echo "kind load docker-image --name csi-prow ${NEW_IMG}"
+      kind load docker-image --name csi-prow ${NEW_IMG} || die "could not load the snapshot-controller:csiprow image into the kind cluster"
 
-  kubectl apply -f "https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${CSI_SNAPSHOTTER_VERSION}/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml"
+      # deploy snapshot-controller
+      echo "Deploying snapshot-controller"
+      # Replace image in SNAPSHOT_CONTROLLER_YAML with snapshot-controller:csiprow and deploy
+      # NOTE: This logic is similar to the logic here:
+      # https://github.com/kubernetes-csi/csi-driver-host-path/blob/v1.4.0/deploy/util/deploy-hostpath.sh#L155
+      # Ignore: Double quote to prevent globbing and word splitting.
+      # shellcheck disable=SC2086
+      # Ignore: Use find instead of ls to better handle non-alphanumeric filenames.
+      # shellcheck disable=SC2012
+      for i in $(ls ${SNAPSHOT_CONTROLLER_YAML} | sort); do
+          echo "   $i"
+          # Ignore: Useless cat. Consider 'cmd < file | ..' or 'cmd file | ..' instead.
+          # shellcheck disable=SC2002
+          # Ignore: See if you can use ${variable//search/replace} instead.
+          # shellcheck disable=SC2001
+          modified="$(cat "$i" | while IFS= read -r line; do
+              nocomments="$(echo "$line" | sed -e 's/ *#.*$//')"
+              if echo "$nocomments" | grep -q '^[[:space:]]*image:[[:space:]]*'; then
+                  # Split 'image: k8s.gcr.io/sig-storage/snapshot-controller:v3.0.0'
+                  # into image (snapshot-controller:v3.0.0),
+                  # name (snapshot-controller),
+                  # tag (v3.0.0).
+                  image=$(echo "$nocomments" | sed -e 's;.*image:[[:space:]]*;;')
+                  name=$(echo "$image" | sed -e 's;.*/\([^:]*\).*;\1;')
+                  tag=$(echo "$image" | sed -e 's;.*:;;')
+
+                  # Now replace registry and/or tag
+                  NEW_TAG="csiprow"
+                  line="$(echo "$nocomments" | sed -e "s;$image;${name}:${NEW_TAG};")"
+	          echo "        using $line" >&2
+              fi
+              echo "$line"
+          done)"
+          if ! echo "$modified" | kubectl apply -f -; then
+              echo "modified version of $i:"
+              echo "$modified"
+              exit 1
+          fi
+	  echo "kubectl apply -f ${SNAPSHOT_CONTROLLER_YAML}(modified)"
+      done
+  else
+      echo "kubectl apply -f $SNAPSHOT_CONTROLLER_YAML"
+      kubectl apply -f "$SNAPSHOT_CONTROLLER_YAML"
+  fi
+
   cnt=0
-  expected_running_pods=$(curl https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/"${CSI_SNAPSHOTTER_VERSION}"/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml | grep replicas | cut -d ':' -f 2-)
-  while [ "$(kubectl get pods -l app=snapshot-controller | grep 'Running' -c)" -lt "$expected_running_pods" ]; do
+  expected_running_pods=$(kubectl apply --dry-run=client -o "jsonpath={.spec.replicas}" -f "$SNAPSHOT_CONTROLLER_YAML")
+  expected_namespace=$(kubectl apply --dry-run=client -o "jsonpath={.metadata.namespace}" -f "$SNAPSHOT_CONTROLLER_YAML")
+  while [ "$(kubectl get pods -n "$expected_namespace" -l app=snapshot-controller | grep 'Running' -c)" -lt "$expected_running_pods" ]; do
     if [ $cnt -gt 30 ]; then
         echo "snapshot-controller pod status:"
-        kubectl describe pods -l app=snapshot-controller
+        kubectl describe pods -n "$expected_namespace" -l app=snapshot-controller
         echo >&2 "ERROR: snapshot controller not ready after over 5 min"
         exit 1
     fi
@@ -820,8 +893,8 @@ install_sanity () (
         return
     fi
 
-    git_checkout "${CSI_PROW_SANITY_REPO}" "${GOPATH}/src/${CSI_PROW_SANITY_IMPORT_PATH}" "${CSI_PROW_SANITY_VERSION}" --depth=1 || die "checking out csi-sanity failed"
-    run_with_go "${CSI_PROW_GO_VERSION_SANITY}" go test -c -o "${CSI_PROW_WORK}/csi-sanity" "${CSI_PROW_SANITY_IMPORT_PATH}/cmd/csi-sanity" || die "building csi-sanity failed"
+    git_checkout "${CSI_PROW_SANITY_REPO}" "${GOPATH}/src/${CSI_PROW_SANITY_PACKAGE_PATH}" "${CSI_PROW_SANITY_VERSION}" --depth=1 || die "checking out csi-sanity failed"
+    ( cd "${GOPATH}/src/${CSI_PROW_SANITY_PACKAGE_PATH}/cmd/csi-sanity" && run_with_go "${CSI_PROW_GO_VERSION_SANITY}" go build -o "${CSI_PROW_WORK}/csi-sanity" ) || die "building csi-sanity failed"
 )
 
 # Captures pod output while running some other command.
@@ -939,7 +1012,7 @@ make_test_to_junit () {
         echo "$line" # pass through
         if echo "$line" | grep -q "^### [^ ]*:$"; then
             if [ "$testname" ]; then
-                # previous test succesful
+                # previous test successful
                 echo "    </system-out>" >>"$out"
                 echo "  </testcase>" >>"$out"
             fi
@@ -1088,14 +1161,8 @@ main () {
             start_cluster || die "starting the non-alpha cluster failed"
 
             # Install necessary snapshot CRDs and snapshot controller
-            # For Kubernetes 1.17+, we will install the CRDs and snapshot controller.
-            if version_gt "${CSI_PROW_KUBERNETES_VERSION}" "1.16.255" || "${CSI_PROW_KUBERNETES_VERSION}" == "latest"; then
-                info "Version ${CSI_PROW_KUBERNETES_VERSION}, installing CRDs and snapshot controller"
-                install_snapshot_crds
-                install_snapshot_controller
-            else
-                info "Version ${CSI_PROW_KUBERNETES_VERSION}, skipping CRDs and snapshot controller"
-            fi
+            install_snapshot_crds
+            install_snapshot_controller
 
             # Installing the driver might be disabled.
             if ${CSI_PROW_DRIVER_INSTALL} "$images"; then
@@ -1145,14 +1212,8 @@ main () {
             start_cluster "${CSI_PROW_E2E_ALPHA_GATES}" || die "starting alpha cluster failed"
 
             # Install necessary snapshot CRDs and snapshot controller
-            # For Kubernetes 1.17+, we will install the CRDs and snapshot controller.
-            if version_gt "${CSI_PROW_KUBERNETES_VERSION}" "1.16.255" || "${CSI_PROW_KUBERNETES_VERSION}" == "latest"; then
-                info "Version ${CSI_PROW_KUBERNETES_VERSION}, installing CRDs and snapshot controller"
-                install_snapshot_crds
-                install_snapshot_controller
-            else
-                info "Version ${CSI_PROW_KUBERNETES_VERSION}, skipping CRDs and snapshot controller"
-            fi
+            install_snapshot_crds
+            install_snapshot_controller
 
             # Installing the driver might be disabled.
             if ${CSI_PROW_DRIVER_INSTALL} "$images"; then
