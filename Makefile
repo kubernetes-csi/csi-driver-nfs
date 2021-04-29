@@ -124,4 +124,8 @@ e2e-teardown:
 
 .PHONY: e2e-test
 e2e-test:
-	go test -v -timeout=0 ./test/e2e ${GINKGO_FLAGS}
+	if [ ! -z "$(EXTERNAL_E2E_TEST)" ]; then \
+		bash ./test/external-e2e/run.sh;\
+	else \
+		go test -v -timeout=0 ./test/e2e ${GINKGO_FLAGS};\
+	fi

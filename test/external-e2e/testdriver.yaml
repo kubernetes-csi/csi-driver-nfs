@@ -1,0 +1,12 @@
+# Manifest for Kubernetes external tests.
+# See https://github.com/kubernetes/kubernetes/tree/master/test/e2e/storage/external
+
+StorageClass:
+  FromFile: /tmp/csi-nfs/storageclass.yaml
+DriverInfo:
+  Name: nfs.csi.k8s.io
+  Capabilities:
+    persistence: true
+    exec: true
+    multipods: true
+    RWX: true
