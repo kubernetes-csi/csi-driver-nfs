@@ -6,4 +6,3 @@ spec:
   attachRequired: false
   volumeLifecycleModes:
     - Persistent
-  podInfoOnMount: true
