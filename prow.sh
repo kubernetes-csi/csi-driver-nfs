@@ -185,8 +185,8 @@ configvar CSI_PROW_USE_BAZEL true "use Bazel during 'kind node-image' invocation
 #   CSI_PROW_DEPLOYMENT variable can be set in the
 #   .prow.sh of each component when there are breaking changes
 #   that require using a non-default deployment. The default
-#   is a deployment named "kubernetes-x.yy" (if available),
-#   otherwise "kubernetes-latest".
+#   is a deployment named "kubernetes-x.yy${CSI_PROW_DEPLOYMENT_SUFFIX}" (if available),
+#   otherwise "kubernetes-latest${CSI_PROW_DEPLOYMENT_SUFFIX}".
 #   "none" disables the deployment of the hostpath driver.
 #
 # When no deploy script is found (nothing in `deploy` directory,
@@ -198,6 +198,7 @@ configvar CSI_PROW_USE_BAZEL true "use Bazel during 'kind node-image' invocation
 configvar CSI_PROW_DRIVER_VERSION "v1.3.0" "CSI driver version"
 configvar CSI_PROW_DRIVER_REPO https://github.com/kubernetes-csi/csi-driver-host-path "CSI driver repo"
 configvar CSI_PROW_DEPLOYMENT "" "deployment"
+configvar CSI_PROW_DEPLOYMENT_SUFFIX "" "additional suffix in kubernetes-x.yy[suffix].yaml files"
 
 # The install_csi_driver function may work also for other CSI drivers,
 # as long as they follow the conventions of the CSI hostpath driver.
@@ -650,9 +651,9 @@ find_deployment () {
 
     # Ignore: See if you can use ${variable//search/replace} instead.
     # shellcheck disable=SC2001
-    file="$dir/kubernetes-$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')/deploy.sh"
+    file="$dir/kubernetes-$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')${CSI_PROW_DEPLOYMENT_SUFFIX}/deploy.sh"
     if ! [ -e "$file" ]; then
-        file="$dir/kubernetes-latest/deploy.sh"
+        file="$dir/kubernetes-latest${CSI_PROW_DEPLOYMENT_SUFFIX}/deploy.sh"
         if ! [ -e "$file" ]; then
             return 1
         fi
