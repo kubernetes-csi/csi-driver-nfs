@@ -29,7 +29,7 @@ spec:
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
-            - --health-port=29653
+            - --health-port={{ .Values.node.livenessProbe.healthPort }}
             - --v=2
           imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
           volumeMounts:
