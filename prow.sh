@@ -136,6 +136,9 @@ kind_version_default () {
     case "${CSI_PROW_KUBERNETES_VERSION}" in
         latest|master)
             echo main;;
+        1.21*|release-1.21)
+            # TODO: replace this special case once the next KinD release supports 1.21.
+            echo main;;
         *)
             echo v0.10.0;;
     esac
