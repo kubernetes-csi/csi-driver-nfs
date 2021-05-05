@@ -104,3 +104,47 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
    CSI hostpath driver with the new sidecars in the [CSI repo](https://github.com/kubernetes-csi/csi-driver-host-path/tree/master/deploy)
    and [k/k
    in-tree](https://github.com/kubernetes/kubernetes/tree/master/test/e2e/testing-manifests/storage-csi/hostpath/hostpath)
+
+## Adding support for a new Kubernetes release
+
+1. Add the new release to `k8s_versions` in
+   https://github.com/kubernetes/test-infra/blob/090dec5dd535d5f61b7ba52e671a810f5fc13dfd/config/jobs/kubernetes-csi/gen-jobs.sh#L25
+   to enable generating a job for it. Set `experimental_k8s_version`
+   in
+   https://github.com/kubernetes/test-infra/blob/090dec5dd535d5f61b7ba52e671a810f5fc13dfd/config/jobs/kubernetes-csi/gen-jobs.sh#L40
+   to ensure that the new jobs aren't run for PRs unless explicitly
+   requested. Generate and submit the new jobs.
+1. Create a test PR to try out the new job in some repo with `/test
+   pull-kubernetes-csi-<repo>-<x.y>-on-kubernetes-<x.y>` where x.y
+   matches the Kubernetes release. Alternatively, run .prow.sh in that
+   repo locally with `CSI_PROW_KUBERNETES_VERSION=x.y.z`.
+1. Optional: update to a [new
+   release](https://github.com/kubernetes-sigs/kind/tags) of kind with
+   pre-built images for the new Kubernetes release. This is optional
+   if the current version of kind is able to build images for the new
+   Kubernetes release. However, jobs require less resources when they
+   don't need to build those images from the Kubernetes source code.
+   This change needs to be tried out in a PR against a component
+   first, then get submitted against csi-release-tools.
+1. Optional: propagate the updated csi-release-tools to all components
+   with the script from
+   https://github.com/kubernetes-csi/csi-release-tools/issues/7#issuecomment-707025402
+1. Once it is likely to work in all components, unset
+   `experimental_k8s_version` and submit the updated jobs.
+1. Once all sidecars for the new Kubernetes release are released,
+   either bump the version number of the images in the existing
+   [csi-driver-host-path
+   deployments](https://github.com/kubernetes-csi/csi-driver-host-path/tree/master/deploy)
+   and/or create a new deployment, depending on what Kubernetes
+   release an updated sidecar is compatible with. If no new deployment
+   is needed, then add a symlink to document that there intentionally
+   isn't a separate deployment. This symlink is not needed for Prow
+   testing because that will use "kubernetes-latest" as fallback.
+   Update that link when creating a new deployment.
+1. Create a new csi-driver-host-path release.
+1. Bump `CSI_PROW_DRIVER_VERSION` in prow.sh to that new release and
+   (eventually) roll that change out to all repos by updating
+   `release-tools` in them. This is used when testing manually. The
+   Prow jobs override that value, so also update
+   `hostpath_driver_version` in
+   https://github.com/kubernetes/test-infra/blob/91b04e6af3a40a9bcff25aa030850a4721e2dd2b/config/jobs/kubernetes-csi/gen-jobs.sh#L46-L47
