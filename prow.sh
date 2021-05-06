@@ -296,6 +296,17 @@ tests_need_alpha_cluster () {
     tests_enabled "parallel-alpha" "serial-alpha"
 }
 
+# Enabling mock tests adds the "CSI mock volume" tests from https://github.com/kubernetes/kubernetes/blob/master/test/e2e/storage/csi_mock_volume.go
+# to the e2e.test invocations (serial, parallel, and the corresponding alpha variants).
+# When testing canary images, those get used instead of the images specified
+# in the e2e.test's normal YAML files.
+#
+# The default is to enable this for all jobs which use canary images
+# because we want to know whether our release candidates will pass all
+# existing tests (the storage testsuites and mock testing in
+# Kubernetes).
+configvar CSI_PROW_E2E_MOCK "$(if [ "${CSI_PROW_DRIVER_CANARY}" = "canary" ]; then echo true; else echo false; fi)" "enable CSI mock volume tests"
+
 # Regex for non-alpha, feature-tagged tests that should be run.
 #
 configvar CSI_PROW_E2E_FOCUS_LATEST '\[Feature:VolumeSnapshotDataSource\]' "non-alpha, feature-tagged tests for latest Kubernetes version"
@@ -873,6 +884,29 @@ start_loggers () {
     done
 }
 
+# Patches the image versions of test/e2e/testing-manifests/storage-csi/mock in the k/k
+# source code, if needed.
+patch_kubernetes () {
+    local source="$1" target="$2"
+
+    if [ "${CSI_PROW_DRIVER_CANARY}" = "canary" ]; then
+        # We cannot replace k8s.gcr.io/sig-storage with gcr.io/k8s-staging-sig-storage because
+        # e2e.test does not support it (see test/utils/image/manifest.go). Instead we
+        # invoke the e2e.test binary with KUBE_TEST_REPO_LIST set to a file that
+        # overrides that registry.
+        find "$source/test/e2e/testing-manifests/storage-csi/mock" -name '*.yaml' -print0 | xargs -0 sed -i -e 's;k8s.gcr.io/sig-storage/\(.*\):v.*;k8s.gcr.io/sig-storage/\1:canary;'
+        cat >"$target/e2e-repo-list" <<EOF
+sigStorageRegistry: gcr.io/k8s-staging-sig-storage
+EOF
+        cat >&2 <<EOF
+
+Using a modified version of k/k/test/e2e:
+$(cd "$source" && git diff 2>&1)
+
+EOF
+    fi
+}
+
 # Makes the E2E test suite binary available as "${CSI_PROW_WORK}/e2e.test".
 install_e2e () {
     if [ -e "${CSI_PROW_WORK}/e2e.test" ]; then
@@ -881,6 +915,7 @@ install_e2e () {
 
     git_checkout "${CSI_PROW_E2E_REPO}" "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" "${CSI_PROW_E2E_VERSION}" --depth=1 &&
     if [ "${CSI_PROW_E2E_IMPORT_PATH}" = "k8s.io/kubernetes" ]; then
+        patch_kubernetes "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" "${CSI_PROW_WORK}" &&
         go_version="${CSI_PROW_GO_VERSION_E2E:-$(go_version_for_kubernetes "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" "${CSI_PROW_E2E_VERSION}")}" &&
         run_with_go "$go_version" make WHAT=test/e2e/e2e.test "-C${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" &&
         ln -s "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}/_output/bin/e2e.test" "${CSI_PROW_WORK}"
@@ -932,7 +967,7 @@ run_e2e () (
     trap move_junit EXIT
 
     cd "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" &&
-    run_with_loggers ginkgo -v "$@" "${CSI_PROW_WORK}/e2e.test" -- -report-dir "${ARTIFACTS}" -storage.testdriver="${CSI_PROW_WORK}/test-driver.yaml"
+    run_with_loggers env KUBECONFIG="$KUBECONFIG" KUBE_TEST_REPO_LIST="$(if [ -e "${CSI_PROW_WORK}/e2e-repo-list" ]; then echo "${CSI_PROW_WORK}/e2e-repo-list"; fi)" ginkgo -v "$@" "${CSI_PROW_WORK}/e2e.test" -- -report-dir "${ARTIFACTS}" -storage.testdriver="${CSI_PROW_WORK}/test-driver.yaml"
 )
 
 # Run csi-sanity against installed CSI driver.
@@ -1163,12 +1198,19 @@ main () {
             done
         fi
 
+        # Run the external driver tests and optionally also mock tests.
+        local focus="External.Storage"
+        if "$CSI_PROW_E2E_MOCK"; then
+            focus="($focus|CSI.mock.volume)"
+        fi
+
         if tests_need_non_alpha_cluster; then
             start_cluster || die "starting the non-alpha cluster failed"
 
             # Install necessary snapshot CRDs and snapshot controller
             install_snapshot_crds
             install_snapshot_controller
+
 
             # Installing the driver might be disabled.
             if ${CSI_PROW_DRIVER_INSTALL} "$images"; then
@@ -1184,7 +1226,7 @@ main () {
                     # Ignore: Double quote to prevent globbing and word splitting.
                     # shellcheck disable=SC2086
                     if ! run_e2e parallel ${CSI_PROW_GINKO_PARALLEL} \
-                         -focus="External.Storage" \
+                         -focus="$focus" \
                          -skip="$(regex_join "${CSI_PROW_E2E_SERIAL}" "${CSI_PROW_E2E_ALPHA}" "${CSI_PROW_E2E_SKIP}")"; then
                         warn "E2E parallel failed"
                         ret=1
@@ -1194,7 +1236,7 @@ main () {
                     # Ignore: Double quote to prevent globbing and word splitting.
                     # shellcheck disable=SC2086
                     if ! run_e2e parallel-features ${CSI_PROW_GINKO_PARALLEL} \
-                         -focus="External.Storage.*($(regex_join "${CSI_PROW_E2E_FOCUS}"))" \
+                         -focus="$focus.*($(regex_join "${CSI_PROW_E2E_FOCUS}"))" \
                          -skip="$(regex_join "${CSI_PROW_E2E_SERIAL}")"; then
                         warn "E2E parallel features failed"
                         ret=1
@@ -1203,7 +1245,7 @@ main () {
 
                 if tests_enabled "serial"; then
                     if ! run_e2e serial \
-                         -focus="External.Storage.*($(regex_join "${CSI_PROW_E2E_SERIAL}"))" \
+                         -focus="$focus.*($(regex_join "${CSI_PROW_E2E_SERIAL}"))" \
                          -skip="$(regex_join "${CSI_PROW_E2E_ALPHA}" "${CSI_PROW_E2E_SKIP}")"; then
                         warn "E2E serial failed"
                         ret=1
@@ -1229,7 +1271,7 @@ main () {
                     # Ignore: Double quote to prevent globbing and word splitting.
                     # shellcheck disable=SC2086
                     if ! run_e2e parallel-alpha ${CSI_PROW_GINKO_PARALLEL} \
-                         -focus="External.Storage.*($(regex_join "${CSI_PROW_E2E_ALPHA}"))" \
+                         -focus="$focus.*($(regex_join "${CSI_PROW_E2E_ALPHA}"))" \
                          -skip="$(regex_join "${CSI_PROW_E2E_SERIAL}" "${CSI_PROW_E2E_SKIP}")"; then
                         warn "E2E parallel alpha failed"
                         ret=1
@@ -1238,7 +1280,7 @@ main () {
 
                 if tests_enabled "serial-alpha"; then
                     if ! run_e2e serial-alpha \
-                         -focus="External.Storage.*(($(regex_join "${CSI_PROW_E2E_SERIAL}")).*($(regex_join "${CSI_PROW_E2E_ALPHA}"))|($(regex_join "${CSI_PROW_E2E_ALPHA}")).*($(regex_join "${CSI_PROW_E2E_SERIAL}")))" \
+                         -focus="$focus.*(($(regex_join "${CSI_PROW_E2E_SERIAL}")).*($(regex_join "${CSI_PROW_E2E_ALPHA}"))|($(regex_join "${CSI_PROW_E2E_ALPHA}")).*($(regex_join "${CSI_PROW_E2E_SERIAL}")))" \
                          -skip="$(regex_join "${CSI_PROW_E2E_SKIP}")"; then
                         warn "E2E serial alpha failed"
                         ret=1
