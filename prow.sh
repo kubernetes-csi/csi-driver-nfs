@@ -1006,6 +1006,24 @@ if ! kubectl exec "${CSI_PROW_SANITY_POD}" -c "${CSI_PROW_SANITY_CONTAINER}" -- 
     exit 1
 fi
 EOF
+
+    cat >"${CSI_PROW_WORK}/checkdir_in_pod.sh" <<EOF
+#!/bin/sh
+CHECK_PATH=\$(cat <<SCRIPT
+if [ -f "\$@" ]; then
+    echo "file"
+elif [ -d "\$@" ]; then
+    echo "directory"
+elif [ -e "\$@" ]; then
+    echo "other"
+else
+    echo "not_found"
+fi
+SCRIPT
+)
+kubectl exec "${CSI_PROW_SANITY_POD}" -c "${CSI_PROW_SANITY_CONTAINER}" -- /bin/sh -c "\${CHECK_PATH}"
+EOF
+
     chmod u+x "${CSI_PROW_WORK}"/*dir_in_pod.sh
 
     # This cannot run in parallel, because -csi.junitfile output
@@ -1021,6 +1039,7 @@ EOF
                      -csi.createmountpathcmd "${CSI_PROW_WORK}/mkdir_in_pod.sh" \
                      -csi.removestagingpathcmd "${CSI_PROW_WORK}/rmdir_in_pod.sh" \
                      -csi.removemountpathcmd "${CSI_PROW_WORK}/rmdir_in_pod.sh" \
+                     -csi.checkpathcmd "${CSI_PROW_WORK}/checkdir_in_pod.sh" \
 )
 
 ascii_to_xml () {
