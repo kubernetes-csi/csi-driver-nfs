@@ -621,11 +621,16 @@ EOF
 
 # Deletes kind cluster inside a prow job
 delete_cluster_inside_prow_job() {
+    local name="$1"
+
     # Inside a real Prow job it is better to clean up at runtime
     # instead of leaving that to the Prow job cleanup code
     # because the later sometimes times out (https://github.com/kubernetes-csi/csi-release-tools/issues/24#issuecomment-554765872).
+    #
+    # This is also a good time to collect logs.
     if [ "$JOB_NAME" ]; then
         if kind get clusters | grep -q csi-prow; then
+            run kind export logs --name=csi-prow "${ARTIFACTS}/cluster-logs/$name"
             run kind delete cluster --name=csi-prow || die "kind delete failed"
         fi
         unset KUBECONFIG
@@ -1210,7 +1215,7 @@ main () {
                     fi
                 fi
             fi
-            delete_cluster_inside_prow_job
+            delete_cluster_inside_prow_job non-alpha
         fi
 
         if tests_need_alpha_cluster && [ "${CSI_PROW_E2E_ALPHA_GATES}" ]; then
@@ -1245,7 +1250,7 @@ main () {
                     fi
                 fi
             fi
-            delete_cluster_inside_prow_job
+            delete_cluster_inside_prow_job alpha
         fi
     fi
 
