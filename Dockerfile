@@ -14,7 +14,7 @@
 
 ARG ARCH=amd64
 
-FROM k8s.gcr.io/build-image/debian-base-${ARCH}:v2.1.3
+FROM k8s.gcr.io/build-image/debian-base:buster-v1.6.0
 
 # Copy nfsplugin from build _output directory
 COPY bin/nfsplugin /nfsplugin
