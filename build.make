@@ -150,7 +150,7 @@ $(CMDS:%=push-multiarch-%): push-multiarch-%: check-pull-base-ref build-%
 	dockerfile_windows=$$(if [ -e ./cmd/$*/Dockerfile.Windows ]; then echo ./cmd/$*/Dockerfile.Windows; else echo Dockerfile.Windows; fi); \
 	if [ '$(BUILD_PLATFORMS)' ]; then build_platforms='$(BUILD_PLATFORMS)'; else build_platforms="linux amd64"; fi; \
 	if ! [ -f "$$dockerfile_windows" ]; then \
-		build_platforms="$$(echo "$$build_platforms" | sed -e 's/windows *[^ ]* *.exe *[^ ]* *[^ ]*//g' -e 's/; *;/;/g' -e 's/;[ ]*$//')"; \
+		build_platforms="$$(echo "$$build_platforms" | sed -e 's/windows *[^ ]* *.exe *[^ ]* *[^ ]*//g' -e 's/; *;/;/g' -e 's/;[ ]*$$//')"; \
 	fi; \
 	pushMultiArch () { \
 		tag=$$1; \
