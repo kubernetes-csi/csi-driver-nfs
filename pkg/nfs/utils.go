@@ -95,10 +95,6 @@ func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, h
 	return resp, err
 }
 
-const (
-	volumeOperationAlreadyExistsFmt = "An operation with the given Volume ID %s already exists"
-)
-
 type VolumeLocks struct {
 	locks sets.String
 	mux   sync.Mutex
