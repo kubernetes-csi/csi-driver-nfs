@@ -32,7 +32,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | Parameter                                         | Description                                                | Default                                                           |
 |---------------------------------------------------|------------------------------------------------------------|-------------------------------------------------------------------|
 | `image.nfs.repository`                            | csi-driver-nfs docker image                                | gcr.io/k8s-staging-sig-storage/nfsplugin                          |
-| `image.nfs.tag`                                   | csi-driver-nfs docker image tag                            | amd64-linux-canary                                                |
+| `image.nfs.tag`                                   | csi-driver-nfs docker image tag                            | canary                                                |
 | `image.nfs.pullPolicy`                            | csi-driver-nfs image pull policy                           | IfNotPresent                                                      |
 | `image.csiProvisioner.repository`                 | csi-provisioner docker image                               | k8s.gcr.io/sig-storage/csi-provisioner                            |
 | `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | v2.0.4                                                            |
