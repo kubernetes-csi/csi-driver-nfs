@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# force the usage of /bin/bash instead of /bin/sh
+SHELL := /bin/bash
+
 .PHONY: build-% build container-% container push-% push clean test
 
 # A space-separated list of all commands in the repository, must be
@@ -63,26 +66,35 @@ endif
 # Specific packages can be excluded from each of the tests below by setting the *_FILTER_CMD variables
 # to something like "| grep -v 'github.com/kubernetes-csi/project/pkg/foobar'". See usage below.
 
-# BUILD_PLATFORMS contains a set of <os> <arch> <suffix> triplets,
+# BUILD_PLATFORMS contains a set of tuples [os arch suffix base_image addon_image]
 # separated by semicolon. An empty variable or empty entry (= just a
 # semicolon) builds for the default platform of the current Go
 # toolchain.
 BUILD_PLATFORMS =
 
 # Add go ldflags using LDFLAGS at the time of compilation.
-IMPORTPATH_LDFLAGS = -X main.version=$(REV) 
+IMPORTPATH_LDFLAGS = -X main.version=$(REV)
 EXT_LDFLAGS = -extldflags "-static"
-LDFLAGS = 
+LDFLAGS =
 FULL_LDFLAGS = $(LDFLAGS) $(IMPORTPATH_LDFLAGS) $(EXT_LDFLAGS)
 # This builds each command (= the sub-directories of ./cmd) for the target platform(s)
 # defined by BUILD_PLATFORMS.
 $(CMDS:%=build-%): build-%: check-go-version-go
 	mkdir -p bin
-	echo '$(BUILD_PLATFORMS)' | tr ';' '\n' | while read -r os arch suffix; do \
+	# os_arch_seen captures all of the $$os-$$arch seen for the current binary
+	# that we want to build, if we've seen an $$os-$$arch before it means that
+	# we don't need to build it again, this is done to avoid building
+	# the windows binary multiple times (see the default value of $$BUILD_PLATFORMS)
+	export os_arch_seen="" && echo '$(BUILD_PLATFORMS)' | tr ';' '\n' | while read -r os arch suffix base_image addon_image; do \
+		os_arch_seen_pre=$${os_arch_seen%%$$os-$$arch*}; \
+		if ! [ $${#os_arch_seen_pre} = $${#os_arch_seen} ]; then \
+			continue; \
+		fi; \
 		if ! (set -x; CGO_ENABLED=0 GOOS="$$os" GOARCH="$$arch" go build $(GOFLAGS_VENDOR) -a -ldflags '$(FULL_LDFLAGS)' -o "./bin/$*$$suffix" ./cmd/$*); then \
 			echo "Building $* for GOOS=$$os GOARCH=$$arch failed, see error(s) above."; \
 			exit 1; \
 		fi; \
+		os_arch_seen+=";$$os-$$arch"; \
 	done
 
 $(CMDS:%=container-%): container-%: build-%
@@ -131,30 +143,46 @@ DOCKER_BUILDX_CREATE_ARGS ?=
 # the tag for the resulting multiarch image.
 $(CMDS:%=push-multiarch-%): push-multiarch-%: check-pull-base-ref build-%
 	set -ex; \
-	DOCKER_CLI_EXPERIMENTAL=enabled; \
-	export DOCKER_CLI_EXPERIMENTAL; \
+	export DOCKER_CLI_EXPERIMENTAL=enabled; \
 	docker buildx create $(DOCKER_BUILDX_CREATE_ARGS) --use --name multiarchimage-buildertest; \
 	trap "docker buildx rm multiarchimage-buildertest" EXIT; \
 	dockerfile_linux=$$(if [ -e ./cmd/$*/Dockerfile ]; then echo ./cmd/$*/Dockerfile; else echo Dockerfile; fi); \
 	dockerfile_windows=$$(if [ -e ./cmd/$*/Dockerfile.Windows ]; then echo ./cmd/$*/Dockerfile.Windows; else echo Dockerfile.Windows; fi); \
 	if [ '$(BUILD_PLATFORMS)' ]; then build_platforms='$(BUILD_PLATFORMS)'; else build_platforms="linux amd64"; fi; \
 	if ! [ -f "$$dockerfile_windows" ]; then \
-		build_platforms="$$(echo "$$build_platforms" | sed -e 's/windows *[^ ]* *.exe//g' -e 's/; *;/;/g')"; \
+		build_platforms="$$(echo "$$build_platforms" | sed -e 's/windows *[^ ]* *.exe *[^ ]* *[^ ]*//g' -e 's/; *;/;/g' -e 's/;[ ]*$$//')"; \
 	fi; \
 	pushMultiArch () { \
 		tag=$$1; \
-		echo "$$build_platforms" | tr ';' '\n' | while read -r os arch suffix; do \
+		echo "$$build_platforms" | tr ';' '\n' | while read -r os arch suffix base_image addon_image; do \
+			escaped_base_image=$${base_image/:/-}; \
+			if ! [ -z $$escaped_base_image ]; then escaped_base_image+="-"; fi; \
 			docker buildx build --push \
-				--tag $(IMAGE_NAME):$$arch-$$os-$$tag \
+				--tag $(IMAGE_NAME):$$arch-$$os-$$escaped_base_image$$tag \
 				--platform=$$os/$$arch \
 				--file $$(eval echo \$${dockerfile_$$os}) \
 				--build-arg binary=./bin/$*$$suffix \
 				--build-arg ARCH=$$arch \
+				--build-arg BASE_IMAGE=$$base_image \
+				--build-arg ADDON_IMAGE=$$addon_image \
 				--label revision=$(REV) \
 				.; \
 		done; \
-		images=$$(echo "$$build_platforms" | tr ';' '\n' | while read -r os arch suffix; do echo $(IMAGE_NAME):$$arch-$$os-$$tag; done); \
+		images=$$(echo "$$build_platforms" | tr ';' '\n' | while read -r os arch suffix base_image addon_image; do \
+			escaped_base_image=$${base_image/:/-}; \
+			if ! [ -z $$escaped_base_image ]; then escaped_base_image+="-"; fi; \
+			echo $(IMAGE_NAME):$$arch-$$os-$$escaped_base_image$$tag; \
+		done); \
 		docker manifest create --amend $(IMAGE_NAME):$$tag $$images; \
+		echo "$$build_platforms" | tr ';' '\n' | while read -r os arch suffix base_image addon_image; do \
+			if [ $$os = "windows" ]; then \
+				escaped_base_image=$${base_image/:/-}; \
+				if ! [ -z $$escaped_base_image ]; then escaped_base_image+="-"; fi; \
+				image=$(IMAGE_NAME):$$arch-$$os-$$escaped_base_image$$tag; \
+				os_version=$$(docker manifest inspect mcr.microsoft.com/windows/$${base_image} | grep "os.version" | head -n 1 | awk '{print $$2}' | sed -e 's/"//g') || true; \
+				docker manifest annotate --os-version $$os_version $(IMAGE_NAME):$$tag $$image; \
+			fi; \
+		done; \
 		docker manifest push -p $(IMAGE_NAME):$$tag; \
 	}; \
 	if [ $(PULL_BASE_REF) = "master" ]; then \
@@ -288,4 +316,3 @@ test-spelling:
 test-boilerplate:
 	@ echo; echo "### $@:"
 	@ ./release-tools/verify-boilerplate.sh "$(pwd)"
-
