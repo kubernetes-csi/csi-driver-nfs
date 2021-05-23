@@ -2,7 +2,7 @@
 # See https://github.com/kubernetes/kubernetes/tree/master/test/e2e/storage/external
 
 StorageClass:
-  FromFile: /tmp/csi-nfs/storageclass.yaml
+  FromFile: /tmp/csi/storageclass.yaml
 DriverInfo:
   Name: nfs.csi.k8s.io
   Capabilities:
