@@ -24,8 +24,8 @@ install_ginkgo () {
 }
 
 setup_e2e_binaries() {
-    # download k8s external e2e binary for kubernetes v1.20
-    curl -sL https://storage.googleapis.com/kubernetes-release/release/v1.20.0/kubernetes-test-linux-amd64.tar.gz --output e2e-tests.tar.gz
+    # download k8s external e2e binary
+    curl -sL https://storage.googleapis.com/kubernetes-release/release/v1.21.0/kubernetes-test-linux-amd64.tar.gz --output e2e-tests.tar.gz
     tar -xvf e2e-tests.tar.gz && rm e2e-tests.tar.gz
 
     # install the csi driver nfs
