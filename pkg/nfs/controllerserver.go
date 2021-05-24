@@ -104,9 +104,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if err = os.Mkdir(internalVolumePath, 0777); err != nil && !os.IsExist(err) {
 		return nil, status.Errorf(codes.Internal, "failed to make subdirectory: %v", err.Error())
 	}
-	// Remove capacity setting when provisioner 1.4.0 is available with fix for
-	// https://github.com/kubernetes-csi/external-provisioner/pull/271
-	return &csi.CreateVolumeResponse{Volume: cs.nfsVolToCSI(nfsVol, reqCapacity)}, nil
+	return &csi.CreateVolumeResponse{Volume: cs.nfsVolToCSI(nfsVol)}, nil
 }
 
 // DeleteVolume delete a volume
@@ -338,9 +336,9 @@ func (cs *ControllerServer) getVolumeSharePath(vol *nfsVolume) string {
 }
 
 // Convert into nfsVolume into a csi.Volume
-func (cs *ControllerServer) nfsVolToCSI(vol *nfsVolume, reqCapacity int64) *csi.Volume {
+func (cs *ControllerServer) nfsVolToCSI(vol *nfsVolume) *csi.Volume {
 	return &csi.Volume{
-		CapacityBytes: reqCapacity,
+		CapacityBytes: 0, // by setting it to zero, Provisioner will use PVC requested size as PV size
 		VolumeId:      vol.id,
 		VolumeContext: map[string]string{
 			paramServer: vol.server,
