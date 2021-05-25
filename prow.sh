@@ -654,11 +654,18 @@ delete_cluster_inside_prow_job() {
 # Looks for the deployment as specified by CSI_PROW_DEPLOYMENT and CSI_PROW_KUBERNETES_VERSION
 # in the given directory.
 find_deployment () {
-    local dir file k8sver
-    dir="$1"
+    local dir="$1"
+    local file
 
     # major/minor without release- prefix.
-    k8sver="$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/' -e 's/^release-//')"
+    local k8sver
+    # Ignore: See if you can use ${variable//search/replace} instead.
+    # shellcheck disable=SC2001
+    k8sver="$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/^release-//' -e 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')"
+
+    # Desired deployment, either specified completely, including version, or derived from other variables.
+    local deployment
+    deployment=${CSI_PROW_DEPLOYMENT:-kubernetes-${k8sver}${CSI_PROW_DEPLOYMENT_SUFFIX}}
 
     # Fixed deployment name? Use it if it exists.
     if [ "${CSI_PROW_DEPLOYMENT}" ]; then
@@ -668,18 +675,17 @@ find_deployment () {
             return 0
         fi
 
-        # CSI_PROW_DEPLOYMENT=kubernetes-x.yy is handled below with a fallback
-        # to kubernetes-latest. If it is something else, then fail here.
-        if ! echo "${CSI_PROW_DEPLOYMENT}" | grep -q "^kubernetes-${k8sver}\$"; then
-            return 1
-        fi
+        # CSI_PROW_DEPLOYMENT=kubernetes-x.yy must be mapped to kubernetes-latest
+        # as fallback. Same for kubernetes-distributed-x.yy.
     fi
 
-    # Ignore: See if you can use ${variable//search/replace} instead.
-    # shellcheck disable=SC2001
-    file="$dir/kubernetes-${k8sver}${CSI_PROW_DEPLOYMENT_SUFFIX}/deploy.sh"
+    file="$dir/${deployment}/deploy.sh"
     if ! [ -e "$file" ]; then
-        file="$dir/kubernetes-latest${CSI_PROW_DEPLOYMENT_SUFFIX}/deploy.sh"
+        # Replace the first xx.yy number with "latest", for example
+        # kubernetes-1.21-test -> kubernetes-latest-test.
+        # Ignore: See if you can use ${variable//search/replace} instead.
+        # shellcheck disable=SC2001
+        file="$dir/$(echo "$deployment" | sed -e 's/[0-9][0-9]*\.[0-9][0-9]*/latest/')/deploy.sh"
         if ! [ -e "$file" ]; then
             return 1
         fi
