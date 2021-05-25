@@ -654,22 +654,30 @@ delete_cluster_inside_prow_job() {
 # Looks for the deployment as specified by CSI_PROW_DEPLOYMENT and CSI_PROW_KUBERNETES_VERSION
 # in the given directory.
 find_deployment () {
-    local dir file
+    local dir file k8sver
     dir="$1"
 
-    # Fixed deployment name? Use it if it exists, otherwise fail.
+    # major/minor without release- prefix.
+    k8sver="$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/' -e 's/^release-//')"
+
+    # Fixed deployment name? Use it if it exists.
     if [ "${CSI_PROW_DEPLOYMENT}" ]; then
         file="$dir/${CSI_PROW_DEPLOYMENT}/deploy.sh"
-        if ! [ -e "$file" ]; then
+        if [ -e "$file" ]; then
+            echo "$file"
+            return 0
+        fi
+
+        # CSI_PROW_DEPLOYMENT=kubernetes-x.yy is handled below with a fallback
+        # to kubernetes-latest. If it is something else, then fail here.
+        if ! echo "${CSI_PROW_DEPLOYMENT}" | grep -q "^kubernetes-${k8sver}\$"; then
             return 1
         fi
-        echo "$file"
-        return 0
     fi
 
     # Ignore: See if you can use ${variable//search/replace} instead.
     # shellcheck disable=SC2001
-    file="$dir/kubernetes-$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')${CSI_PROW_DEPLOYMENT_SUFFIX}/deploy.sh"
+    file="$dir/kubernetes-${k8sver}${CSI_PROW_DEPLOYMENT_SUFFIX}/deploy.sh"
     if ! [ -e "$file" ]; then
         file="$dir/kubernetes-latest${CSI_PROW_DEPLOYMENT_SUFFIX}/deploy.sh"
         if ! [ -e "$file" ]; then
