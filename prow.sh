@@ -303,10 +303,12 @@ tests_need_alpha_cluster () {
 # in the e2e.test's normal YAML files.
 #
 # The default is to enable this for all jobs which use canary images
-# because we want to know whether our release candidates will pass all
-# existing tests (the storage testsuites and mock testing in
-# Kubernetes).
-configvar CSI_PROW_E2E_MOCK "$(if [ "${CSI_PROW_DRIVER_CANARY}" = "canary" ]; then echo true; else echo false; fi)" "enable CSI mock volume tests"
+# and the latest Kubernetes because those images will be used for mock
+# testing once they are released. Using them for mock testing with
+# older Kubernetes releases is too risky because the deployment files
+# can be very old (for example, still using a removed -provisioner
+# parameter in external-provisioner).
+configvar CSI_PROW_E2E_MOCK "$(if [ "${CSI_PROW_DRIVER_CANARY}" = "canary" ] && [ "${CSI_PROW_KUBERNETES_VERSION}" = "latest" ]; then echo true; else echo false; fi)" "enable CSI mock volume tests"
 
 # Regex for non-alpha, feature-tagged tests that should be run.
 #
@@ -981,7 +983,7 @@ run_e2e () (
     # the full Kubernetes E2E testsuite while only running a few tests.
     move_junit () {
         if ls "${ARTIFACTS}"/junit_[0-9]*.xml 2>/dev/null >/dev/null; then
-            run_filter_junit -t="External Storage" -o "${ARTIFACTS}/junit_${name}.xml" "${ARTIFACTS}"/junit_[0-9]*.xml && rm -f "${ARTIFACTS}"/junit_[0-9]*.xml
+            run_filter_junit -t="External.Storage|CSI.mock.volume" -o "${ARTIFACTS}/junit_${name}.xml" "${ARTIFACTS}"/junit_[0-9]*.xml && rm -f "${ARTIFACTS}"/junit_[0-9]*.xml
         fi
     }
     trap move_junit EXIT
