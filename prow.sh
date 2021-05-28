@@ -33,8 +33,6 @@
 # The expected environment is:
 # - $GOPATH/src/<import path> for the repository that is to be tested,
 #   with PR branch merged (when testing a PR)
-# - optional: bazel installed (when testing against Kubernetes master),
-#   must be recent enough for Kubernetes master
 # - running on linux-amd64
 # - kind (https://github.com/kubernetes-sigs/kind) installed
 # - optional: Go already installed
@@ -159,9 +157,6 @@ kindest/node:v1.17.17@sha256:c581fbf67f720f70aaabc74b44c2332cc753df262b6c0bca5d2
 kindest/node:v1.16.15@sha256:430c03034cd856c1f1415d3e37faf35a3ea9c5aaa2812117b79e6903d1fc9651
 kindest/node:v1.15.12@sha256:8d575f056493c7778935dd855ded0e95c48cb2fab90825792e8fc9af61536bf9
 kindest/node:v1.14.10@sha256:6033e04bcfca7c5f2a9c4ce77551e1abf385bcd2709932ec2f6a9c8c0aff6d4f" "kind images"
-
-# Use kind node-image --type=bazel by default, but allow to disable that.
-configvar CSI_PROW_USE_BAZEL true "use Bazel during 'kind node-image' invocation"
 
 # By default, this script tests sidecars with the CSI hostpath driver,
 # using the install_csi_driver function. That function depends on
@@ -591,17 +586,12 @@ start_cluster () {
             if [ "$version" = "latest" ]; then
                 version=master
             fi
-            if ${CSI_PROW_USE_BAZEL}; then
-                type="bazel"
-            else
-                type="docker"
-            fi
             git_clone https://github.com/kubernetes/kubernetes "${CSI_PROW_WORK}/src/kubernetes" "$(version_to_git "$version")" || die "checking out Kubernetes $version failed"
 
             go_version="$(go_version_for_kubernetes "${CSI_PROW_WORK}/src/kubernetes" "$version")" || die "cannot proceed without knowing Go version for Kubernetes"
             # Changing into the Kubernetes source code directory is a workaround for https://github.com/kubernetes-sigs/kind/issues/1910
             # shellcheck disable=SC2046
-            (cd "${CSI_PROW_WORK}/src/kubernetes" && run_with_go "$go_version" kind build node-image --image csiprow/node:latest $(if [ "$CSI_PROW_KIND_VERSION" != "main" ]; then echo --type="$type"; fi) --kube-root "${CSI_PROW_WORK}/src/kubernetes") || die "'kind build node-image' failed"
+            (cd "${CSI_PROW_WORK}/src/kubernetes" && run_with_go "$go_version" kind build node-image --image csiprow/node:latest --kube-root "${CSI_PROW_WORK}/src/kubernetes") || die "'kind build node-image' failed"
             csi_prow_kind_have_kubernetes=true
         fi
         image="csiprow/node:latest"
