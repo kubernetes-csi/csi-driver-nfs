@@ -986,9 +986,17 @@ run_e2e () (
 run_sanity () (
     install_sanity || die "installing csi-sanity failed"
 
+    if [[ "${CSI_PROW_SANITY_POD}" =~ " " ]]; then
+        # Contains spaces, more complex than a simple pod name.
+        # Evaluate as a shell command.
+        pod=$(eval "${CSI_PROW_SANITY_POD}") || die "evaluation failed: CSI_PROW_SANITY_POD=${CSI_PROW_SANITY_POD}"
+    else
+        pod="${CSI_PROW_SANITY_POD}"
+    fi
+
     cat >"${CSI_PROW_WORK}/mkdir_in_pod.sh" <<EOF
 #!/bin/sh
-kubectl exec "${CSI_PROW_SANITY_POD}" -c "${CSI_PROW_SANITY_CONTAINER}" -- mkdir "\$@" && echo "\$@"
+kubectl exec "$pod" -c "${CSI_PROW_SANITY_CONTAINER}" -- mkdir "\$@" && echo "\$@"
 EOF
     # Using "rm -rf" as fallback for "rmdir" is a workaround for:
     # Node Service
@@ -1013,8 +1021,8 @@ EOF
     # why it happened.
     cat >"${CSI_PROW_WORK}/rmdir_in_pod.sh" <<EOF
 #!/bin/sh
-if ! kubectl exec "${CSI_PROW_SANITY_POD}" -c "${CSI_PROW_SANITY_CONTAINER}" -- rmdir "\$@"; then
-    kubectl exec "${CSI_PROW_SANITY_POD}" -c "${CSI_PROW_SANITY_CONTAINER}" -- rm -rf "\$@"
+if ! kubectl exec "$pod" -c "${CSI_PROW_SANITY_CONTAINER}" -- rmdir "\$@"; then
+    kubectl exec "$pod" -c "${CSI_PROW_SANITY_CONTAINER}" -- rm -rf "\$@"
     exit 1
 fi
 EOF
@@ -1033,7 +1041,7 @@ else
 fi
 SCRIPT
 )
-kubectl exec "${CSI_PROW_SANITY_POD}" -c "${CSI_PROW_SANITY_CONTAINER}" -- /bin/sh -c "\${CHECK_PATH}"
+kubectl exec "$pod" -c "${CSI_PROW_SANITY_CONTAINER}" -- /bin/sh -c "\${CHECK_PATH}"
 EOF
 
     chmod u+x "${CSI_PROW_WORK}"/*dir_in_pod.sh
