@@ -6,3 +6,6 @@ spec:
   attachRequired: false
   volumeLifecycleModes:
     - Persistent
+  {{- if .Values.feature.enableFSGroupPolicy}}
+  fsGroupPolicy: File
+  {{- end}}
