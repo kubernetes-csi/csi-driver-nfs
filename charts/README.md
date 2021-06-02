@@ -5,7 +5,7 @@
 
 ### Tips
  - `--set controller.runOnMaster=true` could make csi-nfs-controller only run on master node
- - `--set feature.enableFSGroupPolicy=true` could enable `fsGroupPolicy` on a k8s 1.20+ cluster
+ - `--set feature.enableFSGroupPolicy=true` could enable `fsGroupPolicy` on a k8s 1.20+ cluster (this feature is in beta, check details [here](../deploy/example/fsgroup))
  - `--set controller.replicas=1` could set replica of csi-nfs-controller as `1`
 
 ## install latest version
