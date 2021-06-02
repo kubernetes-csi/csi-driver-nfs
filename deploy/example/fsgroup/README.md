@@ -1,6 +1,6 @@
 # fsGroup Support
 
-[fsGroupPolicy](https://kubernetes-csi.github.io/docs/support-fsgroup.html) feature is supported from Kubernetes 1.20, default CSI driver installation does not have this feature, follow below steps to enable this feature.
+[fsGroupPolicy](https://kubernetes-csi.github.io/docs/support-fsgroup.html) feature is Beta from Kubernetes 1.20, and disabled by default, follow below steps to enable this feature.
 
 ### Option#1: Enable fsGroupPolicy support in [driver helm installation](../../../charts)
 
