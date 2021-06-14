@@ -22,65 +22,45 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/spf13/cobra"
-
 	"github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs"
+
+	"k8s.io/klog/v2"
 )
 
 var (
-	endpoint string
-	nodeID   string
-	perm     string
+	endpoint = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	nodeID   = flag.String("nodeid", "", "node id")
+	perm     = flag.String("mount-permissions", "", "mounted folder permissions")
 )
 
 func init() {
-	flag.Set("logtostderr", "true")
+	_ = flag.Set("logtostderr", "true")
 }
 
 func main() {
-
-	flag.CommandLine.Parse([]string{})
-
-	cmd := &cobra.Command{
-		Use:   "NFS",
-		Short: "CSI based NFS driver",
-		Run: func(cmd *cobra.Command, args []string) {
-			handle()
-		},
+	klog.InitFlags(nil)
+	flag.Parse()
+	if *nodeID == "" {
+		klog.Warning("nodeid is empty")
 	}
 
-	cmd.Flags().AddGoFlagSet(flag.CommandLine)
-
-	cmd.PersistentFlags().StringVar(&nodeID, "nodeid", "", "node id")
-	cmd.MarkPersistentFlagRequired("nodeid")
-
-	cmd.PersistentFlags().StringVar(&endpoint, "endpoint", "", "CSI endpoint")
-	cmd.MarkPersistentFlagRequired("endpoint")
-
-	cmd.PersistentFlags().StringVar(&perm, "mount-permissions", "", "mounted folder permissions")
-
-	cmd.ParseFlags(os.Args[1:])
-	if err := cmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err.Error())
-		os.Exit(1)
-	}
-
+	handle()
 	os.Exit(0)
 }
 
 func handle() {
 	// Converting string permission representation to *uint32
 	var parsedPerm *uint32
-	if perm != "" {
-		permu64, err := strconv.ParseUint(perm, 8, 32)
+	if perm != nil && *perm != "" {
+		permu64, err := strconv.ParseUint(*perm, 8, 32)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Incorrect mount-permissions value: %q", perm)
+			fmt.Fprintf(os.Stderr, "incorrect mount-permissions value: %q", *perm)
 			os.Exit(1)
 		}
 		permu32 := uint32(permu64)
 		parsedPerm = &permu32
 	}
 
-	d := nfs.NewNFSdriver(nodeID, endpoint, parsedPerm)
-	d.Run()
+	d := nfs.NewNFSdriver(*nodeID, *endpoint, parsedPerm)
+	d.Run(false)
 }

@@ -11,7 +11,7 @@ The release manager must:
   kubernetes/org to request membership
 * Be a top level approver for the repository. To become a top level approver,
   the candidate must demonstrate ownership and deep knowledge of the repository
-  through active maintainence, responding to and fixing issues, reviewing PRs,
+  through active maintenance, responding to and fixing issues, reviewing PRs,
   test triage.
 * Be part of the maintainers or admin group for the repository. admin is a
   superset of maintainers, only maintainers level is required for cutting a
@@ -39,10 +39,11 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
 1. Changes can then be updated in all the sidecar repos and hostpath driver repo
    by following the [update
    instructions](https://github.com/kubernetes-csi/csi-release-tools/blob/master/README.md#sharing-and-updating).
-1. New pull and CI jobs are configured by
+1. New pull and CI jobs are configured by adding new K8s versions to the top of
    [gen-jobs.sh](https://github.com/kubernetes/test-infra/blob/master/config/jobs/kubernetes-csi/gen-jobs.sh).
-   New pull jobs that have been unverified should be initially made optional.
-   [Example](https://github.com/kubernetes/test-infra/pull/15055)
+   New pull jobs that have been unverified should be initially made optional by
+   setting the new K8s version as
+   [experimental](https://github.com/kubernetes/test-infra/blob/a1858f46d6014480b130789df58b230a49203a64/config/jobs/kubernetes-csi/gen-jobs.sh#L40).
 1. Once new pull and CI jobs have been verified, and the new Kubernetes version
    is released, we can make the optional jobs required, and also remove the
    Kubernetes versions that are no longer supported.
@@ -54,14 +55,19 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
   generator](https://github.com/kubernetes/release/tree/master/cmd/release-notes)
 1. Generate release notes for the release. Replace arguments with the relevant
   information.
+    * Clean up old cached information (also needed if you are generating release
+      notes for multiple repos)
+      ```bash
+      rm -rf /tmp/k8s-repo
+      ```
     * For new minor releases on master:
-        ```
+        ```bash
         GITHUB_TOKEN=<token> release-notes --discover=mergebase-to-latest
         --github-org=kubernetes-csi --github-repo=external-provisioner
         --required-author="" --output out.md
         ```
     * For new patch releases on a release branch:
-        ```
+        ```bash
         GITHUB_TOKEN=<token> release-notes --discover=patch-to-latest --branch=release-1.1
         --github-org=kubernetes-csi --github-repo=external-provisioner
         --required-author="" --output out.md
@@ -86,6 +92,12 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
    [external-provisioner example](https://github.com/kubernetes-csi/external-provisioner/releases/new)
 1. If release was a new major/minor version, create a new `release-<minor>`
    branch at that commit.
+1. Check [image build status](https://k8s-testgrid.appspot.com/sig-storage-image-build).
+1. Promote images from k8s-staging-sig-storage to k8s.gcr.io/sig-storage. From
+   the [k8s image
+   repo](https://github.com/kubernetes/k8s.io/tree/master/k8s.gcr.io/images/k8s-staging-sig-storage),
+   run `./generate.sh > images.yaml`, and send a PR with the updated images.
+   Once merged, the image promoter will copy the images from staging to prod.
 1. Update [kubernetes-csi/docs](https://github.com/kubernetes-csi/docs) sidecar
    and feature pages with the new released version.
 1. After all the sidecars have been released, update

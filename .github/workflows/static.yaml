@@ -1,0 +1,26 @@
+name: Static Checks
+on:
+    pull_request: {}
+    push: {}
+jobs:
+    go_lint:
+        name: Go Lint
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@master
+            - name: Run linter
+              uses: golangci/golangci-lint-action@v2
+              with:
+                  version: v1.29
+                  args: -E=gofmt,golint,misspell --timeout=30m0s
+    verify-helm:
+        name: Verify Helm
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@master
+            - name: Verify Helm
+              run: |
+                sudo snap install yq
+                sudo hack/verify-helm-chart.sh

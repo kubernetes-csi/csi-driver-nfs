@@ -137,6 +137,30 @@ func IsIPv6CIDR(cidr *net.IPNet) bool {
 	return IsIPv6(ip)
 }
 
+// IsIPv4 returns if netIP is IPv4.
+func IsIPv4(netIP net.IP) bool {
+	return netIP != nil && netIP.To4() != nil
+}
+
+// IsIPv4String returns if ip is IPv4.
+func IsIPv4String(ip string) bool {
+	netIP := net.ParseIP(ip)
+	return IsIPv4(netIP)
+}
+
+// IsIPv4CIDR returns if a cidr is ipv4
+func IsIPv4CIDR(cidr *net.IPNet) bool {
+	ip := cidr.IP
+	return IsIPv4(ip)
+}
+
+// IsIPv4CIDRString returns if cidr is IPv4.
+// This assumes cidr is a valid CIDR.
+func IsIPv4CIDRString(cidr string) bool {
+	ip, _, _ := net.ParseCIDR(cidr)
+	return IsIPv4(ip)
+}
+
 // ParsePort parses a string representing an IP port.  If the string is not a
 // valid port number, this returns an error.
 func ParsePort(port string, allowZero bool) (int, error) {
@@ -152,17 +176,17 @@ func ParsePort(port string, allowZero bool) (int, error) {
 
 // BigForIP creates a big.Int based on the provided net.IP
 func BigForIP(ip net.IP) *big.Int {
-	b := ip.To4()
-	if b == nil {
-		b = ip.To16()
-	}
-	return big.NewInt(0).SetBytes(b)
+	// NOTE: Convert to 16-byte representation so we can
+	// handle v4 and v6 values the same way.
+	return big.NewInt(0).SetBytes(ip.To16())
 }
 
-// AddIPOffset adds the provided integer offset to a base big.Int representing a
-// net.IP
+// AddIPOffset adds the provided integer offset to a base big.Int representing a net.IP
+// NOTE: If you started with a v4 address and overflow it, you get a v6 result.
 func AddIPOffset(base *big.Int, offset int) net.IP {
-	return net.IP(big.NewInt(0).Add(base, big.NewInt(int64(offset))).Bytes())
+	r := big.NewInt(0).Add(base, big.NewInt(int64(offset))).Bytes()
+	r = append(make([]byte, 16), r...)
+	return net.IP(r[len(r)-16:])
 }
 
 // RangeSize returns the size of a range in valid addresses.

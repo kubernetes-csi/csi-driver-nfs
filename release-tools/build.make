@@ -20,7 +20,7 @@
 
 # This is the default. It can be overridden in the main Makefile after
 # including build.make.
-REGISTRY_NAME=quay.io/k8scsi
+REGISTRY_NAME?=quay.io/k8scsi
 
 # Can be set to -mod=vendor to ensure that the "vendor" directory is used.
 GOFLAGS_VENDOR=
@@ -69,12 +69,17 @@ endif
 # toolchain.
 BUILD_PLATFORMS =
 
+# Add go ldflags using LDFLAGS at the time of compilation.
+IMPORTPATH_LDFLAGS = -X main.version=$(REV) 
+EXT_LDFLAGS = -extldflags "-static"
+LDFLAGS = 
+FULL_LDFLAGS = $(LDFLAGS) $(IMPORTPATH_LDFLAGS) $(EXT_LDFLAGS)
 # This builds each command (= the sub-directories of ./cmd) for the target platform(s)
 # defined by BUILD_PLATFORMS.
 $(CMDS:%=build-%): build-%: check-go-version-go
 	mkdir -p bin
 	echo '$(BUILD_PLATFORMS)' | tr ';' '\n' | while read -r os arch suffix; do \
-		if ! (set -x; CGO_ENABLED=0 GOOS="$$os" GOARCH="$$arch" go build $(GOFLAGS_VENDOR) -a -ldflags '-X main.version=$(REV) -extldflags "-static"' -o "./bin/$*$$suffix" ./cmd/$*); then \
+		if ! (set -x; CGO_ENABLED=0 GOOS="$$os" GOARCH="$$arch" go build $(GOFLAGS_VENDOR) -a -ldflags '$(FULL_LDFLAGS)' -o "./bin/$*$$suffix" ./cmd/$*); then \
 			echo "Building $* for GOOS=$$os GOARCH=$$arch failed, see error(s) above."; \
 			exit 1; \
 		fi; \
@@ -144,6 +149,7 @@ $(CMDS:%=push-multiarch-%): push-multiarch-%: check-pull-base-ref build-%
 				--platform=$$os/$$arch \
 				--file $$(eval echo \$${dockerfile_$$os}) \
 				--build-arg binary=./bin/$*$$suffix \
+				--build-arg ARCH=$$arch \
 				--label revision=$(REV) \
 				.; \
 		done; \
@@ -270,3 +276,16 @@ test-shellcheck:
 .PHONY: check-go-version-%
 check-go-version-%:
 	./release-tools/verify-go-version.sh "$*"
+
+# Test for spelling errors.
+.PHONY: test-spelling
+test-spelling:
+	@ echo; echo "### $@:"
+	@ ./release-tools/verify-spelling.sh "$(pwd)"
+
+# Test the boilerplates of the files.
+.PHONY: test-boilerplate
+test-boilerplate:
+	@ echo; echo "### $@:"
+	@ ./release-tools/verify-boilerplate.sh "$(pwd)"
+
