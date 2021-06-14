@@ -19,6 +19,8 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
         kubernetes.io/os: linux
+      tolerations:
+        - operator: "Exists"
       containers:
         - name: liveness-probe
           image: k8s.gcr.io/sig-storage/livenessprobe:v2.3.0

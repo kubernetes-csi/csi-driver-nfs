@@ -19,15 +19,27 @@ serviceAccount:
   create: true
 rbac:
   create: true
+
 controller:
   replicas: 2
   runOnMaster: false
   logLevel: 5
+  tolerations:
+    - key: "node-role.kubernetes.io/master"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
+    - key: "node-role.kubernetes.io/controlplane"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
 
 node:
   logLevel: 5
   livenessProbe:
     healthPort: 29653
+  tolerations:
+    - operator: "Exists"
 
 feature:
   enableFSGroupPolicy: false
