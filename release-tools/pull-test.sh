@@ -1,4 +1,6 @@
-# Copyright 2020 The Kubernetes Authors.
+#! /bin/sh
+
+# Copyright 2021 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG ARCH=amd64
+# This script is called by pull Prow jobs for the csi-release-tools
+# repo to ensure that the changes in the PR work when imported into
+# some other repo.
 
-FROM k8s.gcr.io/build-image/debian-base:buster-v1.6.0
+set -ex
 
-# Copy nfsplugin from build _output directory
-COPY bin/nfsplugin /nfsplugin
+# It must be called inside the updated csi-release-tools repo.
+CSI_RELEASE_TOOLS_DIR="$(pwd)"
 
-# this is a workaround to install nfs-common & nfs-kernel-server and don't quit with error
-# https://github.com/kubernetes-sigs/blob-csi-driver/issues/214#issuecomment-781602430
-RUN apt update && apt install ca-certificates mount nfs-common nfs-kernel-server -y || true
+# Update the other repo.
+cd "$PULL_TEST_REPO_DIR"
+git subtree pull --squash --prefix=release-tools "$CSI_RELEASE_TOOLS_DIR" master
+git log -n2
 
-ENTRYPOINT ["/nfsplugin"]
+# Now fall through to testing.
+exec ./.prow.sh

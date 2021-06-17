@@ -3,6 +3,11 @@
 ## Prerequisites
  - [install Helm](https://helm.sh/docs/intro/quickstart/#install-helm)
 
+### Tips
+ - `--set controller.runOnMaster=true` could make csi-nfs-controller only run on master node
+ - `--set feature.enableFSGroupPolicy=true` could enable `fsGroupPolicy` on a k8s 1.20+ cluster (this feature is in beta, check details [here](../deploy/example/fsgroup))
+ - `--set controller.replicas=1` could set replica of csi-nfs-controller as `1`
+
 ## install latest version
 ```console
 helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
@@ -31,6 +36,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 
 | Parameter                                         | Description                                                | Default                                                           |
 |---------------------------------------------------|------------------------------------------------------------|-------------------------------------------------------------------|
+| `feature.enableFSGroupPolicy`                     | enable `fsGroupPolicy` on a k8s 1.20+ cluster           | `false`                      |
 | `image.nfs.repository`                            | csi-driver-nfs docker image                                | gcr.io/k8s-staging-sig-storage/nfsplugin                          |
 | `image.nfs.tag`                                   | csi-driver-nfs docker image tag                            | amd64-linux-canary                                                |
 | `image.nfs.pullPolicy`                            | csi-driver-nfs image pull policy                           | IfNotPresent                                                      |
@@ -38,10 +44,10 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | v2.0.4                                                            |
 | `image.csiProvisioner.pullPolicy`                 | csi-provisioner image pull policy                          | IfNotPresent                                                      |
 | `image.livenessProbe.repository`                  | liveness-probe docker image                                | k8s.gcr.io/sig-storage/livenessprobe                              |
-| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | v2.1.0                                                            |
+| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | v2.3.0                                                            |
 | `image.livenessProbe.pullPolicy`                  | liveness-probe image pull policy                           | IfNotPresent                                                      |
 | `image.nodeDriverRegistrar.repository`            | csi-node-driver-registrar docker image                     | k8s.gcr.io/sig-storage/csi-node-driver-registrar                  |
-| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | v2.0.1                                                            |
+| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | v2.2.0                                                            |
 | `image.nodeDriverRegistrar.pullPolicy`            | csi-node-driver-registrar image pull policy                | IfNotPresent                                                      |
 | `imagePullSecrets`                                | Specify docker-registry secret names as an array           | [] (does not add image pull secrets to deployed pods)                                                           |
 | `serviceAccount.create`                           | whether create service account of csi-nfs-controller       | true                                                              |
@@ -50,6 +56,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.runOnMaster`                          | run controller on master node                              | false                                                             |
 | `controller.logLevel`                             | controller driver log level                                                          |`5`                                                           |
 | `node.logLevel`                                   | node driver log level                                                          |`5`                                                           |
+| `node.livenessProbe.healthPort `                  | the health check port for liveness probe                    |`29653`                                                           |
 
 ## troubleshooting
  - Add `--wait -v=5 --debug` in `helm install` command to get detailed error

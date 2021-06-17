@@ -42,6 +42,9 @@ REGISTRY_NAME ?= $(shell echo $(REGISTRY) | sed "s/.azurecr.io//g")
 IMAGE_TAG = $(REGISTRY)/$(IMAGENAME):$(IMAGE_VERSION)
 IMAGE_TAG_LATEST = $(REGISTRY)/$(IMAGENAME):latest
 
+E2E_HELM_OPTIONS ?= --set image.nfs.repository=$(REGISTRY)/$(IMAGENAME) --set image.nfs.tag=$(IMAGE_VERSION) --set image.nfs.pullPolicy=Always
+E2E_HELM_OPTIONS += ${EXTRA_HELM_OPTIONS}
+
 all: nfs
 
 .PHONY: verify
@@ -112,11 +115,9 @@ install-helm:
 e2e-bootstrap: install-helm
 	docker pull $(IMAGE_TAG) || make container push
 	helm install csi-driver-nfs ./charts/latest/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
-	--set image.nfs.repository=$(REGISTRY)/$(IMAGENAME) \
-	--set image.nfs.tag=$(IMAGE_VERSION) \
-	--set image.nfs.pullPolicy=Always
-	--set controller.logLevel=8
-	--set node.logLevel=8
+		${E2E_HELM_OPTIONS} \
+		--set controller.logLevel=8 \
+		--set node.logLevel=8
 
 .PHONY: e2e-teardown
 e2e-teardown:
@@ -124,4 +125,8 @@ e2e-teardown:
 
 .PHONY: e2e-test
 e2e-test:
-	go test -v -timeout=0 ./test/e2e ${GINKGO_FLAGS}
+	if [ ! -z "$(EXTERNAL_E2E_TEST)" ]; then \
+		bash ./test/external-e2e/run.sh;\
+	else \
+		go test -v -timeout=0 ./test/e2e ${GINKGO_FLAGS};\
+	fi

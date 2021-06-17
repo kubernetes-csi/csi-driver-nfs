@@ -31,6 +31,7 @@ Please refer to [`nfs.csi.k8s.io` driver parameters](./docs/driver-parameters.md
 ### Examples
  - [Set up a NFS Server on a Kubernetes cluster](./deploy/example/nfs-provisioner/README.md)
  - [Basic usage](./deploy/example/README.md)
+ - [fsGroupPolicy](./deploy/example/fsgroup)
 
 ### Troubleshooting
  - [CSI driver troubleshooting guide](./docs/csi-debug.md) 

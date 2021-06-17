@@ -6,4 +6,6 @@ spec:
   attachRequired: false
   volumeLifecycleModes:
     - Persistent
-  podInfoOnMount: true
+  {{- if .Values.feature.enableFSGroupPolicy}}
+  fsGroupPolicy: File
+  {{- end}}

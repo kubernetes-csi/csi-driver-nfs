@@ -72,11 +72,6 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
-	if acquired := ns.Driver.volumeLocks.TryAcquire(volumeID); !acquired {
-		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, volumeID)
-	}
-	defer ns.Driver.volumeLocks.Release(volumeID)
-
 	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
 	if req.GetReadonly() {
 		mountOptions = append(mountOptions, "ro")
@@ -140,11 +135,6 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
-	if acquired := ns.Driver.volumeLocks.TryAcquire(volumeID); !acquired {
-		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, volumeID)
-	}
-	defer ns.Driver.volumeLocks.Release(volumeID)
 
 	klog.V(4).Infof("NodeUnpublishVolume: path %s is *not* a mount point: %t", targetPath, notMnt)
 	if !notMnt {
