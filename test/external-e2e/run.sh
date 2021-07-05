@@ -38,6 +38,7 @@ setup_e2e_binaries() {
 }
 
 print_logs() {
+    bash ./hack/verify-examples.sh ephemeral
     echo "print out driver logs ..."
     bash ./test/utils/nfs_log.sh
 }
