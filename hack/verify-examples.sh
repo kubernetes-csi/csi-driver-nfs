@@ -20,6 +20,7 @@ echo "begin to create deployment examples ..."
 kubectl apply -f ./deploy/example/storageclass-nfs.yaml
 kubectl apply -f ./deploy/example/deployment.yaml
 kubectl apply -f ./deploy/example/statefulset.yaml
+kubectl apply -f ./deploy/example/daemonset-nfs-ephemeral.yaml
 
 echo "sleep 60s ..."
 sleep 60
@@ -29,5 +30,6 @@ kubectl get pods -o wide
 
 kubectl get pods --field-selector status.phase=Running | grep deployment-nfs
 kubectl get pods --field-selector status.phase=Running | grep statefulset-nfs-0
+kubectl get pods --field-selector status.phase=Running | grep daemonset-nfs-ephemeral
 
 echo "deployment examples running completed."
