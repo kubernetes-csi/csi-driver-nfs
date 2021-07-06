@@ -33,8 +33,6 @@
 # The expected environment is:
 # - $GOPATH/src/<import path> for the repository that is to be tested,
 #   with PR branch merged (when testing a PR)
-# - optional: bazel installed (when testing against Kubernetes master),
-#   must be recent enough for Kubernetes master
 # - running on linux-amd64
 # - kind (https://github.com/kubernetes-sigs/kind) installed
 # - optional: Go already installed
@@ -139,11 +137,8 @@ kind_version_default () {
     case "${CSI_PROW_KUBERNETES_VERSION}" in
         latest|master)
             echo main;;
-        1.21*|release-1.21)
-            # TODO: replace this special case once the next KinD release supports 1.21.
-            echo main;;
         *)
-            echo v0.10.0;;
+            echo v0.11.0;;
     esac
 }
 
@@ -154,16 +149,14 @@ configvar CSI_PROW_KIND_VERSION "$(kind_version_default)" "kind"
 
 # kind images to use. Must match the kind version.
 # The release notes of each kind release list the supported images.
-configvar CSI_PROW_KIND_IMAGES "kindest/node:v1.20.2@sha256:8f7ea6e7642c0da54f04a7ee10431549c0257315b3a634f6ef2fecaaedb19bab
-kindest/node:v1.19.7@sha256:a70639454e97a4b733f9d9b67e12c01f6b0297449d5b9cbbef87473458e26dca
-kindest/node:v1.18.15@sha256:5c1b980c4d0e0e8e7eb9f36f7df525d079a96169c8a8f20d8bd108c0d0889cc4
-kindest/node:v1.17.17@sha256:7b6369d27eee99c7a85c48ffd60e11412dc3f373658bc59b7f4d530b7056823e
-kindest/node:v1.16.15@sha256:c10a63a5bda231c0a379bf91aebf8ad3c79146daca59db816fb963f731852a99
-kindest/node:v1.15.12@sha256:67181f94f0b3072fb56509107b380e38c55e23bf60e6f052fbd8052d26052fb5
-kindest/node:v1.14.10@sha256:3fbed72bcac108055e46e7b4091eb6858ad628ec51bf693c21f5ec34578f6180" "kind images"
-
-# Use kind node-image --type=bazel by default, but allow to disable that.
-configvar CSI_PROW_USE_BAZEL true "use Bazel during 'kind node-image' invocation"
+configvar CSI_PROW_KIND_IMAGES "kindest/node:v1.21.1@sha256:fae9a58f17f18f06aeac9772ca8b5ac680ebbed985e266f711d936e91d113bad
+kindest/node:v1.20.7@sha256:e645428988191fc824529fd0bb5c94244c12401cf5f5ea3bd875eb0a787f0fe9
+kindest/node:v1.19.11@sha256:7664f21f9cb6ba2264437de0eb3fe99f201db7a3ac72329547ec4373ba5f5911
+kindest/node:v1.18.19@sha256:530378628c7c518503ade70b1df698b5de5585dcdba4f349328d986b8849b1ee
+kindest/node:v1.17.17@sha256:c581fbf67f720f70aaabc74b44c2332cc753df262b6c0bca5d26338492470c17
+kindest/node:v1.16.15@sha256:430c03034cd856c1f1415d3e37faf35a3ea9c5aaa2812117b79e6903d1fc9651
+kindest/node:v1.15.12@sha256:8d575f056493c7778935dd855ded0e95c48cb2fab90825792e8fc9af61536bf9
+kindest/node:v1.14.10@sha256:6033e04bcfca7c5f2a9c4ce77551e1abf385bcd2709932ec2f6a9c8c0aff6d4f" "kind images"
 
 # By default, this script tests sidecars with the CSI hostpath driver,
 # using the install_csi_driver function. That function depends on
@@ -305,10 +298,12 @@ tests_need_alpha_cluster () {
 # in the e2e.test's normal YAML files.
 #
 # The default is to enable this for all jobs which use canary images
-# because we want to know whether our release candidates will pass all
-# existing tests (the storage testsuites and mock testing in
-# Kubernetes).
-configvar CSI_PROW_E2E_MOCK "$(if [ "${CSI_PROW_DRIVER_CANARY}" = "canary" ]; then echo true; else echo false; fi)" "enable CSI mock volume tests"
+# and the latest Kubernetes because those images will be used for mock
+# testing once they are released. Using them for mock testing with
+# older Kubernetes releases is too risky because the deployment files
+# can be very old (for example, still using a removed -provisioner
+# parameter in external-provisioner).
+configvar CSI_PROW_E2E_MOCK "$(if [ "${CSI_PROW_DRIVER_CANARY}" = "canary" ] && [ "${CSI_PROW_KUBERNETES_VERSION}" = "latest" ]; then echo true; else echo false; fi)" "enable CSI mock volume tests"
 
 # Regex for non-alpha, feature-tagged tests that should be run.
 #
@@ -591,17 +586,12 @@ start_cluster () {
             if [ "$version" = "latest" ]; then
                 version=master
             fi
-            if ${CSI_PROW_USE_BAZEL}; then
-                type="bazel"
-            else
-                type="docker"
-            fi
             git_clone https://github.com/kubernetes/kubernetes "${CSI_PROW_WORK}/src/kubernetes" "$(version_to_git "$version")" || die "checking out Kubernetes $version failed"
 
             go_version="$(go_version_for_kubernetes "${CSI_PROW_WORK}/src/kubernetes" "$version")" || die "cannot proceed without knowing Go version for Kubernetes"
             # Changing into the Kubernetes source code directory is a workaround for https://github.com/kubernetes-sigs/kind/issues/1910
             # shellcheck disable=SC2046
-            (cd "${CSI_PROW_WORK}/src/kubernetes" && run_with_go "$go_version" kind build node-image --image csiprow/node:latest $(if [ "$CSI_PROW_KIND_VERSION" != "main" ]; then echo --type="$type"; fi) --kube-root "${CSI_PROW_WORK}/src/kubernetes") || die "'kind build node-image' failed"
+            (cd "${CSI_PROW_WORK}/src/kubernetes" && run_with_go "$go_version" kind build node-image --image csiprow/node:latest --kube-root "${CSI_PROW_WORK}/src/kubernetes") || die "'kind build node-image' failed"
             csi_prow_kind_have_kubernetes=true
         fi
         image="csiprow/node:latest"
@@ -654,24 +644,38 @@ delete_cluster_inside_prow_job() {
 # Looks for the deployment as specified by CSI_PROW_DEPLOYMENT and CSI_PROW_KUBERNETES_VERSION
 # in the given directory.
 find_deployment () {
-    local dir file
-    dir="$1"
+    local dir="$1"
+    local file
 
-    # Fixed deployment name? Use it if it exists, otherwise fail.
-    if [ "${CSI_PROW_DEPLOYMENT}" ]; then
-        file="$dir/${CSI_PROW_DEPLOYMENT}/deploy.sh"
-        if ! [ -e "$file" ]; then
-            return 1
-        fi
-        echo "$file"
-        return 0
-    fi
-
+    # major/minor without release- prefix.
+    local k8sver
     # Ignore: See if you can use ${variable//search/replace} instead.
     # shellcheck disable=SC2001
-    file="$dir/kubernetes-$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')${CSI_PROW_DEPLOYMENT_SUFFIX}/deploy.sh"
+    k8sver="$(echo "${CSI_PROW_KUBERNETES_VERSION}" | sed -e 's/^release-//' -e 's/\([0-9]*\)\.\([0-9]*\).*/\1.\2/')"
+
+    # Desired deployment, either specified completely, including version, or derived from other variables.
+    local deployment
+    deployment=${CSI_PROW_DEPLOYMENT:-kubernetes-${k8sver}${CSI_PROW_DEPLOYMENT_SUFFIX}}
+
+    # Fixed deployment name? Use it if it exists.
+    if [ "${CSI_PROW_DEPLOYMENT}" ]; then
+        file="$dir/${CSI_PROW_DEPLOYMENT}/deploy.sh"
+        if [ -e "$file" ]; then
+            echo "$file"
+            return 0
+        fi
+
+        # CSI_PROW_DEPLOYMENT=kubernetes-x.yy must be mapped to kubernetes-latest
+        # as fallback. Same for kubernetes-distributed-x.yy.
+    fi
+
+    file="$dir/${deployment}/deploy.sh"
     if ! [ -e "$file" ]; then
-        file="$dir/kubernetes-latest${CSI_PROW_DEPLOYMENT_SUFFIX}/deploy.sh"
+        # Replace the first xx.yy number with "latest", for example
+        # kubernetes-1.21-test -> kubernetes-latest-test.
+        # Ignore: See if you can use ${variable//search/replace} instead.
+        # shellcheck disable=SC2001
+        file="$dir/$(echo "$deployment" | sed -e 's/[0-9][0-9]*\.[0-9][0-9]*/latest/')/deploy.sh"
         if ! [ -e "$file" ]; then
             return 1
         fi
@@ -969,7 +973,7 @@ run_e2e () (
     # the full Kubernetes E2E testsuite while only running a few tests.
     move_junit () {
         if ls "${ARTIFACTS}"/junit_[0-9]*.xml 2>/dev/null >/dev/null; then
-            run_filter_junit -t="External Storage" -o "${ARTIFACTS}/junit_${name}.xml" "${ARTIFACTS}"/junit_[0-9]*.xml && rm -f "${ARTIFACTS}"/junit_[0-9]*.xml
+            run_filter_junit -t="External.Storage|CSI.mock.volume" -o "${ARTIFACTS}/junit_${name}.xml" "${ARTIFACTS}"/junit_[0-9]*.xml && rm -f "${ARTIFACTS}"/junit_[0-9]*.xml
         fi
     }
     trap move_junit EXIT
@@ -982,9 +986,17 @@ run_e2e () (
 run_sanity () (
     install_sanity || die "installing csi-sanity failed"
 
+    if [[ "${CSI_PROW_SANITY_POD}" =~ " " ]]; then
+        # Contains spaces, more complex than a simple pod name.
+        # Evaluate as a shell command.
+        pod=$(eval "${CSI_PROW_SANITY_POD}") || die "evaluation failed: CSI_PROW_SANITY_POD=${CSI_PROW_SANITY_POD}"
+    else
+        pod="${CSI_PROW_SANITY_POD}"
+    fi
+
     cat >"${CSI_PROW_WORK}/mkdir_in_pod.sh" <<EOF
 #!/bin/sh
-kubectl exec "${CSI_PROW_SANITY_POD}" -c "${CSI_PROW_SANITY_CONTAINER}" -- mkdir "\$@" && echo "\$@"
+kubectl exec "$pod" -c "${CSI_PROW_SANITY_CONTAINER}" -- mkdir "\$@" && echo "\$@"
 EOF
     # Using "rm -rf" as fallback for "rmdir" is a workaround for:
     # Node Service
@@ -1009,8 +1021,8 @@ EOF
     # why it happened.
     cat >"${CSI_PROW_WORK}/rmdir_in_pod.sh" <<EOF
 #!/bin/sh
-if ! kubectl exec "${CSI_PROW_SANITY_POD}" -c "${CSI_PROW_SANITY_CONTAINER}" -- rmdir "\$@"; then
-    kubectl exec "${CSI_PROW_SANITY_POD}" -c "${CSI_PROW_SANITY_CONTAINER}" -- rm -rf "\$@"
+if ! kubectl exec "$pod" -c "${CSI_PROW_SANITY_CONTAINER}" -- rmdir "\$@"; then
+    kubectl exec "$pod" -c "${CSI_PROW_SANITY_CONTAINER}" -- rm -rf "\$@"
     exit 1
 fi
 EOF
@@ -1029,7 +1041,7 @@ else
 fi
 SCRIPT
 )
-kubectl exec "${CSI_PROW_SANITY_POD}" -c "${CSI_PROW_SANITY_CONTAINER}" -- /bin/sh -c "\${CHECK_PATH}"
+kubectl exec "$pod" -c "${CSI_PROW_SANITY_CONTAINER}" -- /bin/sh -c "\${CHECK_PATH}"
 EOF
 
     chmod u+x "${CSI_PROW_WORK}"/*dir_in_pod.sh
