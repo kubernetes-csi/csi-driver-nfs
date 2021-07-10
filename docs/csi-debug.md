@@ -29,6 +29,11 @@ csi-nfs-node-dr4s4                        3/3     Running   0          7m4s    1
 $ kubectl logs csi-nfs-node-cvgbs -c nfs -n kube-system > csi-nfs-node.log
 ```
 
+ - check nfs mount inside driver
+```console
+kubectl exec -it csi-nfs-node-cvgbss -n kube-system -c nfs -- mount | grep nfs
+```
+
 ### troubleshooting connection failure on agent node
 ```console
 mkdir /tmp/test
