@@ -42,7 +42,7 @@ type NFSDriver struct {
 func InitNFSDriver() PVTestDriver {
 	driverName := os.Getenv(NFSDriverNameVar)
 	if driverName == "" {
-		driverName = nfs.DriverName
+		driverName = nfs.DefaultDriverName
 	}
 
 	klog.Infof("Using nfs driver: %s", driverName)

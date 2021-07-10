@@ -15,26 +15,32 @@ image:
         repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
         tag: v2.2.0
         pullPolicy: IfNotPresent
+
 serviceAccount:
-  create: true
+  create: true # When true, service accounts will be created for you. Set to false if you want to use your own.
+  controller: csi-nfs-controller-sa # Name of Service Account to be created or used
+
 rbac:
   create: true
+  name: nfs
 
 controller:
+  name: csi-nfs-controller
   replicas: 2
   runOnMaster: false
+  livenessProbe:
+    healthPort: 29652
   logLevel: 5
   tolerations:
     - key: "node-role.kubernetes.io/master"
-      operator: "Equal"
-      value: "true"
+      operator: "Exists"
       effect: "NoSchedule"
     - key: "node-role.kubernetes.io/controlplane"
-      operator: "Equal"
-      value: "true"
+      operator: "Exists"
       effect: "NoSchedule"
 
 node:
+  name: csi-nfs-node
   logLevel: 5
   livenessProbe:
     healthPort: 29653
@@ -43,6 +49,9 @@ node:
 
 feature:
   enableFSGroupPolicy: false
+
+driver:
+  name: nfs.csi.k8s.io
 
 ## Reference to one or more secrets to be used when pulling images
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
