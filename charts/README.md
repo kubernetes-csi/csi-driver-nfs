@@ -4,9 +4,9 @@
  - [install Helm](https://helm.sh/docs/intro/quickstart/#install-helm)
 
 ### Tips
- - `--set controller.runOnMaster=true` could make csi-nfs-controller only run on master node
- - `--set feature.enableFSGroupPolicy=true` could enable `fsGroupPolicy` on a k8s 1.20+ cluster (this feature is in beta, check details [here](../deploy/example/fsgroup))
- - `--set controller.replicas=1` could set replica of csi-nfs-controller as `1`
+ - make controller only run on master node: `--set controller.runOnMaster=true`
+ - set replica of controller as `1`: `--set controller.replicas=1`
+ - enable `fsGroupPolicy` on a k8s 1.20+ cluster (this feature is in beta, check details [here](../deploy/example/fsgroup)): `--set feature.enableFSGroupPolicy=true`
 
 ## install latest version
 ```console
@@ -18,6 +18,13 @@ helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-syste
 ```console
 helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
 helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version v3.0.0
+```
+
+### install driver with customized driver name, deployment name
+> only supported from `v3.0.0`+
+ - following example would install a driver with name `nfs2`
+```console
+helm install csi-driver-nfs2 csi-driver-nfs/csi-driver-nfs --namespace kube-system --set driver.name="nfs2.csi.k8s.io" --set controller.name="csi-nfs2-controller" --set rbac.name=nfs2 --set serviceAccount.controller=csi-nfs2-controller-sa --set serviceAccount.node=csi-nfs2-node-sa --set node.name=csi-nfs2-node --set node.livenessProbe.healthPort=39653
 ```
 
 ### search for all available chart versions
