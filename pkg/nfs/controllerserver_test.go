@@ -49,7 +49,7 @@ var (
 func initTestController(t *testing.T) *ControllerServer {
 	var perm *uint32
 	mounter := &mount.FakeMounter{MountPoints: []mount.MountPoint{}}
-	driver := NewNFSdriver("", "", perm)
+	driver := NewNFSdriver("", "", "", perm)
 	driver.ns = NewNodeServer(driver, mounter)
 	cs := NewControllerServer(driver)
 	cs.workingMountDir = "/tmp"

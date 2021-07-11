@@ -28,9 +28,10 @@ import (
 )
 
 var (
-	endpoint = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	nodeID   = flag.String("nodeid", "", "node id")
-	perm     = flag.String("mount-permissions", "", "mounted folder permissions")
+	endpoint   = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	nodeID     = flag.String("nodeid", "", "node id")
+	perm       = flag.String("mount-permissions", "", "mounted folder permissions")
+	driverName = flag.String("drivername", nfs.DefaultDriverName, "name of the driver")
 )
 
 func init() {
@@ -61,6 +62,6 @@ func handle() {
 		parsedPerm = &permu32
 	}
 
-	d := nfs.NewNFSdriver(*nodeID, *endpoint, parsedPerm)
+	d := nfs.NewNFSdriver(*nodeID, *driverName, *endpoint, parsedPerm)
 	d.Run(false)
 }

@@ -42,7 +42,7 @@ type Driver struct {
 }
 
 const (
-	DriverName = "nfs.csi.k8s.io"
+	DefaultDriverName = "nfs.csi.k8s.io"
 	// Address of the NFS server
 	paramServer = "server"
 	// Base directory of the NFS server to create volumes under.
@@ -56,11 +56,11 @@ var (
 	version = "3.0.0"
 )
 
-func NewNFSdriver(nodeID, endpoint string, perm *uint32) *Driver {
-	klog.Infof("Driver: %v version: %v", DriverName, version)
+func NewNFSdriver(nodeID, driverName, endpoint string, perm *uint32) *Driver {
+	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	n := &Driver{
-		name:     DriverName,
+		name:     driverName,
 		version:  version,
 		nodeID:   nodeID,
 		endpoint: endpoint,
@@ -100,7 +100,7 @@ func NewNodeServer(n *Driver, mounter mount.Interface) *NodeServer {
 }
 
 func (n *Driver) Run(testMode bool) {
-	versionMeta, err := GetVersionYAML()
+	versionMeta, err := GetVersionYAML(n.name)
 	if err != nil {
 		klog.Fatalf("%v", err)
 	}

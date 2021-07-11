@@ -27,10 +27,10 @@ import (
 )
 
 func TestGetVersion(t *testing.T) {
-	version := GetVersion()
+	version := GetVersion(DefaultDriverName)
 
 	expected := VersionInfo{
-		DriverName:    DriverName,
+		DriverName:    DefaultDriverName,
 		DriverVersion: "N/A",
 		GitCommit:     "N/A",
 		BuildDate:     "N/A",
@@ -46,11 +46,11 @@ func TestGetVersion(t *testing.T) {
 }
 
 func TestGetVersionYAML(t *testing.T) {
-	resp, err := GetVersionYAML()
+	resp, err := GetVersionYAML("")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	versionInfo := GetVersion()
+	versionInfo := GetVersion("")
 	marshalled, _ := yaml.Marshal(&versionInfo)
 	expected := strings.TrimSpace(string(marshalled))
 

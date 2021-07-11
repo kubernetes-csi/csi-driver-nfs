@@ -36,7 +36,7 @@ func NewEmptyDriver(emptyField string) *Driver {
 	switch emptyField {
 	case "version":
 		d = &Driver{
-			name:    DriverName,
+			name:    DefaultDriverName,
 			version: "",
 			nodeID:  fakeNodeID,
 			cap:     map[csi.VolumeCapability_AccessMode_Mode]bool{},
@@ -52,7 +52,7 @@ func NewEmptyDriver(emptyField string) *Driver {
 		}
 	default:
 		d = &Driver{
-			name:    DriverName,
+			name:    DefaultDriverName,
 			version: version,
 			nodeID:  fakeNodeID,
 			cap:     map[csi.VolumeCapability_AccessMode_Mode]bool{},

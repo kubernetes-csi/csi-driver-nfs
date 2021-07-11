@@ -68,7 +68,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	handleFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
 
-	nfsDriver = nfs.NewNFSdriver(nodeID, fmt.Sprintf("unix:///tmp/csi-%s.sock", uuid.NewUUID().String()), perm)
+	nfsDriver = nfs.NewNFSdriver(nodeID, nfs.DefaultDriverName, fmt.Sprintf("unix:///tmp/csi-%s.sock", uuid.NewUUID().String()), perm)
 	controllerServer = nfs.NewControllerServer(nfsDriver)
 
 	// install nfs server
