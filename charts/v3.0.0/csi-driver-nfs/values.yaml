@@ -1,0 +1,28 @@
+image:
+    nfs:
+        repository: mcr.microsoft.com/k8s/csi/nfs-csi
+        tag: v3.0.0
+        pullPolicy: IfNotPresent
+    csiProvisioner:
+        repository: k8s.gcr.io/sig-storage/csi-provisioner
+        tag: v2.0.4
+        pullPolicy: IfNotPresent
+    livenessProbe:
+        repository: k8s.gcr.io/sig-storage/livenessprobe
+        tag: v2.1.0
+        pullPolicy: IfNotPresent
+    nodeDriverRegistrar:
+        repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
+        tag: v2.0.1
+        pullPolicy: IfNotPresent
+serviceAccount:
+  create: true
+rbac:
+  create: true
+controller:
+  replicas: 2
+  runOnMaster: false
+  logLevel: 5
+
+node:
+  logLevel: 5
