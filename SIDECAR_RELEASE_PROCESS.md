@@ -31,16 +31,16 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
 1. "-on-master" jobs are the closest reflection to the new Kubernetes version.
 1. Fixes to our prow.sh CI script can be tested in the [CSI hostpath
    repo](https://github.com/kubernetes-csi/csi-driver-host-path) by modifying
-   [prow.sh](https://github.com/kubernetes-csi/csi-driver-host-path/blob/master/release-tools/prow.sh)
+   [prow.sh](https://github.com/kubernetes-csi/csi-driver-host-path/blob/HEAD/release-tools/prow.sh)
    along with any overrides in
-   [.prow.sh](https://github.com/kubernetes-csi/csi-driver-host-path/blob/master/.prow.sh)
+   [.prow.sh](https://github.com/kubernetes-csi/csi-driver-host-path/blob/HEAD/.prow.sh)
    to mirror the failing environment. Once e2e tests are passing (verify-unit tests
    will fail), then the prow.sh changes can be submitted to [csi-release-tools](https://github.com/kubernetes-csi/csi-release-tools).
 1. Changes can then be updated in all the sidecar repos and hostpath driver repo
    by following the [update
-   instructions](https://github.com/kubernetes-csi/csi-release-tools/blob/master/README.md#sharing-and-updating).
+   instructions](https://github.com/kubernetes-csi/csi-release-tools/blob/HEAD/README.md#sharing-and-updating).
 1. New pull and CI jobs are configured by adding new K8s versions to the top of
-   [gen-jobs.sh](https://github.com/kubernetes/test-infra/blob/master/config/jobs/kubernetes-csi/gen-jobs.sh).
+   [gen-jobs.sh](https://github.com/kubernetes/test-infra/blob/HEAD/config/jobs/kubernetes-csi/gen-jobs.sh).
    New pull jobs that have been unverified should be initially made optional by
    setting the new K8s version as
    [experimental](https://github.com/kubernetes/test-infra/blob/a1858f46d6014480b130789df58b230a49203a64/config/jobs/kubernetes-csi/gen-jobs.sh#L40).
@@ -52,7 +52,7 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
 1. Identify all issues and ongoing PRs that should go into the release, and
   drive them to resolution.
 1. Download v2.8+ [K8s release notes
-  generator](https://github.com/kubernetes/release/tree/master/cmd/release-notes)
+  generator](https://github.com/kubernetes/release/tree/HEAD/cmd/release-notes)
 1. Generate release notes for the release. Replace arguments with the relevant
   information.
     * Clean up old cached information (also needed if you are generating release
@@ -101,9 +101,9 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
 1. Update [kubernetes-csi/docs](https://github.com/kubernetes-csi/docs) sidecar
    and feature pages with the new released version.
 1. After all the sidecars have been released, update
-   CSI hostpath driver with the new sidecars in the [CSI repo](https://github.com/kubernetes-csi/csi-driver-host-path/tree/master/deploy)
+   CSI hostpath driver with the new sidecars in the [CSI repo](https://github.com/kubernetes-csi/csi-driver-host-path/tree/HEAD/deploy)
    and [k/k
-   in-tree](https://github.com/kubernetes/kubernetes/tree/master/test/e2e/testing-manifests/storage-csi/hostpath/hostpath)
+   in-tree](https://github.com/kubernetes/kubernetes/tree/HEAD/test/e2e/testing-manifests/storage-csi/hostpath/hostpath)
 
 ## Adding support for a new Kubernetes release
 
@@ -134,7 +134,7 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
 1. Once all sidecars for the new Kubernetes release are released,
    either bump the version number of the images in the existing
    [csi-driver-host-path
-   deployments](https://github.com/kubernetes-csi/csi-driver-host-path/tree/master/deploy)
+   deployments](https://github.com/kubernetes-csi/csi-driver-host-path/tree/HEAD/deploy)
    and/or create a new deployment, depending on what Kubernetes
    release an updated sidecar is compatible with. If no new deployment
    is needed, then add a symlink to document that there intentionally
