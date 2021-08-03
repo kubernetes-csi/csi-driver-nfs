@@ -292,7 +292,7 @@ tests_need_alpha_cluster () {
     tests_enabled "parallel-alpha" "serial-alpha"
 }
 
-# Enabling mock tests adds the "CSI mock volume" tests from https://github.com/kubernetes/kubernetes/blob/master/test/e2e/storage/csi_mock_volume.go
+# Enabling mock tests adds the "CSI mock volume" tests from https://github.com/kubernetes/kubernetes/blob/HEAD/test/e2e/storage/csi_mock_volume.go
 # to the e2e.test invocations (serial, parallel, and the corresponding alpha variants).
 # When testing canary images, those get used instead of the images specified
 # in the e2e.test's normal YAML files.
