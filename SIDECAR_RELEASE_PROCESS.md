@@ -9,13 +9,8 @@ The release manager must:
 * Be a member of the kubernetes-csi organization. Open an
   [issue](https://github.com/kubernetes/org/issues/new?assignees=&labels=area%2Fgithub-membership&template=membership.md&title=REQUEST%3A+New+membership+for+%3Cyour-GH-handle%3E) in
   kubernetes/org to request membership
-* Be a top level approver for the repository. To become a top level approver,
-  the candidate must demonstrate ownership and deep knowledge of the repository
-  through active maintenance, responding to and fixing issues, reviewing PRs,
-  test triage.
-* Be part of the maintainers or admin group for the repository. admin is a
-  superset of maintainers, only maintainers level is required for cutting a
-  release.  Membership can be requested by submitting a PR to kubernetes/org.
+* Be part of the maintainers group for the repository.
+  Membership can be requested by submitting a PR to kubernetes/org.
   [Example](https://github.com/kubernetes/org/pull/1467)
 
 ## Updating CI Jobs
