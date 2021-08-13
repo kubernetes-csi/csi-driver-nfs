@@ -7,6 +7,10 @@ metadata:
   name: csi-nfs-node
   namespace: kube-system
 spec:
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
   selector:
     matchLabels:
       app: csi-nfs-node
