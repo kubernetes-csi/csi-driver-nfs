@@ -64,6 +64,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.runOnMaster`                          | run controller on master node                              | `false`                                                             |
 | `controller.logLevel`                             | controller driver log level                                                          |`5`                                                           |
 | `controller.tolerations`                              | controller pod tolerations                            |                                                              |
+| `node.maxUnavailable`                             | `maxUnavailable` value of driver node daemonset                            | `1`
 | `node.logLevel`                                   | node driver log level                                                          |`5`                                                           |
 | `node.livenessProbe.healthPort `                  | the health check port for liveness probe                    |`29653`                                                           |
 | `node.tolerations`                              | node pod tolerations                            |                                                              |

@@ -7,6 +7,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
 {{ include "nfs.labels" . | indent 2 }}
 spec:
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: {{ .Values.node.maxUnavailable }}
+    type: RollingUpdate
   selector:
     matchLabels:
       app: {{ .Values.node.name }}
