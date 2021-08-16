@@ -13,7 +13,7 @@ image:
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
         repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
-        tag: v2.2.0
+        tag: v2.3.0
         pullPolicy: IfNotPresent
 
 serviceAccount:
