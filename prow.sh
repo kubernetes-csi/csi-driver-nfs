@@ -795,7 +795,7 @@ install_snapshot_controller() {
       kind load docker-image --name csi-prow ${NEW_IMG} || die "could not load the snapshot-controller:csiprow image into the kind cluster"
 
       # deploy snapshot-controller
-      echo "Deploying snapshot-controller"
+      echo "Deploying snapshot-controller from ${SNAPSHOT_CONTROLLER_YAML} with $NEW_IMG."
       # Replace image in SNAPSHOT_CONTROLLER_YAML with snapshot-controller:csiprow and deploy
       # NOTE: This logic is similar to the logic here:
       # https://github.com/kubernetes-csi/csi-driver-host-path/blob/v1.4.0/deploy/util/deploy-hostpath.sh#L155
@@ -832,8 +832,19 @@ install_snapshot_controller() {
               echo "$modified"
               exit 1
           fi
-	  echo "kubectl apply -f ${SNAPSHOT_CONTROLLER_YAML}(modified)"
       done
+  elif [ "${CSI_PROW_DRIVER_CANARY}" = "canary" ]; then
+      echo "Deploying snapshot-controller from ${SNAPSHOT_CONTROLLER_YAML} with canary images."
+      yaml="$(kubectl apply --dry-run=client -o yaml -f "$SNAPSHOT_CONTROLLER_YAML")"
+      # Ignore: See if you can use ${variable//search/replace} instead.
+      # shellcheck disable=SC2001
+      modified="$(echo "$yaml" | sed -e "s;image: .*/\([^/:]*\):.*;image: ${CSI_PROW_DRIVER_CANARY_REGISTRY}/\1:canary;")"
+      diff <(echo "$yaml") <(echo "$modified")
+      if ! echo "$modified" | kubectl apply -f -; then
+          echo "modified version of $SNAPSHOT_CONTROLLER_YAML:"
+          echo "$modified"
+          exit 1
+      fi
   else
       echo "kubectl apply -f $SNAPSHOT_CONTROLLER_YAML"
       kubectl apply -f "$SNAPSHOT_CONTROLLER_YAML"
