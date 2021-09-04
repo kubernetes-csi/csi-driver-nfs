@@ -5,11 +5,11 @@ image:
         pullPolicy: IfNotPresent
     csiProvisioner:
         repository: k8s.gcr.io/sig-storage/csi-provisioner
-        tag: v2.1.0
+        tag: v2.2.2
         pullPolicy: IfNotPresent
     livenessProbe:
         repository: k8s.gcr.io/sig-storage/livenessprobe
-        tag: v2.3.0
+        tag: v2.4.0
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
         repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
