@@ -13,7 +13,7 @@ Please refer to [driver parameters](../../docs/driver-parameters.md) for more de
 
 ## Storage Class Usage (Dynamic Provisioning)
 
-- Follow the folling command to create a `StorageClass`, and then `PersistentVolume` and `PersistentVolumeClaim` dynamically.
+- Follow the following command to create a `StorageClass`, and then `PersistentVolume` and `PersistentVolumeClaim` dynamically.
 
 ```bash
 # create StorageClass
@@ -25,7 +25,7 @@ kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nf
 
 ## PV/PVC Usage (Static Provisioning)
 
-- Follow the folling command to create `PersistentVolume` and `PersistentVolumeClaim` statically.
+- Follow the following command to create `PersistentVolume` and `PersistentVolumeClaim` statically.
 
 ```bash
 # create PV
@@ -33,4 +33,15 @@ kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nf
 
 # create PVC
 kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/pvc-nfs-csi-static.yaml
+```
+
+## Deployment/Statefulset Usage
+
+- Follow the following command to create `Deployment` and `Statefulset` .
+
+```bash
+# create Deployment and Statefulset
+git clone https://github.com/kubernetes-csi/csi-driver-nfs.git
+cd csi-driver-nfs
+./hack/verify-examples.sh
 ```
