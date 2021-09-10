@@ -42,7 +42,7 @@ images. Building from master creates the main `canary` image.
 Sharing and updating
 --------------------
 
-[`git subtree`](https://github.com/git/git/blob/master/contrib/subtree/git-subtree.txt)
+[`git subtree`](https://github.com/git/git/blob/HEAD/contrib/subtree/git-subtree.txt)
 is the recommended way of maintaining a copy of the rules inside the
 `release-tools` directory of a project. This way, it is possible to make
 changes also locally, test them and then push them back to the shared
@@ -89,7 +89,7 @@ main
 
 All Kubernetes-CSI repos are expected to switch to Prow. For details
 on what is enabled in Prow, see
-https://github.com/kubernetes/test-infra/tree/master/config/jobs/kubernetes-csi
+https://github.com/kubernetes/test-infra/tree/HEAD/config/jobs/kubernetes-csi
 
 Test results for periodic jobs are visible in
 https://testgrid.k8s.io/sig-storage-csi-ci
