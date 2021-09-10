@@ -10,10 +10,10 @@
 #   because binaries will get built for different architectures and then
 #   get copied from the built host into the container image
 #
-# See https://github.com/kubernetes/test-infra/blob/master/config/jobs/image-pushing/README.md
+# See https://github.com/kubernetes/test-infra/blob/HEAD/config/jobs/image-pushing/README.md
 # for more details on image pushing process in Kubernetes.
 #
-# To promote release images, see https://github.com/kubernetes/k8s.io/tree/main/k8s.gcr.io/images/k8s-staging-sig-storage.
+# To promote release images, see https://github.com/kubernetes/k8s.io/tree/HEAD/k8s.gcr.io/images/k8s-staging-sig-storage.
 
 # This must be specified in seconds. If omitted, defaults to 600s (10 mins).
 # Building three images in external-snapshotter takes roughly half an hour,
