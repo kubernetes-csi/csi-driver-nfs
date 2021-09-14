@@ -19,7 +19,7 @@ of the development.
 The CSI NFS driver requires Kubernetes cluster of version 1.14 or newer and 
 preexisting NFS server, whether it is deployed on cluster or provisioned 
 independently. The plugin itself provides only a communication layer between 
-resources in the cluser and the NFS server.
+resources in the cluster and the NFS server.
 
 ### Install driver on a Kubernetes cluster
  - install by [kubectl](./docs/install-csi-driver.md)
