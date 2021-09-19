@@ -3,7 +3,7 @@ module github.com/kubernetes-csi/csi-driver-nfs
 go 1.16
 
 require (
-	github.com/container-storage-interface/spec v1.3.0
+	github.com/container-storage-interface/spec v1.5.0
 	github.com/golang/protobuf v1.4.3
 	github.com/kubernetes-csi/csi-lib-utils v0.9.0
 	github.com/kubernetes-csi/external-snapshotter/v2 v2.0.0-20200617021606-4800ca72d403
