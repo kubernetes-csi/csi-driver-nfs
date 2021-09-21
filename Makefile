@@ -111,7 +111,7 @@ container:
 	docker run --rm --privileged tonistiigi/binfmt --install all
 	for arch in $(ALL_ARCH.linux); do \
 		ARCH=$${arch} $(MAKE) nfs; \
-		ARCH=$${arch} $(MAKE) container-build; \
+		ARCH=$${arch} OUTPUT_TYPE=registry $(MAKE) container-build; \
 	done
 
 .PHONY: push
