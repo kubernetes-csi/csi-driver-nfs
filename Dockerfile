@@ -17,7 +17,7 @@ ARG ARCH=amd64
 FROM k8s.gcr.io/build-image/debian-base:buster-v1.6.0
 
 # Copy nfsplugin from build _output directory
-COPY bin/nfsplugin /nfsplugin
+COPY bin/${ARCH}/nfsplugin /nfsplugin
 
 # this is a workaround to install nfs-common & nfs-kernel-server and don't quit with error
 # https://github.com/kubernetes-sigs/blob-csi-driver/issues/214#issuecomment-781602430
