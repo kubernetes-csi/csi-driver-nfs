@@ -71,6 +71,8 @@ func NewNFSdriver(nodeID, driverName, endpoint string, perm *uint32) *Driver {
 	vcam := []csi.VolumeCapability_AccessMode_Mode{
 		csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 		csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY,
+		csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER,
+		csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
 		csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
 		csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER,
 		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
@@ -82,10 +84,12 @@ func NewNFSdriver(nodeID, driverName, endpoint string, perm *uint32) *Driver {
 	// ControllerServiceCapability RPC types.
 	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+		csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
 	})
 
 	n.AddNodeServiceCapabilities([]csi.NodeServiceCapability_RPC_Type{
 		csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+		csi.NodeServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
 		csi.NodeServiceCapability_RPC_UNKNOWN,
 	})
 	n.volumeLocks = NewVolumeLocks()
