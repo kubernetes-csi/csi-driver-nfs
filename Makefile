@@ -51,6 +51,8 @@ OUTPUT_TYPE ?= docker
 ALL_ARCH.linux = arm64 amd64
 ALL_OS_ARCH = $(foreach arch, ${ALL_ARCH.linux}, linux-$(arch))
 
+.EXPORT_ALL_VARIABLES:
+
 all: nfs
 
 .PHONY: verify
@@ -111,7 +113,7 @@ container:
 	docker run --rm --privileged tonistiigi/binfmt --install all
 	for arch in $(ALL_ARCH.linux); do \
 		ARCH=$${arch} $(MAKE) nfs; \
-		ARCH=$${arch} OUTPUT_TYPE=registry $(MAKE) container-build; \
+		ARCH=$${arch} $(MAKE) container-build; \
 	done
 
 .PHONY: push
@@ -145,7 +147,7 @@ install-helm:
 
 .PHONY: e2e-bootstrap
 e2e-bootstrap: install-helm
-	docker pull $(IMAGE_TAG) || make container push
+	OUTPUT_TYPE=registry $(MAKE) container push
 	helm install csi-driver-nfs ./charts/latest/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
 		${E2E_HELM_OPTIONS} \
 		--set controller.logLevel=8 \
