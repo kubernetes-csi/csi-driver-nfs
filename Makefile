@@ -49,7 +49,7 @@ E2E_HELM_OPTIONS += ${EXTRA_HELM_OPTIONS}
 OUTPUT_TYPE ?= docker
 
 ALL_ARCH.linux = arm64 amd64
-ALL_OS_ARCH = $(foreach arch, ${ALL_ARCH.linux}, linux-$(arch))
+ALL_OS_ARCH = linux-arm64 linux-arm-v7 linux-amd64
 
 .EXPORT_ALL_VARIABLES:
 
@@ -98,10 +98,19 @@ local-k8s-uninstall:
 nfs:
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/${ARCH}/nfsplugin ./cmd/nfsplugin
 
+.PHONY: nfs-armv7
+nfs-armv7:
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/arm/v7/nfsplugin ./cmd/nfsplugin
+
 .PHONY: container-build
 container-build:
 	docker buildx build --pull --output=type=$(OUTPUT_TYPE) --platform="linux/$(ARCH)" \
 		-t $(IMAGE_TAG)-linux-$(ARCH) --build-arg ARCH=$(ARCH) .
+
+.PHONY: container-linux-armv7
+container-linux-armv7:
+	docker buildx build --pull --output=type=$(OUTPUT_TYPE) --platform="linux/arm/v7" \
+		-t $(IMAGE_TAG)-linux-arm-v7 --build-arg ARCH=arm/v7 .
 
 .PHONY: container
 container:
@@ -115,6 +124,8 @@ container:
 		ARCH=$${arch} $(MAKE) nfs; \
 		ARCH=$${arch} $(MAKE) container-build; \
 	done
+	$(MAKE) nfs-armv7
+	$(MAKE) container-linux-armv7
 
 .PHONY: push
 push:
