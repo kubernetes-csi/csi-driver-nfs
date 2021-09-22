@@ -45,6 +45,14 @@ IMAGE_TAG_LATEST = $(REGISTRY)/$(IMAGENAME):latest
 E2E_HELM_OPTIONS ?= --set image.nfs.repository=$(REGISTRY)/$(IMAGENAME) --set image.nfs.tag=$(IMAGE_VERSION) --set image.nfs.pullPolicy=Always
 E2E_HELM_OPTIONS += ${EXTRA_HELM_OPTIONS}
 
+# Output type of docker buildx build
+OUTPUT_TYPE ?= docker
+
+ALL_ARCH.linux = arm64 amd64
+ALL_OS_ARCH = $(foreach arch, ${ALL_ARCH.linux}, linux-$(arch))
+
+.EXPORT_ALL_VARIABLES:
+
 all: nfs
 
 .PHONY: verify
@@ -88,20 +96,46 @@ local-k8s-uninstall:
 
 .PHONY: nfs
 nfs:
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/nfsplugin ./cmd/nfsplugin
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/${ARCH}/nfsplugin ./cmd/nfsplugin
+
+.PHONY: container-build
+container-build:
+	docker buildx build --pull --output=type=$(OUTPUT_TYPE) --platform="linux/$(ARCH)" \
+		-t $(IMAGE_TAG)-linux-$(ARCH) --build-arg ARCH=$(ARCH) .
 
 .PHONY: container
-container: nfs
-	docker build --no-cache -t $(IMAGE_TAG) .
+container:
+	docker buildx rm container-builder || true
+	docker buildx create --use --name=container-builder
+	# enable qemu for arm64 build
+	# https://github.com/docker/buildx/issues/464#issuecomment-741507760
+	docker run --privileged --rm tonistiigi/binfmt --uninstall qemu-aarch64
+	docker run --rm --privileged tonistiigi/binfmt --install all
+	for arch in $(ALL_ARCH.linux); do \
+		ARCH=$${arch} $(MAKE) nfs; \
+		ARCH=$${arch} $(MAKE) container-build; \
+	done
 
 .PHONY: push
 push:
+ifdef CI
+	docker manifest create --amend $(IMAGE_TAG) $(foreach osarch, $(ALL_OS_ARCH), $(IMAGE_TAG)-${osarch})
+	docker manifest push --purge $(IMAGE_TAG)
+	docker manifest inspect $(IMAGE_TAG)
+else
 	docker push $(IMAGE_TAG)
+endif
 
 .PHONY: push-latest
 push-latest:
+ifdef CI
+	docker manifest create --amend $(IMAGE_TAG_LATEST) $(foreach osarch, $(ALL_OS_ARCH), $(IMAGE_TAG)-${osarch})
+	docker manifest push --purge $(IMAGE_TAG_LATEST)
+	docker manifest inspect $(IMAGE_TAG_LATEST)
+else
 	docker tag $(IMAGE_TAG) $(IMAGE_TAG_LATEST)
 	docker push $(IMAGE_TAG_LATEST)
+endif
 
 .PHONY: install-nfs-server
 install-nfs-server:
@@ -113,7 +147,7 @@ install-helm:
 
 .PHONY: e2e-bootstrap
 e2e-bootstrap: install-helm
-	docker pull $(IMAGE_TAG) || make container push
+	OUTPUT_TYPE=registry $(MAKE) container push
 	helm install csi-driver-nfs ./charts/latest/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
 		${E2E_HELM_OPTIONS} \
 		--set controller.logLevel=8 \
