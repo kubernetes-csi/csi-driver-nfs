@@ -20,8 +20,9 @@ ARG ARCH
 # Copy nfsplugin from build _output directory
 COPY bin/${ARCH}/nfsplugin /nfsplugin
 
+RUN apt update && apt-mark unhold libcap2
 # this is a workaround to install nfs-common & nfs-kernel-server and don't quit with error
 # https://github.com/kubernetes-sigs/blob-csi-driver/issues/214#issuecomment-781602430
-RUN apt update && apt install ca-certificates mount nfs-common nfs-kernel-server -y || true
+RUN apt install ca-certificates mount libssl1.1 nfs-common nfs-kernel-server -y || true
 
 ENTRYPOINT ["/nfsplugin"]
