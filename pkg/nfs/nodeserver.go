@@ -149,8 +149,7 @@ func (ns *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVo
 		return nil, status.Error(codes.InvalidArgument, "NodeGetVolumeStats volume path was empty")
 	}
 
-	_, err := os.Stat(req.VolumePath)
-	if err != nil {
+	if _, err := os.Lstat(req.VolumePath); err != nil {
 		if os.IsNotExist(err) {
 			return nil, status.Errorf(codes.NotFound, "path %s does not exist", req.VolumePath)
 		}

@@ -56,6 +56,14 @@ spec:
             preStop:
               exec:
                 command: ["/bin/sh", "-c", "rm -rf /registration/csi-nfsplugin /registration/csi-nfsplugin-reg.sock"]
+          livenessProbe:
+            exec:
+              command:
+                - /csi-node-driver-registrar
+                - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+                - --mode=kubelet-registration-probe
+            initialDelaySeconds: 30
+            timeoutSeconds: 15
           args:
             - --v=2
             - --csi-address=/csi/csi.sock
