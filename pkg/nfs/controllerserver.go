@@ -104,6 +104,10 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if err = os.Mkdir(internalVolumePath, 0777); err != nil && !os.IsExist(err) {
 		return nil, status.Errorf(codes.Internal, "failed to make subdirectory: %v", err.Error())
 	}
+	// Reset directory permissions because of umask problems
+	if err = os.Chmod(internalVolumePath, 0777); err != nil {
+		klog.Warningf("failed to chmod subdirectory: %v", err.Error())
+	}
 	return &csi.CreateVolumeResponse{Volume: cs.nfsVolToCSI(nfsVol)}, nil
 }
 
