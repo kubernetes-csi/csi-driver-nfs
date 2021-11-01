@@ -100,7 +100,7 @@ nfs:
 
 .PHONY: nfs-armv7
 nfs-armv7:
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/arm/v7/nfsplugin ./cmd/nfsplugin
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/arm/v7/nfsplugin ./cmd/nfsplugin
 
 .PHONY: container-build
 container-build:
