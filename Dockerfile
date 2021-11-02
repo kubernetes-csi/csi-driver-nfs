@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG ARCH=amd64
-
 FROM k8s.gcr.io/build-image/debian-base:buster-v1.6.0
+
+# Architecture for bin folder
+ARG ARCH
 
 # Copy nfsplugin from build _output directory
 COPY bin/${ARCH}/nfsplugin /nfsplugin
