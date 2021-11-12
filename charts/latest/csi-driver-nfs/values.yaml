@@ -9,11 +9,11 @@ image:
         pullPolicy: IfNotPresent
     livenessProbe:
         repository: k8s.gcr.io/sig-storage/livenessprobe
-        tag: v2.4.0
+        tag: v2.5.0
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
         repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
-        tag: v2.3.0
+        tag: v2.4.0
         pullPolicy: IfNotPresent
 
 serviceAccount:

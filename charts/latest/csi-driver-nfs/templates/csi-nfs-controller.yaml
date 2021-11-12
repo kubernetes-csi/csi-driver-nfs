@@ -48,7 +48,7 @@ spec:
               name: socket-dir
           resources:
             limits:
-              cpu: 100m
+              cpu: 200m
               memory: 400Mi
             requests:
               cpu: 10m
