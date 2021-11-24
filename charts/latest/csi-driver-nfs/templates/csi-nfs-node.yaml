@@ -43,13 +43,7 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-          resources:
-            limits:
-              cpu: 100m
-              memory: 100Mi
-            requests:
-              cpu: 10m
-              memory: 20Mi
+          resources: {{- toYaml .Values.node.resources.livenessProbe | nindent 12 }}
         - name: node-driver-registrar
           image: "{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
           livenessProbe:
@@ -77,13 +71,7 @@ spec:
               mountPath: /csi
             - name: registration-dir
               mountPath: /registration
-          resources:
-            limits:
-              cpu: 200m
-              memory: 100Mi
-            requests:
-              cpu: 10m
-              memory: 20Mi
+          resources: {{- toYaml .Values.node.resources.nodeDriverRegistrar | nindent 12 }}
         - name: nfs
           securityContext:
             privileged: true
@@ -122,13 +110,7 @@ spec:
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
-          resources:
-            limits:
-              cpu: 400m
-              memory: 300Mi
-            requests:
-              cpu: 10m
-              memory: 20Mi
+          resources: {{- toYaml .Values.node.resources.nfs | nindent 12 }}
       volumes:
         - name: socket-dir
           hostPath:
