@@ -64,10 +64,34 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.runOnMaster`                          | run controller on master node                              | `false`                                                             |
 | `controller.logLevel`                             | controller driver log level                                                          |`5`                                                           |
 | `controller.tolerations`                              | controller pod tolerations                            |                                                              |
+| `controller.resources.csiProvisioner.limits.cpu`      | csi-provisioner cpu limits                            | 1                                                           |
+| `controller.resources.csiProvisioner.limits.memory`   | csi-provisioner memory limits                         | 100Mi                                                          |
+| `controller.resources.csiProvisioner.requests.cpu`    | csi-provisioner cpu requests limits                   | 10m                                                            |
+| `controller.resources.csiProvisioner.requests.memory` | csi-provisioner memory requests limits                | 20Mi                                                           |
+| `controller.resources.livenessProbe.limits.cpu`       | liveness-probe cpu limits                             | 1                                                           |
+| `controller.resources.livenessProbe.limits.memory`    | liveness-probe memory limits                          | 100Mi                                                          |
+| `controller.resources.livenessProbe.requests.cpu`     | liveness-probe cpu requests limits                    | 10m                                                            |
+| `controller.resources.livenessProbe.requests.memory`  | liveness-probe memory requests limits                 | 20Mi                                                           |
+| `controller.resources.nfs.limits.cpu`                 | csi-driver-nfs cpu limits                            | 1                                                           |
+| `controller.resources.nfs.limits.memory`              | csi-driver-nfs memory limits                         | 200Mi                                                          |
+| `controller.resources.nfs.requests.cpu`               | csi-driver-nfs cpu requests limits                   | 10m                                                            |
+| `controller.resources.nfs.requests.memory`            | csi-driver-nfs memory requests limits                | 20Mi                                                           |
 | `node.maxUnavailable`                             | `maxUnavailable` value of driver node daemonset                            | `1`
 | `node.logLevel`                                   | node driver log level                                                          |`5`                                                           |
 | `node.livenessProbe.healthPort `                  | the health check port for liveness probe                    |`29653`                                                           |
 | `node.tolerations`                              | node pod tolerations                            |                                                              |
+| `node.resources.livenessProbe.limits.cpu`             | liveness-probe cpu limits                             | 1                                                           |
+| `node.resources.livenessProbe.limits.memory`          | liveness-probe memory limits                          | 100Mi                                                          |
+| `node.resources.livenessProbe.requests.cpu`           | liveness-probe cpu requests limits                    | 10m                                                            |
+| `node.resources.livenessProbe.requests.memory`        | liveness-probe memory requests limits                 | 20Mi                                                           |
+| `node.resources.nodeDriverRegistrar.limits.cpu`       | csi-node-driver-registrar cpu limits                  | 1                                                           |
+| `node.resources.nodeDriverRegistrar.limits.memory`    | csi-node-driver-registrar memory limits               | 100Mi                                                          |
+| `node.resources.nodeDriverRegistrar.requests.cpu`     | csi-node-driver-registrar cpu requests limits         | 10m                                                            |
+| `node.resources.nodeDriverRegistrar.requests.memory`  | csi-node-driver-registrar memory requests limits      | 20Mi                                                           |
+| `node.resources.nfs.limits.cpu`                       | csi-driver-nfs cpu limits                            | 1                                                            |
+| `node.resources.nfs.limits.memory`                    | csi-driver-nfs memory limits                         | 300Mi                                                         |
+| `node.resources.nfs.requests.cpu`                     | csi-driver-nfs cpu requests limits                   | 10m                                                            |
+| `node.resources.nfs.requests.memory`                  | csi-driver-nfs memory requests limits                | 20Mi                                                           |
 
 ## troubleshooting
  - Add `--wait -v=5 --debug` in `helm install` command to get detailed error
