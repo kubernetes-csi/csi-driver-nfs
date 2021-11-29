@@ -9,6 +9,7 @@ This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System
 |driver version  | supported k8s version |
 |----------------|-----------------------|
 |master branch   | 1.19+                 |
+|v3.0.0          | 1.19+                 |
 |v2.0.0          | 1.14+                 |
 
 ### Requirements
@@ -16,7 +17,7 @@ This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System
 This driver requires existing NFSv3 or NFSv4 server.
 
 ### Install driver on a Kubernetes cluster
- - install by [kubectl](./docs/install-csi-driver.md)
+ - install by [kubectl](./docs/install-nfs-csi-driver.md)
  - install by [helm charts](./charts)
 
 ### Driver parameters
