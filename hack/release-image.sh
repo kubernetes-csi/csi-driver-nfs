@@ -21,6 +21,7 @@ if [[ "$#" -lt 1 ]]; then
   exit 1
 fi
 
+export OUTPUT_TYPE=registry
 export REGISTRY_NAME="$1"
 export REGISTRY=$REGISTRY_NAME.azurecr.io
 export IMAGENAME=public/k8s/csi/nfs-csi
