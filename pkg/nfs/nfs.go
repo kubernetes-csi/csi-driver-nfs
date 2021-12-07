@@ -52,16 +52,12 @@ const (
 	paramShare = "share"
 )
 
-var (
-	version = "3.0.0"
-)
-
-func NewNFSdriver(nodeID, driverName, endpoint string, perm *uint32) *Driver {
-	klog.Infof("Driver: %v version: %v", driverName, version)
+func NewDriver(nodeID, driverName, endpoint string, perm *uint32) *Driver {
+	klog.V(2).Infof("Driver: %v version: %v", driverName, driverVersion)
 
 	n := &Driver{
 		name:     driverName,
-		version:  version,
+		version:  driverVersion,
 		nodeID:   nodeID,
 		endpoint: endpoint,
 		cap:      map[csi.VolumeCapability_AccessMode_Mode]bool{},
@@ -79,9 +75,6 @@ func NewNFSdriver(nodeID, driverName, endpoint string, perm *uint32) *Driver {
 	}
 	n.AddVolumeCapabilityAccessModes(vcam)
 
-	// NFS plugin does not support ControllerServiceCapability now.
-	// If support is added, it should set to appropriate
-	// ControllerServiceCapability RPC types.
 	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
