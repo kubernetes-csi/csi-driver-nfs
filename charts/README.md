@@ -8,12 +8,6 @@
  - set replica of controller as `1`: `--set controller.replicas=1`
  - enable `fsGroupPolicy` on a k8s 1.20+ cluster (this feature is in beta, check details [here](../deploy/example/fsgroup)): `--set feature.enableFSGroupPolicy=true`
 
-## install latest version
-```console
-helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
-helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system
-```
-
 ### install a specific version
 ```console
 helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
