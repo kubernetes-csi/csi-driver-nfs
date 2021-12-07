@@ -28,7 +28,7 @@ export IMAGENAME=public/k8s/csi/nfs-csi
 export CI=1
 export PUBLISH=1
 az acr login --name $REGISTRY_NAME
-make container push push-latest
+make && make container push push-latest
 
 echo "sleep 60s ..."
 sleep 60

@@ -62,6 +62,6 @@ func handle() {
 		parsedPerm = &permu32
 	}
 
-	d := nfs.NewNFSdriver(*nodeID, *driverName, *endpoint, parsedPerm)
+	d := nfs.NewDriver(*nodeID, *driverName, *endpoint, parsedPerm)
 	d.Run(false)
 }
