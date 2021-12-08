@@ -14,7 +14,7 @@ kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nf
 
 - During the deployment, a new service `nfs-server` will be created which exposes the NFS server endpoint `nfs-server.default.svc.cluster.local` and the share path `/`. You can specify `PersistentVolume` or `StorageClass` using these information.
 
-- Deploy the NFS CSI driver, please refer to [install NFS CSI driver](../../../docs/install-csi-driver.md).
+- Deploy the NFS CSI driver, please refer to [install NFS CSI driver](../../../docs/install-nfs-csi-driver.md).
 
 - To check if the NFS server is working, we can statically create a PersistentVolume and a PersistentVolumeClaim, and mount it onto a sample pod:
 
