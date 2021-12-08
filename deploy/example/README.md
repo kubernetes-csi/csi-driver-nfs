@@ -9,7 +9,7 @@ Please refer to [driver parameters](../../docs/driver-parameters.md) for more de
 ## Prerequisite
 
 - [Set up a NFS Server on a Kubernetes cluster](./nfs-provisioner/README.md)
-- [Install NFS CSI Driver](../../docs/install-csi-driver.md)
+- [Install NFS CSI Driver](../../docs/install-nfs-csi-driver.md)
 
 ## Storage Class Usage (Dynamic Provisioning)
 
