@@ -3,7 +3,7 @@
 
 ### Overview
 
-This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System) [CSI](https://kubernetes-csi.github.io/docs/) Driver, csi plugin name: `nfs.csi.k8s.io`
+This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System) [CSI](https://kubernetes-csi.github.io/docs/) driver, csi plugin name: `nfs.csi.k8s.io`. This driver requires existing and already configured NFSv3 or NFSv4 server, it supports dynamic provisioning of Persistent Volumes via Persistent Volume Claims by creating a new sub directory under NFS server.
 
 ### Project status: Beta
 
@@ -13,10 +13,6 @@ This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System
 |master branch   | 1.19+                 | beta   |
 |v3.0.0          | 1.19+                 | beta   |
 |v2.0.0          | 1.14+                 | alpha  |
-
-### Requirements
-
-This driver requires existing NFSv3 or NFSv4 server.
 
 ### Install driver on a Kubernetes cluster
  - install by [kubectl](./docs/install-nfs-csi-driver.md)
