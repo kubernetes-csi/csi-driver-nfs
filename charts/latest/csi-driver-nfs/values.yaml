@@ -24,6 +24,9 @@ rbac:
   create: true
   name: nfs
 
+driver:
+  name: nfs.csi.k8s.io
+
 controller:
   name: csi-nfs-controller
   replicas: 2
