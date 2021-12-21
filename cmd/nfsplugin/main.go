@@ -30,7 +30,7 @@ import (
 var (
 	endpoint   = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
 	nodeID     = flag.String("nodeid", "", "node id")
-	perm       = flag.String("mount-permissions", "", "mounted folder permissions")
+	perm       = flag.String("mount-permissions", "0777", "mounted folder permissions")
 	driverName = flag.String("drivername", nfs.DefaultDriverName, "name of the driver")
 )
 

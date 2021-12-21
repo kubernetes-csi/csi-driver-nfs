@@ -1,0 +1,26 @@
+name: k8s api version check
+on:
+    pull_request: {}
+    push: {}
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    # https://pluto.docs.fairwinds.com/advanced/#display-options
+    - name: Download pluto
+      uses: FairwindsOps/pluto/github-action@master
+
+    - name: Check deploy folder
+      run: |
+        pluto detect-files -d deploy
+
+    - name: Check example folder
+      run: |
+        pluto detect-files -d deploy/example

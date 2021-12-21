@@ -38,6 +38,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | Parameter                                         | Description                                                | Default                                                           |
 |---------------------------------------------------|------------------------------------------------------------|-------------------------------------------------------------------|
 | `driver.name`                                     | alternative driver name                        | `nfs.csi.k8s.io` |
+| `driver.mountPermissions`                         | mounted folder permissions name                            | `0777`
 | `feature.enableFSGroupPolicy`                     | enable `fsGroupPolicy` on a k8s 1.20+ cluster           | `false`                      |
 | `image.nfs.repository`                            | csi-driver-nfs docker image                                | `gcr.io/k8s-staging-sig-storage/nfsplugin`                          |
 | `image.nfs.tag`                                   | csi-driver-nfs docker image tag                            | `amd64-linux-canary`                                                |
@@ -70,6 +71,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.resources.nfs.limits.memory`              | csi-driver-nfs memory limits                         | 200Mi                                                          |
 | `controller.resources.nfs.requests.cpu`               | csi-driver-nfs cpu requests limits                   | 10m                                                            |
 | `controller.resources.nfs.requests.memory`            | csi-driver-nfs memory requests limits                | 20Mi                                                           |
+| `node.name`                                           | driver node daemonset name                            | `csi-nfs-node`
 | `node.maxUnavailable`                             | `maxUnavailable` value of driver node daemonset                            | `1`
 | `node.logLevel`                                   | node driver log level                                                          |`5`                                                           |
 | `node.livenessProbe.healthPort `                  | the health check port for liveness probe                    |`29653`                                                           |

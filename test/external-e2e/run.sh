@@ -26,11 +26,11 @@ install_ginkgo () {
 
 setup_e2e_binaries() {
     # download k8s external e2e binary
-    curl -sL https://storage.googleapis.com/kubernetes-release/release/v1.21.0/kubernetes-test-linux-amd64.tar.gz --output e2e-tests.tar.gz
+    curl -sL https://storage.googleapis.com/kubernetes-release/release/v1.23.0/kubernetes-test-linux-amd64.tar.gz --output e2e-tests.tar.gz
     tar -xvf e2e-tests.tar.gz && rm e2e-tests.tar.gz
 
     # enable fsGroupPolicy (only available from k8s 1.20)
-    export EXTRA_HELM_OPTIONS="--set feature.enableFSGroupPolicy=true --set driver.name=$DRIVER.csi.k8s.io --set controller.name=csi-$DRIVER-controller --set node.name=csi-$DRIVER-node --set image.csiProvisioner.tag=v3.0.0"
+    export EXTRA_HELM_OPTIONS="--set feature.enableFSGroupPolicy=true --set driver.name=$DRIVER.csi.k8s.io --set controller.name=csi-$DRIVER-controller --set node.name=csi-$DRIVER-node --set image.csiProvisioner.tag=v3.0.0 --set driver.mountPermissions=0777"
 
     # test on alternative driver name
     sed -i "s/nfs.csi.k8s.io/$DRIVER.csi.k8s.io/g" deploy/example/storageclass-nfs.yaml
