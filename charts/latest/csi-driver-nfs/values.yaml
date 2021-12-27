@@ -48,21 +48,18 @@ controller:
   resources:
     csiProvisioner:
       limits:
-        cpu: 1
         memory: 400Mi
       requests:
         cpu: 10m
         memory: 20Mi
     livenessProbe:
       limits:
-        cpu: 1
         memory: 100Mi
       requests:
         cpu: 10m
         memory: 20Mi
     nfs:
       limits:
-        cpu: 1
         memory: 200Mi
       requests:
         cpu: 10m
@@ -79,21 +76,18 @@ node:
   resources:
     livenessProbe:
       limits:
-        cpu: 1
         memory: 100Mi
       requests:
         cpu: 10m
         memory: 20Mi
     nodeDriverRegistrar:
       limits:
-        cpu: 1
         memory: 100Mi
       requests:
         cpu: 10m
         memory: 20Mi
     nfs:
       limits:
-        cpu: 1
         memory: 300Mi
       requests:
         cpu: 10m
