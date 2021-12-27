@@ -38,7 +38,6 @@ spec:
               mountPath: /csi
           resources:
             limits:
-              cpu: 1
               memory: 100Mi
             requests:
               cpu: 10m
@@ -71,7 +70,6 @@ spec:
               mountPath: /registration
           resources:
             limits:
-              cpu: 1
               memory: 100Mi
             requests:
               cpu: 10m
@@ -115,7 +113,6 @@ spec:
               mountPropagation: "Bidirectional"
           resources:
             limits:
-              cpu: 1
               memory: 300Mi
             requests:
               cpu: 10m

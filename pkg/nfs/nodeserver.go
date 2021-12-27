@@ -87,7 +87,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	if ns.Driver.perm != nil {
-		klog.V(2).Infof("volumeID(%v): mount targetPath(%s) with permissions(%o)", volumeID, targetPath, *ns.Driver.perm)
+		klog.V(2).Infof("volumeID(%v): mount targetPath(%s) with permissions(0%o)", volumeID, targetPath, *ns.Driver.perm)
 		if err := os.Chmod(targetPath, os.FileMode(*ns.Driver.perm)); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
