@@ -13,7 +13,7 @@ jobs:
               uses: golangci/golangci-lint-action@v2
               with:
                   version: v1.29
-                  args: -E=gofmt,golint,misspell --timeout=30m0s
+                  args: -E=gofmt,deadcode,unused,varcheck,ineffassign,golint,misspell --timeout=30m0s
     verify-helm:
         name: Verify Helm
         runs-on: ubuntu-latest
