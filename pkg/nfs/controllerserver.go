@@ -127,8 +127,21 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
+	var volCap *csi.VolumeCapability
+	mountOptions := getMountOptions(req.GetSecrets())
+	if mountOptions != "" {
+		klog.V(2).Infof("DeleteVolume: found mountOptions(%s) for volume(%s)", mountOptions, volumeID)
+		volCap = &csi.VolumeCapability{
+			AccessType: &csi.VolumeCapability_Mount{
+				Mount: &csi.VolumeCapability_MountVolume{
+					MountFlags: []string{mountOptions},
+				},
+			},
+		}
+	}
+
 	// Mount nfs base share so we can delete the subdirectory
-	if err = cs.internalMount(ctx, nfsVol, nil); err != nil {
+	if err = cs.internalMount(ctx, nfsVol, volCap); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
 	}
 	defer func() {
@@ -285,8 +298,7 @@ func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[str
 		baseDir string
 	)
 
-	// Validate parameters (case-insensitive).
-	// TODO do more strict validation.
+	// validate parameters (case-insensitive)
 	for k, v := range params {
 		switch strings.ToLower(k) {
 		case paramServer:
@@ -298,7 +310,7 @@ func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[str
 		}
 	}
 
-	// Validate required parameters
+	// validate required parameters
 	if server == "" {
 		return nil, fmt.Errorf("%v is a required parameter", paramServer)
 	}

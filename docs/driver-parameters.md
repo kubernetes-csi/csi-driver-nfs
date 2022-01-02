@@ -1,5 +1,5 @@
 ## Driver Parameters
-> This plugin driver itself only provides a communication layer between resources in the cluser and the NFS server, you need to bring your own NFS server before using this driver.
+> This driver requires existing and already configured NFSv3 or NFSv4 server, it supports dynamic provisioning of Persistent Volumes via Persistent Volume Claims by creating a new sub directory under NFS server.
 
 ### Storage Class Usage (Dynamic Provisioning)
 > [`StorageClass` example](../deploy/example/storageclass-nfs.yaml)
