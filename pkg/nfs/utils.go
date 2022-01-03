@@ -121,3 +121,14 @@ func (vl *VolumeLocks) Release(volumeID string) {
 	defer vl.mux.Unlock()
 	vl.locks.Delete(volumeID)
 }
+
+// getMountOptions get mountOptions value from a map
+func getMountOptions(context map[string]string) string {
+	for k, v := range context {
+		switch strings.ToLower(k) {
+		case mountOptionsField:
+			return v
+		}
+	}
+	return ""
+}

@@ -118,3 +118,39 @@ func TestGetLogLevel(t *testing.T) {
 		}
 	}
 }
+
+func TestGetMountOptions(t *testing.T) {
+	tests := []struct {
+		desc    string
+		context map[string]string
+		result  string
+	}{
+		{
+			desc:    "nil context",
+			context: nil,
+			result:  "",
+		},
+		{
+			desc:    "empty context",
+			context: map[string]string{},
+			result:  "",
+		},
+		{
+			desc:    "valid mountOptions",
+			context: map[string]string{"mountOptions": "nfsvers=3"},
+			result:  "nfsvers=3",
+		},
+		{
+			desc:    "valid mountOptions(lowercase)",
+			context: map[string]string{"mountoptions": "nfsvers=4"},
+			result:  "nfsvers=4",
+		},
+	}
+
+	for _, test := range tests {
+		result := getMountOptions(test.context)
+		if result != test.result {
+			t.Errorf("Unexpected result: %s, expected: %s", result, test.result)
+		}
+	}
+}

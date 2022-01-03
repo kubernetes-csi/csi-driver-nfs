@@ -47,6 +47,8 @@ var (
 	defaultStorageClassParameters = map[string]string{
 		"server": "nfs-server.default.svc.cluster.local",
 		"share":  "/",
+		"csi.storage.k8s.io/provisioner-secret-name":      "mount-options",
+		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
 	}
 	controllerServer *nfs.ControllerServer
 )
