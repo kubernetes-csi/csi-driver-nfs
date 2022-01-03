@@ -37,11 +37,11 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 
 | Parameter                                         | Description                                                | Default                                                           |
 |---------------------------------------------------|------------------------------------------------------------|-------------------------------------------------------------------|
-| `driver.name`                                     | alternative driver name                        | `nfs.csi.k8s.io` |
+| `driver.name`                                     | alternative driver name                                    | `nfs.csi.k8s.io` |
 | `driver.mountPermissions`                         | mounted folder permissions name                            | `0777`
-| `feature.enableFSGroupPolicy`                     | enable `fsGroupPolicy` on a k8s 1.20+ cluster           | `false`                      |
-| `image.nfs.repository`                            | csi-driver-nfs docker image                                | `gcr.io/k8s-staging-sig-storage/nfsplugin`                          |
-| `image.nfs.tag`                                   | csi-driver-nfs docker image tag                            | `amd64-linux-canary`                                                |
+| `feature.enableFSGroupPolicy`                     | enable `fsGroupPolicy` on a k8s 1.20+ cluster              | `false`                      |
+| `image.nfs.repository`                            | csi-driver-nfs image                                       | `mcr.microsoft.com/k8s/csi/nfs-csi`                          |
+| `image.nfs.tag`                                   | csi-driver-nfs image tag                                   | `latest`                                                |
 | `image.nfs.pullPolicy`                            | csi-driver-nfs image pull policy                           | `IfNotPresent`                                                      |
 | `image.csiProvisioner.repository`                 | csi-provisioner docker image                               | `k8s.gcr.io/sig-storage/csi-provisioner`                            |
 | `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | `v2.0.4`                                                            |
