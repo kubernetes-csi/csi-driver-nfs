@@ -32,7 +32,6 @@ const (
 
 func NewEmptyDriver(emptyField string) *Driver {
 	var d *Driver
-	var perm *uint32
 	switch emptyField {
 	case "version":
 		d = &Driver{
@@ -40,7 +39,6 @@ func NewEmptyDriver(emptyField string) *Driver {
 			version: "",
 			nodeID:  fakeNodeID,
 			cap:     map[csi.VolumeCapability_AccessMode_Mode]bool{},
-			perm:    perm,
 		}
 	case "name":
 		d = &Driver{
@@ -48,7 +46,6 @@ func NewEmptyDriver(emptyField string) *Driver {
 			version: driverVersion,
 			nodeID:  fakeNodeID,
 			cap:     map[csi.VolumeCapability_AccessMode_Mode]bool{},
-			perm:    perm,
 		}
 	default:
 		d = &Driver{
@@ -56,7 +53,6 @@ func NewEmptyDriver(emptyField string) *Driver {
 			version: driverVersion,
 			nodeID:  fakeNodeID,
 			cap:     map[csi.VolumeCapability_AccessMode_Mode]bool{},
-			perm:    perm,
 		}
 	}
 	d.volumeLocks = NewVolumeLocks()

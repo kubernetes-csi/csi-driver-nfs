@@ -58,6 +58,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.replicas`                             | the replicas of csi-nfs-controller                         | `2`                                                                 |
 | `controller.runOnMaster`                          | run controller on master node                              | `false`                                                             |
 | `controller.logLevel`                             | controller driver log level                                                          |`5`                                                           |
+| `controller.workingMountDir`                      | working directory for provisioner to mount nfs shares temporarily                  | `/tmp`                                                             |
 | `controller.tolerations`                              | controller pod tolerations                            |                                                              |
 | `controller.resources.csiProvisioner.limits.memory`   | csi-provisioner memory limits                         | 100Mi                                                          |
 | `controller.resources.csiProvisioner.requests.cpu`    | csi-provisioner cpu requests limits                   | 10m                                                            |

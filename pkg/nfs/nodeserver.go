@@ -50,10 +50,28 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
 	}
 
+	var server, baseDir string
+	for k, v := range req.GetVolumeContext() {
+		switch strings.ToLower(k) {
+		case paramServer:
+			server = v
+		case paramShare:
+			baseDir = v
+		}
+	}
+
+	if server == "" {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("%v is a required parameter", paramServer))
+	}
+	if baseDir == "" {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("%v is a required parameter", paramShare))
+	}
+	source := fmt.Sprintf("%s:%s", server, baseDir)
+
 	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			if err := os.MkdirAll(targetPath, 0750); err != nil {
+			if err := os.MkdirAll(targetPath, os.FileMode(ns.Driver.mountPermissions)); err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 			notMnt = true
@@ -70,10 +88,6 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		mountOptions = append(mountOptions, "ro")
 	}
 
-	s := req.GetVolumeContext()[paramServer]
-	ep := req.GetVolumeContext()[paramShare]
-	source := fmt.Sprintf("%s:%s", s, ep)
-
 	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)
 	err = ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
 	if err != nil {
@@ -86,13 +100,10 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if ns.Driver.perm != nil {
-		klog.V(2).Infof("volumeID(%v): mount targetPath(%s) with permissions(0%o)", volumeID, targetPath, *ns.Driver.perm)
-		if err := os.Chmod(targetPath, os.FileMode(*ns.Driver.perm)); err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+	klog.V(2).Infof("volumeID(%v): mount targetPath(%s) with permissions(0%o)", volumeID, targetPath, ns.Driver.mountPermissions)
+	if err := os.Chmod(targetPath, os.FileMode(ns.Driver.mountPermissions)); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
-
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 

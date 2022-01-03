@@ -34,8 +34,6 @@ import (
 // ControllerServer controller server setting
 type ControllerServer struct {
 	Driver *Driver
-	// Working directory for the provisioner to temporarily mount nfs shares at
-	workingMountDir string
 }
 
 // nfsVolume is an internal representation of a volume
@@ -98,10 +96,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}()
 
-	fileMode := os.FileMode(0777)
-	if cs.Driver.perm != nil {
-		fileMode = os.FileMode(*cs.Driver.perm)
-	}
+	fileMode := os.FileMode(cs.Driver.mountPermissions)
 	// Create subdirectory under base-dir
 	internalVolumePath := cs.getInternalVolumePath(nfsVol)
 	if err = os.Mkdir(internalVolumePath, fileMode); err != nil && !os.IsExist(err) {
@@ -140,7 +135,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		}
 	}
 
-	// Mount nfs base share so we can delete the subdirectory
+	// mount nfs base share so we can delete the subdirectory
 	if err = cs.internalMount(ctx, nfsVol, volCap); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
 	}
@@ -150,7 +145,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		}
 	}()
 
-	// Delete subdirectory under base-dir
+	// delete subdirectory under base-dir
 	internalVolumePath := cs.getInternalVolumePath(nfsVol)
 
 	klog.V(2).Infof("Removing subdirectory at %v", internalVolumePath)
@@ -293,10 +288,7 @@ func (cs *ControllerServer) internalUnmount(ctx context.Context, vol *nfsVolume)
 
 // Convert VolumeCreate parameters to an nfsVolume
 func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[string]string) (*nfsVolume, error) {
-	var (
-		server  string
-		baseDir string
-	)
+	var server, baseDir string
 
 	// validate parameters (case-insensitive)
 	for k, v := range params {
@@ -310,7 +302,6 @@ func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[str
 		}
 	}
 
-	// validate required parameters
 	if server == "" {
 		return nil, fmt.Errorf("%v is a required parameter", paramServer)
 	}
@@ -331,11 +322,7 @@ func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[str
 
 // Get working directory for CreateVolume and DeleteVolume
 func (cs *ControllerServer) getInternalMountPath(vol *nfsVolume) string {
-	// use default if empty
-	if cs.workingMountDir == "" {
-		cs.workingMountDir = "/tmp"
-	}
-	return filepath.Join(cs.workingMountDir, vol.subDir)
+	return filepath.Join(cs.Driver.workingMountDir, vol.subDir)
 }
 
 // Get internal path where the volume is created

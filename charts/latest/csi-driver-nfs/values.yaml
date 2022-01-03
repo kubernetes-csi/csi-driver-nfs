@@ -26,7 +26,7 @@ rbac:
 
 driver:
   name: nfs.csi.k8s.io
-  mountPermissions: "0777"
+  mountPermissions: 0777
 
 feature:
   enableFSGroupPolicy: false
@@ -38,6 +38,7 @@ controller:
   livenessProbe:
     healthPort: 29652
   logLevel: 5
+  workingMountDir: "/tmp"
   tolerations:
     - key: "node-role.kubernetes.io/master"
       operator: "Exists"

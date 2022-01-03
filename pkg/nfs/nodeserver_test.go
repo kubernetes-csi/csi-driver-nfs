@@ -40,6 +40,11 @@ func TestNodePublishVolume(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
+	params := map[string]string{
+		"server": "server",
+		"share":  "share",
+	}
+
 	volumeCap := csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER}
 	alreadyMountedTarget := testutil.GetWorkDirPath("false_is_likely_exist_target", t)
 	targetTest := testutil.GetWorkDirPath("target_test", t)
@@ -70,39 +75,48 @@ func TestNodePublishVolume(t *testing.T) {
 		},
 		{
 			desc: "[Success] Stage target path missing",
-			req: csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
-				VolumeId:   "vol_1",
-				TargetPath: targetTest},
+			req: csi.NodePublishVolumeRequest{
+				VolumeContext:    params,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest},
 			expectedErr: nil,
 		},
 		{
 			desc: "[Success] Valid request read only",
-			req: csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
-				VolumeId:   "vol_1",
-				TargetPath: targetTest,
-				Readonly:   true},
+			req: csi.NodePublishVolumeRequest{
+				VolumeContext:    params,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest,
+				Readonly:         true},
 			expectedErr: nil,
 		},
 		{
 			desc: "[Success] Valid request already mounted",
-			req: csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
-				VolumeId:   "vol_1",
-				TargetPath: alreadyMountedTarget,
-				Readonly:   true},
+			req: csi.NodePublishVolumeRequest{
+				VolumeContext:    params,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       alreadyMountedTarget,
+				Readonly:         true},
 			expectedErr: nil,
 		},
 		{
 			desc: "[Success] Valid request",
-			req: csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
-				VolumeId:   "vol_1",
-				TargetPath: targetTest,
-				Readonly:   true},
+			req: csi.NodePublishVolumeRequest{
+				VolumeContext:    params,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest,
+				Readonly:         true},
 			expectedErr: nil,
 		},
 	}
 
 	// setup
 	_ = makeDir(alreadyMountedTarget)
+	_ = makeDir(targetTest)
 
 	for _, tc := range tests {
 		if tc.setup != nil {

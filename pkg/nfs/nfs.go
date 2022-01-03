@@ -17,21 +17,27 @@ limitations under the License.
 package nfs
 
 import (
-	"fmt"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/klog/v2"
 	mount "k8s.io/mount-utils"
 )
 
+// DriverOptions defines driver parameters specified in driver deployment
+type DriverOptions struct {
+	NodeID           string
+	DriverName       string
+	Endpoint         string
+	MountPermissions uint64
+	WorkingMountDir  string
+}
+
 type Driver struct {
-	name    string
-	nodeID  string
-	version string
-
-	endpoint string
-
-	perm *uint32
+	name             string
+	nodeID           string
+	version          string
+	endpoint         string
+	mountPermissions uint64
+	workingMountDir  string
 
 	//ids *identityServer
 	ns          *NodeServer
@@ -53,16 +59,17 @@ const (
 	mountOptionsField = "mountoptions"
 )
 
-func NewDriver(nodeID, driverName, endpoint string, perm *uint32) *Driver {
-	klog.V(2).Infof("Driver: %v version: %v", driverName, driverVersion)
+func NewDriver(options *DriverOptions) *Driver {
+	klog.V(2).Infof("Driver: %v version: %v", options.DriverName, driverVersion)
 
 	n := &Driver{
-		name:     driverName,
-		version:  driverVersion,
-		nodeID:   nodeID,
-		endpoint: endpoint,
-		cap:      map[csi.VolumeCapability_AccessMode_Mode]bool{},
-		perm:     perm,
+		name:             options.DriverName,
+		version:          driverVersion,
+		nodeID:           options.NodeID,
+		endpoint:         options.Endpoint,
+		mountPermissions: options.MountPermissions,
+		workingMountDir:  options.WorkingMountDir,
+		cap:              map[csi.VolumeCapability_AccessMode_Mode]bool{},
 	}
 
 	vcam := []csi.VolumeCapability_AccessMode_Mode{
@@ -102,7 +109,7 @@ func (n *Driver) Run(testMode bool) {
 	if err != nil {
 		klog.Fatalf("%v", err)
 	}
-	klog.Infof("\nDRIVER INFORMATION:\n-------------------\n%s\n\nStreaming logs below:", versionMeta)
+	klog.V(2).Infof("\nDRIVER INFORMATION:\n-------------------\n%s\n\nStreaming logs below:", versionMeta)
 
 	n.ns = NewNodeServer(n, mount.New(""))
 	s := NewNonBlockingGRPCServer()
@@ -119,7 +126,6 @@ func (n *Driver) Run(testMode bool) {
 func (n *Driver) AddVolumeCapabilityAccessModes(vc []csi.VolumeCapability_AccessMode_Mode) []*csi.VolumeCapability_AccessMode {
 	var vca []*csi.VolumeCapability_AccessMode
 	for _, c := range vc {
-		klog.Infof("Enabling volume access mode: %v", c.String())
 		vca = append(vca, &csi.VolumeCapability_AccessMode{Mode: c})
 		n.cap[c] = true
 	}
@@ -128,19 +134,15 @@ func (n *Driver) AddVolumeCapabilityAccessModes(vc []csi.VolumeCapability_Access
 
 func (n *Driver) AddControllerServiceCapabilities(cl []csi.ControllerServiceCapability_RPC_Type) {
 	var csc []*csi.ControllerServiceCapability
-
 	for _, c := range cl {
-		klog.Infof("Enabling controller service capability: %v", c.String())
 		csc = append(csc, NewControllerServiceCapability(c))
 	}
-
 	n.cscap = csc
 }
 
 func (n *Driver) AddNodeServiceCapabilities(nl []csi.NodeServiceCapability_RPC_Type) {
 	var nsc []*csi.NodeServiceCapability
 	for _, n := range nl {
-		klog.Infof("Enabling node service capability: %v", n.String())
 		nsc = append(nsc, NewNodeServiceCapability(n))
 	}
 	n.nscap = nsc
@@ -148,6 +150,5 @@ func (n *Driver) AddNodeServiceCapabilities(nl []csi.NodeServiceCapability_RPC_T
 
 func IsCorruptedDir(dir string) bool {
 	_, pathErr := mount.PathExists(dir)
-	fmt.Printf("IsCorruptedDir(%s) returned with error: %v", dir, pathErr)
 	return pathErr != nil && mount.IsCorruptedMnt(pathErr)
 }
