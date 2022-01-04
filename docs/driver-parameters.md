@@ -23,7 +23,7 @@ volumeAttributes.share | NFS share path | `/` |  Yes  |
 > since `DeleteVolumeRequest` does not provide `mountOptions`, following is the workaround to provide `mountOptions` for `DeleteVolume`, check details [here](https://github.com/kubernetes-csi/csi-driver-nfs/issues/260)
   - create a secret with `mountOptions`
 ```console
-kubectl create secret generic mount-options --from-literal mountOptions="nfsvers=3"
+kubectl create secret generic mount-options --from-literal mountOptions="nfsvers=3,hard"
 ```
   - define a storage class with `csi.storage.k8s.io/provisioner-secret-name` and `csi.storage.k8s.io/provisioner-secret-namespace` setting:
 ```yaml
