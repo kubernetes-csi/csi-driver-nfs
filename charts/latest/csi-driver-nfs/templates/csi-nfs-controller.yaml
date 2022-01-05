@@ -73,6 +73,7 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--drivername={{ .Values.driver.name }}"
             - "--mount-permissions={{ .Values.driver.mountPermissions }}"
+            - "--working-mount-dir={{ .Values.controller.workingMountDir }}"
           env:
             - name: NODE_ID
               valueFrom:

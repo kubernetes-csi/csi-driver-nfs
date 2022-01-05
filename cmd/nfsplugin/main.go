@@ -18,9 +18,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs"
 
@@ -28,10 +26,11 @@ import (
 )
 
 var (
-	endpoint   = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	nodeID     = flag.String("nodeid", "", "node id")
-	perm       = flag.String("mount-permissions", "0777", "mounted folder permissions")
-	driverName = flag.String("drivername", nfs.DefaultDriverName, "name of the driver")
+	endpoint         = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	nodeID           = flag.String("nodeid", "", "node id")
+	mountPermissions = flag.Uint64("mount-permissions", 0777, "mounted folder permissions")
+	driverName       = flag.String("drivername", nfs.DefaultDriverName, "name of the driver")
+	workingMountDir  = flag.String("working-mount-dir", "/tmp", "working directory for provisioner to mount nfs shares temporarily")
 )
 
 func init() {
@@ -50,18 +49,13 @@ func main() {
 }
 
 func handle() {
-	// Converting string permission representation to *uint32
-	var parsedPerm *uint32
-	if perm != nil && *perm != "" {
-		permu64, err := strconv.ParseUint(*perm, 8, 32)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "incorrect mount-permissions value: %q", *perm)
-			os.Exit(1)
-		}
-		permu32 := uint32(permu64)
-		parsedPerm = &permu32
+	driverOptions := nfs.DriverOptions{
+		NodeID:           *nodeID,
+		DriverName:       *driverName,
+		Endpoint:         *endpoint,
+		MountPermissions: *mountPermissions,
+		WorkingMountDir:  *workingMountDir,
 	}
-
-	d := nfs.NewDriver(*nodeID, *driverName, *endpoint, parsedPerm)
+	d := nfs.NewDriver(&driverOptions)
 	d.Run(false)
 }
