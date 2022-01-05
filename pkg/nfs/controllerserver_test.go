@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -33,12 +34,14 @@ import (
 )
 
 const (
-	testServer         = "test-server"
-	testBaseDir        = "test-base-dir"
-	testBaseDirNested  = "test/base/dir"
-	testCSIVolume      = "test-csi"
-	testVolumeID       = "test-server/test-base-dir/test-csi"
-	testVolumeIDNested = "test-server/test/base/dir/test-csi"
+	testServer            = "test-server"
+	testBaseDir           = "test-base-dir"
+	testBaseDirNested     = "test/base/dir"
+	testCSIVolume         = "test-csi"
+	testVolumeID          = "test-server/test-base-dir/test-csi"
+	newTestVolumeID       = "test-server#test-base-dir#test-csi"
+	testVolumeIDNested    = "test-server/test/base/dir/test-csi"
+	newTestVolumeIDNested = "test-server#test/base/dir#test-csi"
 )
 
 // for Windows support in the future
@@ -103,7 +106,36 @@ func TestCreateVolume(t *testing.T) {
 			},
 			resp: &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
-					VolumeId: testVolumeID,
+					VolumeId: newTestVolumeID,
+					VolumeContext: map[string]string{
+						paramServer: testServer,
+						paramShare:  testShare,
+					},
+				},
+			},
+		},
+		{
+			name: "valid defaults with newTestVolumeID",
+			req: &csi.CreateVolumeRequest{
+				Name: testCSIVolume,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					paramServer: testServer,
+					paramShare:  testBaseDir,
+				},
+			},
+			resp: &csi.CreateVolumeResponse{
+				Volume: &csi.Volume{
+					VolumeId: newTestVolumeID,
 					VolumeContext: map[string]string{
 						paramServer: testServer,
 						paramShare:  testShare,
@@ -204,37 +236,47 @@ func TestCreateVolume(t *testing.T) {
 
 func TestDeleteVolume(t *testing.T) {
 	cases := []struct {
-		desc        string
-		req         *csi.DeleteVolumeRequest
-		resp        *csi.DeleteVolumeResponse
-		expectedErr error
+		desc          string
+		testOnWindows bool
+		req           *csi.DeleteVolumeRequest
+		resp          *csi.DeleteVolumeResponse
+		expectedErr   error
 	}{
 		{
-			desc:        "Volume ID missing",
-			req:         &csi.DeleteVolumeRequest{},
-			resp:        nil,
-			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
+			desc:          "Volume ID missing",
+			testOnWindows: true,
+			req:           &csi.DeleteVolumeRequest{},
+			resp:          nil,
+			expectedErr:   status.Error(codes.InvalidArgument, "Volume ID missing in request"),
 		},
 		{
-			desc:        "Valid request",
-			req:         &csi.DeleteVolumeRequest{VolumeId: testVolumeID},
-			resp:        &csi.DeleteVolumeResponse{},
-			expectedErr: nil,
+			desc:          "Valid request",
+			testOnWindows: false,
+			req:           &csi.DeleteVolumeRequest{VolumeId: testVolumeID},
+			resp:          &csi.DeleteVolumeResponse{},
+			expectedErr:   nil,
+		},
+		{
+			desc:          "Valid request with newTestVolumeID",
+			testOnWindows: true,
+			req:           &csi.DeleteVolumeRequest{VolumeId: newTestVolumeID},
+			resp:          &csi.DeleteVolumeResponse{},
+			expectedErr:   nil,
 		},
 	}
 
 	for _, test := range cases {
 		test := test //pin
+		if runtime.GOOS == "windows" && !test.testOnWindows {
+			continue
+		}
 		t.Run(test.desc, func(t *testing.T) {
-			// Setup
 			cs := initTestController(t)
 			_ = os.MkdirAll(filepath.Join(cs.Driver.workingMountDir, testCSIVolume), os.ModePerm)
 			_, _ = os.Create(filepath.Join(cs.Driver.workingMountDir, testCSIVolume, testCSIVolume))
 
-			// Run
 			resp, err := cs.DeleteVolume(context.TODO(), test.req)
 
-			// Verify
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("test %q failed: %v", test.desc, err)
 			}
@@ -274,6 +316,24 @@ func TestValidateVolumeCapabilities(t *testing.T) {
 			desc: "valid request",
 			req: &csi.ValidateVolumeCapabilitiesRequest{
 				VolumeId: testVolumeID,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+			},
+			resp:        &csi.ValidateVolumeCapabilitiesResponse{Message: ""},
+			expectedErr: nil,
+		},
+		{
+			desc: "valid request with newTestVolumeID",
+			req: &csi.ValidateVolumeCapabilitiesRequest{
+				VolumeId: newTestVolumeID,
 				VolumeCapabilities: []*csi.VolumeCapability{
 					{
 						AccessType: &csi.VolumeCapability_Mount{
@@ -371,25 +431,25 @@ func TestControllerGetCapabilities(t *testing.T) {
 func TestNfsVolFromId(t *testing.T) {
 	cases := []struct {
 		name      string
-		req       string
+		volumeID  string
 		resp      *nfsVolume
 		expectErr bool
 	}{
 		{
 			name:      "ID only server",
-			req:       testServer,
+			volumeID:  testServer,
 			resp:      nil,
 			expectErr: true,
 		},
 		{
 			name:      "ID missing subDir",
-			req:       strings.Join([]string{testServer, testBaseDir}, "/"),
+			volumeID:  strings.Join([]string{testServer, testBaseDir}, "/"),
 			resp:      nil,
 			expectErr: true,
 		},
 		{
-			name: "valid request single baseDir",
-			req:  testVolumeID,
+			name:     "valid request single baseDir",
+			volumeID: testVolumeID,
 			resp: &nfsVolume{
 				id:      testVolumeID,
 				server:  testServer,
@@ -399,10 +459,32 @@ func TestNfsVolFromId(t *testing.T) {
 			expectErr: false,
 		},
 		{
-			name: "valid request nested baseDir",
-			req:  testVolumeIDNested,
+			name:     "valid request single baseDir with newTestVolumeID",
+			volumeID: newTestVolumeID,
+			resp: &nfsVolume{
+				id:      newTestVolumeID,
+				server:  testServer,
+				baseDir: testBaseDir,
+				subDir:  testCSIVolume,
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid request nested baseDir",
+			volumeID: testVolumeIDNested,
 			resp: &nfsVolume{
 				id:      testVolumeIDNested,
+				server:  testServer,
+				baseDir: testBaseDirNested,
+				subDir:  testCSIVolume,
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid request nested baseDir with newTestVolumeIDNested",
+			volumeID: newTestVolumeIDNested,
+			resp: &nfsVolume{
+				id:      newTestVolumeIDNested,
 				server:  testServer,
 				baseDir: testBaseDirNested,
 				subDir:  testCSIVolume,
@@ -414,13 +496,8 @@ func TestNfsVolFromId(t *testing.T) {
 	for _, test := range cases {
 		test := test //pin
 		t.Run(test.name, func(t *testing.T) {
-			// Setup
-			cs := initTestController(t)
+			resp, err := getNfsVolFromID(test.volumeID)
 
-			// Run
-			resp, err := cs.getNfsVolFromID(test.req)
-
-			// Verify
 			if !test.expectErr && err != nil {
 				t.Errorf("test %q failed: %v", test.name, err)
 			}
