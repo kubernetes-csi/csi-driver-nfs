@@ -66,6 +66,8 @@ const (
 	totalIDElements // Always last
 )
 
+const separator = "#"
+
 // CreateVolume create a volume
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	name := req.GetName()
@@ -115,7 +117,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "volume id is empty")
 	}
-	nfsVol, err := cs.getNfsVolFromID(volumeID)
+	nfsVol, err := getNfsVolFromID(volumeID)
 	if err != nil {
 		// An invalid ID should be treated as doesn't exist
 		klog.Warningf("failed to get nfs volume for volume id %v deletion: %v", volumeID, err)
@@ -260,7 +262,7 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 		}
 	}
 
-	klog.V(4).Infof("internally mounting %v:%v at %v", vol.server, sharePath, targetPath)
+	klog.V(2).Infof("internally mounting %v:%v at %v", vol.server, sharePath, targetPath)
 	_, err := cs.Driver.ns.NodePublishVolume(ctx, &csi.NodePublishVolumeRequest{
 		TargetPath: targetPath,
 		VolumeContext: map[string]string{
@@ -359,21 +361,37 @@ func (cs *ControllerServer) getVolumeIDFromNfsVol(vol *nfsVolume) string {
 	idElements[idServer] = strings.Trim(vol.server, "/")
 	idElements[idBaseDir] = strings.Trim(vol.baseDir, "/")
 	idElements[idSubDir] = strings.Trim(vol.subDir, "/")
-	return strings.Join(idElements, "/")
+	return strings.Join(idElements, separator)
 }
 
 // Given a CSI volume id, return a nfsVolume
-func (cs *ControllerServer) getNfsVolFromID(id string) (*nfsVolume, error) {
-	volRegex := regexp.MustCompile("^([^/]+)/(.*)/([^/]+)$")
-	tokens := volRegex.FindStringSubmatch(id)
-	if tokens == nil {
-		return nil, fmt.Errorf("Could not split %q into server, baseDir and subDir", id)
+// sample volume Id:
+//   new volumeID: nfs-server.default.svc.cluster.local#share#pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
+//   old volumeID: nfs-server.default.svc.cluster.local/share/pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
+func getNfsVolFromID(id string) (*nfsVolume, error) {
+	var server, baseDir, subDir string
+	segments := strings.Split(id, separator)
+	if len(segments) < 3 {
+		klog.V(2).Infof("could not split %s into server, baseDir and subDir with separator(%s)", id, separator)
+		// try with separator "/""
+		volRegex := regexp.MustCompile("^([^/]+)/(.*)/([^/]+)$")
+		tokens := volRegex.FindStringSubmatch(id)
+		if tokens == nil {
+			return nil, fmt.Errorf("could not split %s into server, baseDir and subDir with separator(%s)", id, "/")
+		}
+		server = tokens[1]
+		baseDir = tokens[2]
+		subDir = tokens[3]
+	} else {
+		server = segments[0]
+		baseDir = segments[1]
+		subDir = segments[2]
 	}
 
 	return &nfsVolume{
 		id:      id,
-		server:  tokens[1],
-		baseDir: tokens[2],
-		subDir:  tokens[3],
+		server:  server,
+		baseDir: baseDir,
+		subDir:  subDir,
 	}, nil
 }
