@@ -294,6 +294,17 @@ func TestDeleteVolume(t *testing.T) {
 }
 
 func TestValidateVolumeCapabilities(t *testing.T) {
+	capabilities := []*csi.VolumeCapability{
+		{
+			AccessType: &csi.VolumeCapability_Mount{
+				Mount: &csi.VolumeCapability_MountVolume{},
+			},
+			AccessMode: &csi.VolumeCapability_AccessMode{
+				Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+			},
+		},
+	}
+
 	cases := []struct {
 		desc        string
 		req         *csi.ValidateVolumeCapabilitiesRequest
@@ -315,37 +326,23 @@ func TestValidateVolumeCapabilities(t *testing.T) {
 		{
 			desc: "valid request",
 			req: &csi.ValidateVolumeCapabilitiesRequest{
-				VolumeId: testVolumeID,
-				VolumeCapabilities: []*csi.VolumeCapability{
-					{
-						AccessType: &csi.VolumeCapability_Mount{
-							Mount: &csi.VolumeCapability_MountVolume{},
-						},
-						AccessMode: &csi.VolumeCapability_AccessMode{
-							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-						},
-					},
-				},
+				VolumeId:           testVolumeID,
+				VolumeCapabilities: capabilities,
 			},
-			resp:        &csi.ValidateVolumeCapabilitiesResponse{Message: ""},
+			resp: &csi.ValidateVolumeCapabilitiesResponse{
+				Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{VolumeCapabilities: capabilities},
+			},
 			expectedErr: nil,
 		},
 		{
 			desc: "valid request with newTestVolumeID",
 			req: &csi.ValidateVolumeCapabilitiesRequest{
-				VolumeId: newTestVolumeID,
-				VolumeCapabilities: []*csi.VolumeCapability{
-					{
-						AccessType: &csi.VolumeCapability_Mount{
-							Mount: &csi.VolumeCapability_MountVolume{},
-						},
-						AccessMode: &csi.VolumeCapability_AccessMode{
-							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-						},
-					},
-				},
+				VolumeId:           newTestVolumeID,
+				VolumeCapabilities: capabilities,
 			},
-			resp:        &csi.ValidateVolumeCapabilitiesResponse{Message: ""},
+			resp: &csi.ValidateVolumeCapabilitiesResponse{
+				Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{VolumeCapabilities: capabilities},
+			},
 			expectedErr: nil,
 		},
 	}
@@ -353,13 +350,8 @@ func TestValidateVolumeCapabilities(t *testing.T) {
 	for _, test := range cases {
 		test := test //pin
 		t.Run(test.desc, func(t *testing.T) {
-			// Setup
 			cs := initTestController(t)
-
-			// Run
 			resp, err := cs.ValidateVolumeCapabilities(context.TODO(), test.req)
-
-			// Verify
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("test %q failed: %v", test.desc, err)
 			}
