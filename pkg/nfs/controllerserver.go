@@ -178,8 +178,12 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 		return nil, status.Error(codes.InvalidArgument, "Volume capabilities missing in request")
 	}
 
-	// supports all AccessModes, no need to check capabilities here
-	return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
+	return &csi.ValidateVolumeCapabilitiesResponse{
+		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
+			VolumeCapabilities: req.GetVolumeCapabilities(),
+		},
+		Message: "",
+	}, nil
 }
 
 func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
