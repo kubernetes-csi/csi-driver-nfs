@@ -123,11 +123,11 @@ func (pod *PodDetails) SetupWithDynamicVolumes(client clientset.Interface, names
 	return tpod, cleanupFuncs
 }
 
-func (pod *PodDetails) SetupWithCSIInlineVolumes(client clientset.Interface, namespace *v1.Namespace, csiDriver driver.DynamicPVTestDriver, server, share string, readOnly bool) (*TestPod, []func()) {
+func (pod *PodDetails) SetupWithCSIInlineVolumes(client clientset.Interface, namespace *v1.Namespace, csiDriver driver.DynamicPVTestDriver, server, share, mountOptions string, readOnly bool) (*TestPod, []func()) {
 	tpod := NewTestPod(client, namespace, pod.Cmd)
 	cleanupFuncs := make([]func(), 0)
 	for n, v := range pod.Volumes {
-		tpod.SetupCSIInlineVolume(fmt.Sprintf("%s%d", v.VolumeMount.NameGenerate, n+1), fmt.Sprintf("%s%d", v.VolumeMount.MountPathGenerate, n+1), server, share, readOnly)
+		tpod.SetupCSIInlineVolume(fmt.Sprintf("%s%d", v.VolumeMount.NameGenerate, n+1), fmt.Sprintf("%s%d", v.VolumeMount.MountPathGenerate, n+1), server, share, mountOptions, readOnly)
 	}
 	return tpod, cleanupFuncs
 }

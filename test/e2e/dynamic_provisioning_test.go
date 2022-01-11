@@ -275,11 +275,12 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 		}
 
 		test := testsuites.DynamicallyProvisionedInlineVolumeTest{
-			CSIDriver: testDriver,
-			Pods:      pods,
-			Server:    nfsServerAddress,
-			Share:     nfsShare,
-			ReadOnly:  false,
+			CSIDriver:    testDriver,
+			Pods:         pods,
+			Server:       nfsServerAddress,
+			Share:        nfsShare,
+			MountOptions: "nfsvers=4.1,sec=sys",
+			ReadOnly:     false,
 		}
 		test.Run(cs, ns)
 	})

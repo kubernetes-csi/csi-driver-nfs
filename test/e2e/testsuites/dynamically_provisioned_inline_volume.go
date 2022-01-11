@@ -27,18 +27,19 @@ import (
 // Waiting for the PV provisioner to create an inline volume
 // Testing if the Pod(s) Cmd is run with a 0 exit code
 type DynamicallyProvisionedInlineVolumeTest struct {
-	CSIDriver driver.DynamicPVTestDriver
-	Pods      []PodDetails
-	Server    string
-	Share     string
-	ReadOnly  bool
+	CSIDriver    driver.DynamicPVTestDriver
+	Pods         []PodDetails
+	Server       string
+	Share        string
+	MountOptions string
+	ReadOnly     bool
 }
 
 func (t *DynamicallyProvisionedInlineVolumeTest) Run(client clientset.Interface, namespace *v1.Namespace) {
 	for _, pod := range t.Pods {
 		var tpod *TestPod
 		var cleanup []func()
-		tpod, cleanup = pod.SetupWithCSIInlineVolumes(client, namespace, t.CSIDriver, t.Server, t.Share, t.ReadOnly)
+		tpod, cleanup = pod.SetupWithCSIInlineVolumes(client, namespace, t.CSIDriver, t.Server, t.Share, t.MountOptions, t.ReadOnly)
 		// defer must be called here for resources not get removed before using them
 		for i := range cleanup {
 			defer cleanup[i]()

@@ -596,7 +596,7 @@ func (t *TestPod) SetupVolumeMountWithSubpath(pvc *v1.PersistentVolumeClaim, nam
 	t.pod.Spec.Volumes = append(t.pod.Spec.Volumes, volume)
 }
 
-func (t *TestPod) SetupCSIInlineVolume(name, mountPath, server, share string, readOnly bool) {
+func (t *TestPod) SetupCSIInlineVolume(name, mountPath, server, share, mountOptions string, readOnly bool) {
 	volumeMount := v1.VolumeMount{
 		Name:      name,
 		MountPath: mountPath,
@@ -610,8 +610,9 @@ func (t *TestPod) SetupCSIInlineVolume(name, mountPath, server, share string, re
 			CSI: &v1.CSIVolumeSource{
 				Driver: nfs.DefaultDriverName,
 				VolumeAttributes: map[string]string{
-					"server": server,
-					"share":  share,
+					"server":       server,
+					"share":        share,
+					"mountOptions": mountOptions,
 				},
 				ReadOnly: &readOnly,
 			},

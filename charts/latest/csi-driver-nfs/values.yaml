@@ -30,7 +30,7 @@ driver:
 
 feature:
   enableFSGroupPolicy: false
-  enableInlineVolume: true
+  enableInlineVolume: false
 
 controller:
   name: csi-nfs-controller
