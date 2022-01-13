@@ -37,6 +37,8 @@ import (
 const (
 	kubeconfigEnvVar  = "KUBECONFIG"
 	testWindowsEnvVar = "TEST_WINDOWS"
+	nfsServerAddress  = "nfs-server.default.svc.cluster.local"
+	nfsShare          = "/"
 )
 
 var (
@@ -44,8 +46,8 @@ var (
 	nfsDriver                     *nfs.Driver
 	isWindowsCluster              = os.Getenv(testWindowsEnvVar) != ""
 	defaultStorageClassParameters = map[string]string{
-		"server": "nfs-server.default.svc.cluster.local",
-		"share":  "/",
+		"server": nfsServerAddress,
+		"share":  nfsShare,
 		"csi.storage.k8s.io/provisioner-secret-name":      "mount-options",
 		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
 	}

@@ -38,7 +38,8 @@ type NodeServer struct {
 
 // NodePublishVolume mount the volume
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-	if req.GetVolumeCapability() == nil {
+	volCap := req.GetVolumeCapability()
+	if volCap == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume capability missing in request")
 	}
 	volumeID := req.GetVolumeId()
@@ -49,6 +50,10 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if len(targetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
 	}
+	mountOptions := volCap.GetMount().GetMountFlags()
+	if req.GetReadonly() {
+		mountOptions = append(mountOptions, "ro")
+	}
 
 	var server, baseDir string
 	for k, v := range req.GetVolumeContext() {
@@ -57,6 +62,10 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			server = v
 		case paramShare:
 			baseDir = v
+		case mountOptionsField:
+			if v != "" {
+				mountOptions = append(mountOptions, v)
+			}
 		}
 	}
 
@@ -81,11 +90,6 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 	if !notMnt {
 		return &csi.NodePublishVolumeResponse{}, nil
-	}
-
-	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
-	if req.GetReadonly() {
-		mountOptions = append(mountOptions, "ro")
 	}
 
 	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)

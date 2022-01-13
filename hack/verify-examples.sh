@@ -20,7 +20,7 @@ rollout_and_wait() {
     trap "echo \"Failed to apply config \\\"$1\\\"\" >&2" err
 
     APPNAME=$(kubectl apply -f $1 | grep -E "^(:?daemonset|deployment|statefulset|pod)" | awk '{printf $1}')
-    if [[ -n $(expr "${APPNAME}" : "\(daemonset\|deployment\|statefulset\)" || true) ]]; then
+    if [[ -n $(expr "${APPNAME}" : "\(daemonset\|deployment\|statefulset\|pod\)" || true) ]]; then
         kubectl rollout status $APPNAME --watch --timeout=5m
     else
         kubectl wait "${APPNAME}" --for condition=ready --timeout=5m
