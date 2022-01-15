@@ -1,53 +1,51 @@
----
 # This YAML file contains driver-registrar & csi driver nodeplugin API objects
 # that are necessary to run CSI nodeplugin for nfs
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: csi-nfs-node
-  namespace: kube-system
+  name: {{ .Values.node.name }}
+  namespace: {{ .Release.Namespace }}
+{{ include "nfs.labels" . | indent 2 }}
 spec:
   updateStrategy:
     rollingUpdate:
-      maxUnavailable: 1
+      maxUnavailable: {{ .Values.node.maxUnavailable }}
     type: RollingUpdate
   selector:
     matchLabels:
-      app: csi-nfs-node
+      app: {{ .Values.node.name }}
   template:
     metadata:
-      labels:
-        app: csi-nfs-node
+{{ include "nfs.labels" . | indent 6 }}
+        app: {{ .Values.node.name }}
     spec:
-      hostNetwork: true  # original nfs connection would be broken without hostNetwork setting
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{- end }}
+      hostNetwork: true # original nfs connection would be broken without hostNetwork setting
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
         kubernetes.io/os: linux
+{{- with .Values.node.tolerations }}
       tolerations:
-        - operator: "Exists"
+{{ toYaml . | indent 8 }}
+{{- end }}
       containers:
         - name: liveness-probe
-          image: k8s.gcr.io/sig-storage/livenessprobe:v2.5.0
+          image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
-            - --health-port=29653
+            - --health-port={{ .Values.node.livenessProbe.healthPort }}
             - --v=2
+          imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-          resources:
-            limits:
-              memory: 100Mi
-            requests:
-              cpu: 10m
-              memory: 20Mi
+          resources: {{- toYaml .Values.node.resources.livenessProbe | nindent 12 }}
         - name: node-driver-registrar
-          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.4.0
-          args:
-            - --v=2
-            - --csi-address=/csi/csi.sock
-            - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+          image: "{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
           livenessProbe:
             exec:
               command:
@@ -56,6 +54,10 @@ spec:
                 - --mode=kubelet-registration-probe
             initialDelaySeconds: 30
             timeoutSeconds: 15
+          args:
+            - --v=2
+            - --csi-address=/csi/csi.sock
+            - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
           env:
             - name: DRIVER_REG_SOCK_PATH
               value: /var/lib/kubelet/plugins/csi-nfsplugin/csi.sock
@@ -63,28 +65,26 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+          imagePullPolicy: {{ .Values.image.nodeDriverRegistrar.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
             - name: registration-dir
               mountPath: /registration
-          resources:
-            limits:
-              memory: 100Mi
-            requests:
-              cpu: 10m
-              memory: 20Mi
+          resources: {{- toYaml .Values.node.resources.nodeDriverRegistrar | nindent 12 }}
         - name: nfs
           securityContext:
             privileged: true
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: mcr.microsoft.com/k8s/csi/nfs-csi:v3.1.0
-          args:
-            - "-v=5"
+          image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
+          args :
+            - "--v={{ .Values.node.logLevel }}"
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
+            - "--drivername={{ .Values.driver.name }}"
+            - "--mount-permissions={{ .Values.driver.mountPermissions }}"
           env:
             - name: NODE_ID
               valueFrom:
@@ -93,7 +93,7 @@ spec:
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
           ports:
-            - containerPort: 29653
+            - containerPort: {{ .Values.node.livenessProbe.healthPort }}
               name: healthz
               protocol: TCP
           livenessProbe:
@@ -104,19 +104,14 @@ spec:
             initialDelaySeconds: 30
             timeoutSeconds: 10
             periodSeconds: 30
-          imagePullPolicy: "IfNotPresent"
+          imagePullPolicy: {{ .Values.image.nfs.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
-          resources:
-            limits:
-              memory: 300Mi
-            requests:
-              cpu: 10m
-              memory: 20Mi
+          resources: {{- toYaml .Values.node.resources.nfs | nindent 12 }}
       volumes:
         - name: socket-dir
           hostPath:
