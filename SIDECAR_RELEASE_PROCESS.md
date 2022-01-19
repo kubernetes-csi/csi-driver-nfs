@@ -100,6 +100,29 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
    and [k/k
    in-tree](https://github.com/kubernetes/kubernetes/tree/HEAD/test/e2e/testing-manifests/storage-csi/hostpath/hostpath)
 
+### Troubleshooting
+
+#### Image build jobs
+
+The following jobs are triggered after tagging to produce the corresponding
+image(s):
+https://k8s-testgrid.appspot.com/sig-storage-image-build
+
+Clicking on a failed build job opens that job in https://prow.k8s.io. Next to
+the job title is a rerun icon (circle with arrow). Clicking it opens a popup
+with a "rerun" button that maintainers with enough permissions can use. If in
+doubt, ask someone on #sig-release to rerun the job.
+
+Another way to rerun a job is to search for it in https://prow.k8s.io and click
+the rerun icon in the resulting job list:
+https://prow.k8s.io/?job=canary-csi-test-push-images
+
+#### Verify images
+
+Canary and staged images can be viewed at https://console.cloud.google.com/gcr/images/k8s-staging-sig-storage
+
+Promoted images can be viewed at https://console.cloud.google.com/gcr/images/k8s-artifacts-prod/us/sig-storage
+
 ## Adding support for a new Kubernetes release
 
 1. Add the new release to `k8s_versions` in
