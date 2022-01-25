@@ -737,7 +737,7 @@ install_csi_driver () {
     fi
 }
 
-# Installs all nessesary snapshotter CRDs
+# Installs all necessary snapshotter CRDs
 install_snapshot_crds() {
   # Wait until volumesnapshot CRDs are in place.
   CRD_BASE_DIR="https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${CSI_SNAPSHOTTER_VERSION}/client/config/crd"
