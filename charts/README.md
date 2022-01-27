@@ -5,7 +5,7 @@
 
 ### Tips
  - make controller only run on master node: `--set controller.runOnMaster=true`
- - set replica of controller as `1`: `--set controller.replicas=1`
+ - set replica of controller as `2`: `--set controller.replicas=2`
 
 ### install a specific version
 ```console
@@ -55,7 +55,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `imagePullSecrets`                                | Specify docker-registry secret names as an array           | [] (does not add image pull secrets to deployed pods)                                                           |
 | `serviceAccount.create`                           | whether create service account of csi-nfs-controller       | `true`                                                              |
 | `rbac.create`                                     | whether create rbac of csi-nfs-controller                  | `true`                                                              |
-| `controller.replicas`                             | the replicas of csi-nfs-controller                         | `2`                                                                 |
+| `controller.replicas`                             | replica number of csi-nfs-controller                         | `1`                                                                 |
 | `controller.runOnMaster`                          | run controller on master node                              | `false`                                                             |
 | `controller.logLevel`                             | controller driver log level                                                          |`5`                                                           |
 | `controller.workingMountDir`                      | working directory for provisioner to mount nfs shares temporarily                  | `/tmp`                                                             |
