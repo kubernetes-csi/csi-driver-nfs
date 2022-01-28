@@ -40,6 +40,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `driver.mountPermissions`                         | mounted folder permissions name                            | `0777`
 | `feature.enableFSGroupPolicy`                     | enable `fsGroupPolicy` on a k8s 1.20+ cluster              | `true`                      |
 | `feature.enableInlineVolume`                      | enable inline volume                     | `false`                      |
+| `kubeletDir`                                      | alternative kubelet directory                              | `/var/lib/kubelet`                                                  |
 | `image.nfs.repository`                            | csi-driver-nfs image                                       | `mcr.microsoft.com/k8s/csi/nfs-csi`                          |
 | `image.nfs.tag`                                   | csi-driver-nfs image tag                                   | `latest`                                                |
 | `image.nfs.pullPolicy`                            | csi-driver-nfs image pull policy                           | `IfNotPresent`                                                      |
