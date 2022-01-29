@@ -32,6 +32,8 @@ feature:
   enableFSGroupPolicy: true
   enableInlineVolume: false
 
+kubeletDir: /var/lib/kubelet
+
 controller:
   name: csi-nfs-controller
   replicas: 1
