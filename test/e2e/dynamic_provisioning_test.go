@@ -23,11 +23,7 @@ import (
 	"github.com/kubernetes-csi/csi-driver-nfs/test/e2e/testsuites"
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	clientset "k8s.io/client-go/kubernetes"
-	restclientset "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -51,12 +47,6 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 
 		cs = f.ClientSet
 		ns = f.Namespace
-
-		var err error
-		_, err = restClient(testsuites.SnapshotAPIGroup, testsuites.APIVersionv1beta1)
-		if err != nil {
-			ginkgo.Fail(fmt.Sprintf("could not get rest clientset: %v", err))
-		}
 	})
 
 	testDriver = driver.InitNFSDriver()
@@ -285,15 +275,3 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 		test.Run(cs, ns)
 	})
 })
-
-func restClient(group string, version string) (restclientset.Interface, error) {
-	config, err := framework.LoadConfig()
-	if err != nil {
-		ginkgo.Fail(fmt.Sprintf("could not load config: %v", err))
-	}
-	gv := schema.GroupVersion{Group: group, Version: version}
-	config.GroupVersion = &gv
-	config.APIPath = "/apis"
-	config.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: serializer.NewCodecFactory(runtime.NewScheme())}
-	return restclientset.RESTClientFor(config)
-}
