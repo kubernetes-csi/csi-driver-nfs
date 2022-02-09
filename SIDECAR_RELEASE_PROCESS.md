@@ -46,10 +46,13 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
 ## Release Process
 1. Identify all issues and ongoing PRs that should go into the release, and
   drive them to resolution.
-1. Download v2.8+ [K8s release notes
-  generator](https://github.com/kubernetes/release/tree/HEAD/cmd/release-notes)
+1. Download the latest version of the
+   [K8s release notes generator](https://github.com/kubernetes/release/tree/HEAD/cmd/release-notes)
+1. Create a
+   [Github personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token)
+   with `repo:public_repo` access
 1. Generate release notes for the release. Replace arguments with the relevant
-  information.
+   information.
     * Clean up old cached information (also needed if you are generating release
       notes for multiple repos)
       ```bash
@@ -57,15 +60,24 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
       ```
     * For new minor releases on master:
         ```bash
-        GITHUB_TOKEN=<token> release-notes --discover=mergebase-to-latest
-        --github-org=kubernetes-csi --github-repo=external-provisioner
-        --required-author="" --output out.md
+        GITHUB_TOKEN=<token> release-notes \
+          --discover=mergebase-to-latest \
+          --org=kubernetes-csi \
+          --repo=external-provisioner \
+          --required-author="" \
+          --markdown-links \
+          --output out.md
         ```
     * For new patch releases on a release branch:
         ```bash
-        GITHUB_TOKEN=<token> release-notes --discover=patch-to-latest --branch=release-1.1
-        --github-org=kubernetes-csi --github-repo=external-provisioner
-        --required-author="" --output out.md
+        GITHUB_TOKEN=<token> release-notes \
+          --discover=patch-to-latest \
+          --branch=release-1.1 \
+          --org=kubernetes-csi \
+          --repo=external-provisioner \
+          --required-author="" \
+          --markdown-links \
+          --output out.md
         ```
 1. Compare the generated output to the new commits for the release to check if
    any notable change missed a release note.
