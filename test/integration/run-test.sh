@@ -32,14 +32,14 @@ function provision_nfs_server {
   echo 'Installing NFS server on localhost'
   apt-get update -y
   apt-get install -y nfs-common
-  docker run -d --name nfs --privileged -p 2049:2049 -v $(pwd)/nfsshare:/nfsshare -e SHARED_DIRECTORY=/nfsshare itsthenetwork/nfs-server-alpine:latest
+  docker run -d --name nfs --privileged -p 2049:2049 -v "$(pwd)"/nfsshare:/nfsshare -e SHARED_DIRECTORY=/nfsshare itsthenetwork/nfs-server-alpine:latest
 }
 
 provision_nfs_server
 
 readonly CSC_BIN="$GOBIN/csc"
 readonly cap="1,mount,"
-readonly volname="citest-$(date +%s)"
+volname="citest-$(date +%s)"
 readonly volsize="2147483648"
 readonly endpoint="unix:///tmp/csi.sock"
 readonly target_path="/tmp/targetpath"
@@ -70,6 +70,7 @@ echo "publish volume test:"
 "$CSC_BIN" node publish --endpoint "$endpoint" --cap "$cap" --vol-context "$params" --target-path "$target_path" "$volumeid"
 sleep 2
 
+declare staging_target_path
 echo "node stats test:"
 csc node stats --endpoint "$endpoint" "$volumeid:$target_path:$staging_target_path"
 sleep 2

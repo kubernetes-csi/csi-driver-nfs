@@ -42,7 +42,7 @@ function provision_nfs_server {
   echo 'Installing NFS server on localhost'
   apt-get update -y
   apt-get install -y nfs-common
-  docker run -d --name nfs --privileged -p 2049:2049 -v $(pwd)/nfsshare:/nfsshare -e SHARED_DIRECTORY=/nfsshare itsthenetwork/nfs-server-alpine:latest
+  docker run -d --name nfs --privileged -p 2049:2049 -v "$(pwd)"/nfsshare:/nfsshare -e SHARED_DIRECTORY=/nfsshare itsthenetwork/nfs-server-alpine:latest
 }
 
 provision_nfs_server
