@@ -44,7 +44,7 @@ func (t *DynamicallyProvisionedReclaimPolicyTest) Run(client clientset.Interface
 		if tpvc.ReclaimPolicy() == v1.PersistentVolumeReclaimRetain {
 			tpvc.WaitForPersistentVolumePhase(v1.VolumeReleased)
 			tpvc.DeleteBoundPersistentVolume()
-			// The controler server cannot resolve the nfs server hosting inside the testing k8s cluster, skipping the cleanup step.
+			// The controller server cannot resolve the nfs server hosting inside the testing k8s cluster, skipping the cleanup step.
 			// tpvc.DeleteBackingVolume(&t.ControllerServer)
 		}
 	}
