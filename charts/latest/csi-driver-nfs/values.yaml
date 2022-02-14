@@ -1,7 +1,4 @@
-extraLabels:
-  enabled: false
-  labels: {}
-
+customLabels: {}
 image:
     nfs:
         repository: mcr.microsoft.com/k8s/csi/nfs-csi
