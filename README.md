@@ -1,4 +1,4 @@
-# CSI NFS driver
+# NFS CSI driver for Kubernetes
 [![Coverage Status](https://coveralls.io/repos/github/kubernetes-csi/csi-driver-nfs/badge.svg?branch=master)](https://coveralls.io/github/kubernetes-csi/csi-driver-nfs?branch=master)
 
 ### Overview
