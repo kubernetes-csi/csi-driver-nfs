@@ -13,4 +13,7 @@ labels:
   app.kubernetes.io/name: "{{ template "nfs.name" . }}"
   app.kubernetes.io/version: "{{ .Chart.AppVersion }}"
   helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+  {{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 2 -}}
+  {{- end }}
 {{- end -}}
