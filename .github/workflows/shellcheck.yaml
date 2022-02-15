@@ -1,0 +1,29 @@
+name: ShellCheck
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+      - release-*
+  pull_request:
+    branches:
+      - master
+      - release-*
+
+jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run ShellCheck
+      uses: ludeeus/action-shellcheck@master
+      env:
+         SHELLCHECK_OPTS: -e SC2034
+      with:
+        severity: warning
+        check_together: 'yes'
+        disable_matcher: false
+        ignore_paths: vendor release-tools hack
+        format: gcc

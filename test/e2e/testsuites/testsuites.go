@@ -67,7 +67,7 @@ var podFailedCondition = func(pod *v1.Pod) (bool, error) {
 		ginkgo.By("Saw pod failure")
 		return true, nil
 	case v1.PodSucceeded:
-		return true, fmt.Errorf("pod %q successed with reason: %q, message: %q", pod.Name, pod.Status.Reason, pod.Status.Message)
+		return true, fmt.Errorf("pod %q succeeded with reason: %q, message: %q", pod.Name, pod.Status.Reason, pod.Status.Message)
 	default:
 		return false, nil
 	}
