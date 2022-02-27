@@ -48,8 +48,8 @@ E2E_HELM_OPTIONS += ${EXTRA_HELM_OPTIONS}
 # Output type of docker buildx build
 OUTPUT_TYPE ?= docker
 
-ALL_ARCH.linux = arm64 amd64
-ALL_OS_ARCH = linux-arm64 linux-arm-v7 linux-amd64
+ALL_ARCH.linux = arm64 amd64 ppc64le
+ALL_OS_ARCH = linux-arm64 linux-arm-v7 linux-amd64 linux-ppc64le
 
 .EXPORT_ALL_VARIABLES:
 
