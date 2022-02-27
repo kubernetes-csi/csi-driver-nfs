@@ -43,6 +43,7 @@ controller:
     healthPort: 29652
   logLevel: 5
   workingMountDir: "/tmp"
+  dnsPolicy: Default  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
   tolerations:
     - key: "node-role.kubernetes.io/master"
       operator: "Exists"
@@ -72,6 +73,7 @@ controller:
 
 node:
   name: csi-nfs-node
+  dnsPolicy: Default  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
   maxUnavailable: 1
   logLevel: 5
   livenessProbe:

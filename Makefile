@@ -76,24 +76,6 @@ local-build-push: nfs
 	docker build -t $(LOCAL_USER)/nfsplugin:latest .
 	docker push $(LOCAL_USER)/nfsplugin
 
-.PHONY: local-k8s-install
-local-k8s-install:
-	echo "Instlling locally"
-	kubectl apply -f $(DEPLOY_FOLDER)/rbac-csi-nfs-controller.yaml
-	kubectl apply -f $(DEPLOY_FOLDER)/csi-nfs-driverinfo.yaml
-	kubectl apply -f $(DEPLOY_FOLDER)/csi-nfs-controller.yaml
-	kubectl apply -f $(DEPLOY_FOLDER)/csi-nfs-node.yaml
-	echo "Successfully installed"
-
-.PHONY: local-k8s-uninstall
-local-k8s-uninstall:
-	echo "Uninstalling driver"
-	kubectl delete -f $(DEPLOY_FOLDER)/csi-nfs-controller.yaml --ignore-not-found
-	kubectl delete -f $(DEPLOY_FOLDER)/csi-nfs-node.yaml --ignore-not-found
-	kubectl delete -f $(DEPLOY_FOLDER)/csi-nfs-driverinfo.yaml --ignore-not-found
-	kubectl delete -f $(DEPLOY_FOLDER)/rbac-csi-nfs-controller.yaml --ignore-not-found
-	echo "Uninstalled NFS driver"
-
 .PHONY: nfs
 nfs:
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/${ARCH}/nfsplugin ./cmd/nfsplugin
@@ -163,6 +145,7 @@ e2e-bootstrap: install-helm
 	OUTPUT_TYPE=registry $(MAKE) container push
 	helm install csi-driver-nfs ./charts/latest/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
 		${E2E_HELM_OPTIONS} \
+		--set controller.dnsPolicy=ClusterFirstWithHostNet \
 		--set controller.logLevel=8 \
 		--set node.logLevel=8
 

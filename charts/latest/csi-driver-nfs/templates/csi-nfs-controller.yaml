@@ -20,7 +20,7 @@ spec:
 {{ toYaml .Values.imagePullSecrets | indent 8 }}
       {{- end }}
       hostNetwork: true  # controller also needs to mount nfs to create dir
-      dnsPolicy: ClusterFirstWithHostNet
+      dnsPolicy: {{ .Values.controller.dnsPolicy }}
       serviceAccountName: {{ .Values.serviceAccount.controller }}
       nodeSelector:
         kubernetes.io/os: linux
