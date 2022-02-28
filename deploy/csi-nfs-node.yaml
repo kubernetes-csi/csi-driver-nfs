@@ -1,6 +1,4 @@
 ---
-# This YAML file contains driver-registrar & csi driver nodeplugin API objects
-# that are necessary to run CSI nodeplugin for nfs
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
@@ -20,7 +18,7 @@ spec:
         app: csi-nfs-node
     spec:
       hostNetwork: true  # original nfs connection would be broken without hostNetwork setting
-      dnsPolicy: ClusterFirstWithHostNet
+      dnsPolicy: Default  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
       nodeSelector:
         kubernetes.io/os: linux
       tolerations:

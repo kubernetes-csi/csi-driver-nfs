@@ -1,5 +1,4 @@
-# This YAML file contains driver-registrar & csi driver nodeplugin API objects
-# that are necessary to run CSI nodeplugin for nfs
+---
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
@@ -24,7 +23,7 @@ spec:
 {{ toYaml .Values.imagePullSecrets | indent 8 }}
       {{- end }}
       hostNetwork: true # original nfs connection would be broken without hostNetwork setting
-      dnsPolicy: ClusterFirstWithHostNet
+      dnsPolicy: {{ .Values.controller.dnsPolicy }}
       nodeSelector:
         kubernetes.io/os: linux
 {{- with .Values.node.tolerations }}
