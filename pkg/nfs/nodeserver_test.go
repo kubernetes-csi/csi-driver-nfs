@@ -41,8 +41,15 @@ func TestNodePublishVolume(t *testing.T) {
 	}
 
 	params := map[string]string{
-		"server": "server",
-		"share":  "share",
+		"server":              "server",
+		"share":               "share",
+		mountPermissionsField: "0755",
+	}
+
+	invalidParams := map[string]string{
+		"server":              "server",
+		"share":               "share",
+		mountPermissionsField: "07ab",
 	}
 
 	volumeCap := csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER}
@@ -111,6 +118,16 @@ func TestNodePublishVolume(t *testing.T) {
 				TargetPath:       targetTest,
 				Readonly:         true},
 			expectedErr: nil,
+		},
+		{
+			desc: "[Error] invalid mountPermissions",
+			req: csi.NodePublishVolumeRequest{
+				VolumeContext:    invalidParams,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest,
+				Readonly:         true},
+			expectedErr: status.Error(codes.InvalidArgument, "invalid mountPermissions 07ab"),
 		},
 	}
 
