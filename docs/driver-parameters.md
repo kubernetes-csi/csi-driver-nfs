@@ -8,6 +8,7 @@ Name | Meaning | Example Value | Mandatory | Default value
 --- | --- | --- | --- | ---
 server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 share | NFS share path | `/` | Yes |
+mountPermissions | mounted folder permissions. The default is `0777` |  | No |
 
 ### PV/PVC usage (static provisioning)
 > [`PersistentVolume` example](../deploy/example/pv-nfs-csi.yaml)
@@ -16,7 +17,7 @@ Name | Meaning | Example Value | Mandatory | Default value
 --- | --- | --- | --- | ---
 volumeAttributes.server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 volumeAttributes.share | NFS share path | `/` |  Yes  |
-
+volumeAttributes.mountPermissions | mounted folder permissions. The default is `0777` |  | No |
 
 ### Tips
 #### provide `mountOptions` for `DeleteVolume`

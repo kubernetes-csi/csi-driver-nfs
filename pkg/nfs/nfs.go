@@ -55,8 +55,9 @@ const (
 	// The base directory must be a direct child of the root directory.
 	// The root directory is omitted from the string, for example:
 	//     "base" instead of "/base"
-	paramShare        = "share"
-	mountOptionsField = "mountoptions"
+	paramShare            = "share"
+	mountOptionsField     = "mountoptions"
+	mountPermissionsField = "mountpermissions"
 )
 
 func NewDriver(options *DriverOptions) *Driver {
