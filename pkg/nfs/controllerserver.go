@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -78,8 +79,32 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	mountPermissions := cs.Driver.mountPermissions
 	reqCapacity := req.GetCapacityRange().GetRequiredBytes()
-	nfsVol, err := cs.newNFSVolume(name, reqCapacity, req.GetParameters())
+	parameters := req.GetParameters()
+	if parameters == nil {
+		parameters = make(map[string]string)
+	}
+	// validate parameters (case-insensitive)
+	for k, v := range parameters {
+		switch strings.ToLower(k) {
+		case paramServer:
+			// no op
+		case paramShare:
+			// no op
+		case mountPermissionsField:
+			if v != "" {
+				var err error
+				if mountPermissions, err = strconv.ParseUint(v, 8, 32); err != nil {
+					return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("invalid mountPermissions %s in storage class", v))
+				}
+			}
+		default:
+			return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("invalid parameter %q in storage class", k))
+		}
+	}
+
+	nfsVol, err := cs.newNFSVolume(name, reqCapacity, parameters)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -89,7 +114,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		volCap = req.GetVolumeCapabilities()[0]
 	}
 	// Mount nfs base share so we can create a subdirectory
-	if err = cs.internalMount(ctx, nfsVol, volCap); err != nil {
+	if err = cs.internalMount(ctx, nfsVol, parameters, volCap); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
 	}
 	defer func() {
@@ -98,7 +123,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}()
 
-	fileMode := os.FileMode(cs.Driver.mountPermissions)
+	fileMode := os.FileMode(mountPermissions)
 	// Create subdirectory under base-dir
 	internalVolumePath := cs.getInternalVolumePath(nfsVol)
 	if err = os.Mkdir(internalVolumePath, fileMode); err != nil && !os.IsExist(err) {
@@ -108,7 +133,16 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if err = os.Chmod(internalVolumePath, fileMode); err != nil {
 		klog.Warningf("failed to chmod subdirectory: %v", err.Error())
 	}
-	return &csi.CreateVolumeResponse{Volume: cs.nfsVolToCSI(nfsVol)}, nil
+
+	parameters[paramServer] = nfsVol.server
+	parameters[paramShare] = cs.getVolumeSharePath(nfsVol)
+	return &csi.CreateVolumeResponse{
+		Volume: &csi.Volume{
+			VolumeId:      nfsVol.id,
+			CapacityBytes: 0, // by setting it to zero, Provisioner will use PVC requested size as PV size
+			VolumeContext: parameters,
+		},
+	}, nil
 }
 
 // DeleteVolume delete a volume
@@ -138,7 +172,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	// mount nfs base share so we can delete the subdirectory
-	if err = cs.internalMount(ctx, nfsVol, volCap); err != nil {
+	if err = cs.internalMount(ctx, nfsVol, nil, volCap); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
 	}
 	defer func() {
@@ -254,7 +288,7 @@ func (cs *ControllerServer) validateVolumeCapability(c *csi.VolumeCapability) er
 }
 
 // Mount nfs server at base-dir
-func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, volCap *csi.VolumeCapability) error {
+func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, volumeContext map[string]string, volCap *csi.VolumeCapability) error {
 	sharePath := filepath.Join(string(filepath.Separator) + vol.baseDir)
 	targetPath := cs.getInternalMountPath(vol)
 
@@ -266,13 +300,16 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 		}
 	}
 
+	if volumeContext == nil {
+		volumeContext = make(map[string]string)
+	}
+	volumeContext[paramServer] = vol.server
+	volumeContext[paramShare] = sharePath
+
 	klog.V(2).Infof("internally mounting %v:%v at %v", vol.server, sharePath, targetPath)
 	_, err := cs.Driver.ns.NodePublishVolume(ctx, &csi.NodePublishVolumeRequest{
-		TargetPath: targetPath,
-		VolumeContext: map[string]string{
-			paramServer: vol.server,
-			paramShare:  sharePath,
-		},
+		TargetPath:       targetPath,
+		VolumeContext:    volumeContext,
 		VolumeCapability: volCap,
 		VolumeId:         vol.id,
 	})
@@ -303,8 +340,6 @@ func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[str
 			server = v
 		case paramShare:
 			baseDir = v
-		default:
-			return nil, fmt.Errorf("invalid parameter %q", k)
 		}
 	}
 
@@ -345,18 +380,6 @@ func (cs *ControllerServer) getInternalVolumePath(vol *nfsVolume) string {
 // Get user-visible share path for the volume
 func (cs *ControllerServer) getVolumeSharePath(vol *nfsVolume) string {
 	return filepath.Join(string(filepath.Separator), vol.baseDir, vol.subDir)
-}
-
-// Convert into nfsVolume into a csi.Volume
-func (cs *ControllerServer) nfsVolToCSI(vol *nfsVolume) *csi.Volume {
-	return &csi.Volume{
-		CapacityBytes: 0, // by setting it to zero, Provisioner will use PVC requested size as PV size
-		VolumeId:      vol.id,
-		VolumeContext: map[string]string{
-			paramServer: vol.server,
-			paramShare:  cs.getVolumeSharePath(vol),
-		},
-	}
 }
 
 // Given a nfsVolume, return a CSI volume id

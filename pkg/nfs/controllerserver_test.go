@@ -100,16 +100,18 @@ func TestCreateVolume(t *testing.T) {
 					},
 				},
 				Parameters: map[string]string{
-					paramServer: testServer,
-					paramShare:  testBaseDir,
+					paramServer:           testServer,
+					paramShare:            testBaseDir,
+					mountPermissionsField: "0750",
 				},
 			},
 			resp: &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
 					VolumeId: newTestVolumeID,
 					VolumeContext: map[string]string{
-						paramServer: testServer,
-						paramShare:  testShare,
+						paramServer:           testServer,
+						paramShare:            testShare,
+						mountPermissionsField: "0750",
 					},
 				},
 			},
@@ -197,6 +199,28 @@ func TestCreateVolume(t *testing.T) {
 				},
 				Parameters: map[string]string{
 					"unknown-parameter": "foo",
+				},
+			},
+			expectErr: true,
+		},
+		{
+			name: "[Error] invalid mountPermissions",
+			req: &csi.CreateVolumeRequest{
+				Name: testCSIVolume,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					paramServer:           testServer,
+					paramShare:            testBaseDir,
+					mountPermissionsField: "07ab",
 				},
 			},
 			expectErr: true,
