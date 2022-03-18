@@ -269,7 +269,7 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 			Pods:         pods,
 			Server:       nfsServerAddress,
 			Share:        nfsShare,
-			MountOptions: "nfsvers=4.1,sec=sys",
+			MountOptions: "nconnect=8,nfsvers=4.1,sec=sys",
 			ReadOnly:     false,
 		}
 		test.Run(cs, ns)

@@ -10,6 +10,7 @@ spec:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
   mountOptions:
+    - nconnect=8
     - hard
     - nfsvers=4.1
   csi:
