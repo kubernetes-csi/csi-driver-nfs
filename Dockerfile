@@ -14,11 +14,9 @@
 
 FROM k8s.gcr.io/build-image/debian-base:bullseye-v1.1.0
 
-# Architecture for bin folder
 ARG ARCH
-
-# Copy nfsplugin from build _output directory
-COPY ./bin/${ARCH}/nfsplugin /nfsplugin
+ARG binary=./bin/${ARCH}/nfsplugin
+COPY ${binary} /nfsplugin
 
 RUN apt update && apt-mark unhold libcap2
 RUN clean-install ca-certificates mount nfs-common netbase
