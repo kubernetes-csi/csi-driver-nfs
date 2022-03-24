@@ -39,6 +39,7 @@ spec:
             - "-v=2"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election"
+            - "--leader-election-namespace={{ .Release.Namespace }}"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
