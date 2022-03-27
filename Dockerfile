@@ -21,6 +21,6 @@ COPY ${binary} /nfsplugin
 RUN apt update && apt-mark unhold libcap2
 RUN clean-install ca-certificates mount nfs-common netbase
 # install updated packages to fix CVE issues
-RUN clean-install libgmp10 bsdutils libssl1.1 openssl
+RUN clean-install libgmp10 bsdutils libssl1.1 openssl libc6 libc-bin libsystemd0 libudev1
 
 ENTRYPOINT ["/nfsplugin"]
