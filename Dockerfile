@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM k8s.gcr.io/build-image/debian-base:bullseye-v1.0.0
+FROM k8s.gcr.io/build-image/debian-base:bullseye-v1.1.0
 
-# Architecture for bin folder
 ARG ARCH
-
-# Copy nfsplugin from build _output directory
-COPY bin/${ARCH}/nfsplugin /nfsplugin
+ARG binary=./bin/${ARCH}/nfsplugin
+COPY ${binary} /nfsplugin
 
 RUN apt update && apt-mark unhold libcap2
 RUN clean-install ca-certificates mount nfs-common netbase
 # install updated packages to fix CVE issues
-RUN clean-install libssl1.1 libgssapi-krb5-2 libk5crypto3 libkrb5-3 libkrb5support0
+RUN clean-install libgmp10 bsdutils libssl1.1 openssl libc6 libc-bin libsystemd0 libudev1
 
 ENTRYPOINT ["/nfsplugin"]
