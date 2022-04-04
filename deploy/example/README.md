@@ -1,7 +1,5 @@
 # CSI driver example
 
-After the NFS CSI Driver is deployed in your cluster, you can follow this documentation to quickly deploy some examples. 
-
 You can use NFS CSI Driver to provision Persistent Volumes statically or dynamically. Please read [Kubernetes Persistent Volumes documentation](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) for more information about Static and Dynamic provisioning.
 
 Please refer to [driver parameters](../../docs/driver-parameters.md) for more detailed usage.
@@ -35,13 +33,7 @@ kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nf
 kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/pvc-nfs-csi-static.yaml
 ```
 
-## Deployment/Statefulset Usage
-
-- Follow the following command to create `Deployment` and `Statefulset` .
-
-```bash
-# create Deployment and Statefulset
-git clone https://github.com/kubernetes-csi/csi-driver-nfs.git
-cd csi-driver-nfs
-./hack/verify-examples.sh
+## Create a deployment
+```console
+kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/deployment.yaml
 ```

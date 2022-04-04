@@ -10,4 +10,4 @@ spec:
     requests:
       storage: 10Gi
   volumeName: pv-nfs
-  storageClassName: ""
+  storageClassName: nfs-csi
