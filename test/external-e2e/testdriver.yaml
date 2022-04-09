@@ -4,7 +4,7 @@
 StorageClass:
   FromFile: /tmp/csi/storageclass.yaml
 DriverInfo:
-  Name: nfs.csi.k8s.io
+  Name: test.csi.k8s.io
   Capabilities:
     persistence: true
     exec: true
