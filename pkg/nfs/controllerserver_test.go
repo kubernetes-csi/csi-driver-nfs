@@ -166,24 +166,6 @@ func TestCreateVolume(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name: "invalid volume capability",
-			req: &csi.CreateVolumeRequest{
-				Name: testCSIVolume,
-				VolumeCapabilities: []*csi.VolumeCapability{
-					{
-						AccessMode: &csi.VolumeCapability_AccessMode{
-							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-						},
-					},
-				},
-				Parameters: map[string]string{
-					paramServer: testServer,
-					paramShare:  testBaseDir,
-				},
-			},
-			expectErr: true,
-		},
-		{
 			name: "invalid create context",
 			req: &csi.CreateVolumeRequest{
 				Name: testCSIVolume,
@@ -312,78 +294,6 @@ func TestDeleteVolume(t *testing.T) {
 			}
 			if _, err := os.Stat(filepath.Join(cs.Driver.workingMountDir, testCSIVolume, testCSIVolume)); test.expectedErr == nil && !os.IsNotExist(err) {
 				t.Errorf("test %q failed: expected volume subdirectory deleted, it still exists", test.desc)
-			}
-		})
-	}
-}
-
-func TestValidateVolumeCapabilities(t *testing.T) {
-	capabilities := []*csi.VolumeCapability{
-		{
-			AccessType: &csi.VolumeCapability_Mount{
-				Mount: &csi.VolumeCapability_MountVolume{},
-			},
-			AccessMode: &csi.VolumeCapability_AccessMode{
-				Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-			},
-		},
-	}
-
-	cases := []struct {
-		desc        string
-		req         *csi.ValidateVolumeCapabilitiesRequest
-		resp        *csi.ValidateVolumeCapabilitiesResponse
-		expectedErr error
-	}{
-		{
-			desc:        "Volume ID missing",
-			req:         &csi.ValidateVolumeCapabilitiesRequest{},
-			resp:        nil,
-			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
-		},
-		{
-			desc:        "Volume capabilities missing",
-			req:         &csi.ValidateVolumeCapabilitiesRequest{VolumeId: testVolumeID},
-			resp:        nil,
-			expectedErr: status.Error(codes.InvalidArgument, "Volume capabilities missing in request"),
-		},
-		{
-			desc: "valid request",
-			req: &csi.ValidateVolumeCapabilitiesRequest{
-				VolumeId:           testVolumeID,
-				VolumeCapabilities: capabilities,
-			},
-			resp: &csi.ValidateVolumeCapabilitiesResponse{
-				Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{VolumeCapabilities: capabilities},
-			},
-			expectedErr: nil,
-		},
-		{
-			desc: "valid request with newTestVolumeID",
-			req: &csi.ValidateVolumeCapabilitiesRequest{
-				VolumeId:           newTestVolumeID,
-				VolumeCapabilities: capabilities,
-			},
-			resp: &csi.ValidateVolumeCapabilitiesResponse{
-				Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{VolumeCapabilities: capabilities},
-			},
-			expectedErr: nil,
-		},
-	}
-
-	for _, test := range cases {
-		test := test //pin
-		t.Run(test.desc, func(t *testing.T) {
-			cs := initTestController(t)
-			resp, err := cs.ValidateVolumeCapabilities(context.TODO(), test.req)
-			if test.expectedErr == nil && err != nil {
-				t.Errorf("test %q failed: %v", test.desc, err)
-			}
-			if test.expectedErr != nil && err == nil {
-				t.Errorf("test %q failed; expected error %v, got success", test.desc, test.expectedErr)
-			}
-			if !reflect.DeepEqual(resp, test.resp) {
-				t.Errorf("test %q failed: got resp %+v, expected %+v", test.desc, resp, test.resp)
 			}
 		})
 	}
@@ -524,5 +434,48 @@ func TestNfsVolFromId(t *testing.T) {
 				t.Errorf("test %q failed: got resp %+v, expected %+v", test.name, resp, test.resp)
 			}
 		})
+	}
+}
+
+func TestIsValidVolumeCapabilities(t *testing.T) {
+	mountVolumeCapabilities := []*csi.VolumeCapability{
+		{
+			AccessType: &csi.VolumeCapability_Mount{
+				Mount: &csi.VolumeCapability_MountVolume{},
+			},
+		},
+	}
+	blockVolumeCapabilities := []*csi.VolumeCapability{
+		{
+			AccessType: &csi.VolumeCapability_Block{
+				Block: &csi.VolumeCapability_BlockVolume{},
+			},
+		},
+	}
+
+	cases := []struct {
+		desc      string
+		volCaps   []*csi.VolumeCapability
+		expectErr error
+	}{
+		{
+			volCaps:   mountVolumeCapabilities,
+			expectErr: nil,
+		},
+		{
+			volCaps:   blockVolumeCapabilities,
+			expectErr: fmt.Errorf("block volume capability not supported"),
+		},
+		{
+			volCaps:   []*csi.VolumeCapability{},
+			expectErr: fmt.Errorf("volume capabilities missing in request"),
+		},
+	}
+
+	for _, test := range cases {
+		err := isValidVolumeCapabilities(test.volCaps)
+		if !reflect.DeepEqual(err, test.expectErr) {
+			t.Errorf("[test: %s] Unexpected error: %v, expected error: %v", test.desc, err, test.expectErr)
+		}
 	}
 }
