@@ -41,7 +41,6 @@ type Driver struct {
 
 	//ids *identityServer
 	ns          *NodeServer
-	cap         map[csi.VolumeCapability_AccessMode_Mode]bool
 	cscap       []*csi.ControllerServiceCapability
 	nscap       []*csi.NodeServiceCapability
 	volumeLocks *VolumeLocks
@@ -70,19 +69,7 @@ func NewDriver(options *DriverOptions) *Driver {
 		endpoint:         options.Endpoint,
 		mountPermissions: options.MountPermissions,
 		workingMountDir:  options.WorkingMountDir,
-		cap:              map[csi.VolumeCapability_AccessMode_Mode]bool{},
 	}
-
-	vcam := []csi.VolumeCapability_AccessMode_Mode{
-		csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-		csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY,
-		csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER,
-		csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
-		csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
-		csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER,
-		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-	}
-	n.AddVolumeCapabilityAccessModes(vcam)
 
 	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
@@ -122,15 +109,6 @@ func (n *Driver) Run(testMode bool) {
 		n.ns,
 		testMode)
 	s.Wait()
-}
-
-func (n *Driver) AddVolumeCapabilityAccessModes(vc []csi.VolumeCapability_AccessMode_Mode) []*csi.VolumeCapability_AccessMode {
-	var vca []*csi.VolumeCapability_AccessMode
-	for _, c := range vc {
-		vca = append(vca, &csi.VolumeCapability_AccessMode{Mode: c})
-		n.cap[c] = true
-	}
-	return vca
 }
 
 func (n *Driver) AddControllerServiceCapabilities(cl []csi.ControllerServiceCapability_RPC_Type) {

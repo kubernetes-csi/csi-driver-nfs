@@ -75,7 +75,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if len(name) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "CreateVolume name must be provided")
 	}
-	if err := cs.validateVolumeCapabilities(req.GetVolumeCapabilities()); err != nil {
+
+	if err := isValidVolumeCapabilities(req.GetVolumeCapabilities()); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -208,8 +209,8 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	if len(req.GetVolumeId()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
-	if req.GetVolumeCapabilities() == nil {
-		return nil, status.Error(codes.InvalidArgument, "Volume capabilities missing in request")
+	if err := isValidVolumeCapabilities(req.GetVolumeCapabilities()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	return &csi.ValidateVolumeCapabilitiesResponse{
@@ -250,41 +251,6 @@ func (cs *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 
 func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
-}
-
-func (cs *ControllerServer) validateVolumeCapabilities(caps []*csi.VolumeCapability) error {
-	if len(caps) == 0 {
-		return fmt.Errorf("volume capabilities must be provided")
-	}
-
-	for _, c := range caps {
-		if err := cs.validateVolumeCapability(c); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (cs *ControllerServer) validateVolumeCapability(c *csi.VolumeCapability) error {
-	if c == nil {
-		return fmt.Errorf("volume capability must be provided")
-	}
-
-	// Validate access mode
-	accessMode := c.GetAccessMode()
-	if accessMode == nil {
-		return fmt.Errorf("volume capability access mode not set")
-	}
-	if !cs.Driver.cap[accessMode.Mode] {
-		return fmt.Errorf("driver does not support access mode: %v", accessMode.Mode.String())
-	}
-
-	// Validate access type
-	accessType := c.GetAccessType()
-	if accessType == nil {
-		return fmt.Errorf("volume capability access type not set")
-	}
-	return nil
 }
 
 // Mount nfs server at base-dir
@@ -421,4 +387,17 @@ func getNfsVolFromID(id string) (*nfsVolume, error) {
 		baseDir: baseDir,
 		subDir:  subDir,
 	}, nil
+}
+
+// isValidVolumeCapabilities validates the given VolumeCapability array is valid
+func isValidVolumeCapabilities(volCaps []*csi.VolumeCapability) error {
+	if len(volCaps) == 0 {
+		return fmt.Errorf("volume capabilities missing in request")
+	}
+	for _, c := range volCaps {
+		if c.GetBlock() != nil {
+			return fmt.Errorf("block volume capability not supported")
+		}
+	}
+	return nil
 }

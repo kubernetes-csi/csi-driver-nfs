@@ -38,21 +38,18 @@ func NewEmptyDriver(emptyField string) *Driver {
 			name:    DefaultDriverName,
 			version: "",
 			nodeID:  fakeNodeID,
-			cap:     map[csi.VolumeCapability_AccessMode_Mode]bool{},
 		}
 	case "name":
 		d = &Driver{
 			name:    "",
 			version: driverVersion,
 			nodeID:  fakeNodeID,
-			cap:     map[csi.VolumeCapability_AccessMode_Mode]bool{},
 		}
 	default:
 		d = &Driver{
 			name:    DefaultDriverName,
 			version: driverVersion,
 			nodeID:  fakeNodeID,
-			cap:     map[csi.VolumeCapability_AccessMode_Mode]bool{},
 		}
 	}
 	d.volumeLocks = NewVolumeLocks()
