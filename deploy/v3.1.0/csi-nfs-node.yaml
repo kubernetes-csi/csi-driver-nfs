@@ -80,7 +80,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: mcr.microsoft.com/k8s/csi/nfs-csi:v3.1.0
+          image: k8s.gcr.io/sig-storage/nfsplugin:v3.1.0
           args:
             - "-v=5"
             - "--nodeid=$(NODE_ID)"

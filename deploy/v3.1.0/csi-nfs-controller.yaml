@@ -63,7 +63,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: nfs
-          image: mcr.microsoft.com/k8s/csi/nfs-csi:v3.1.0
+          image: k8s.gcr.io/sig-storage/nfsplugin:v3.1.0
           securityContext:
             privileged: true
             capabilities:

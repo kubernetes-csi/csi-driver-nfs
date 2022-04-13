@@ -1,6 +1,6 @@
 image:
     nfs:
-        repository: mcr.microsoft.com/k8s/csi/nfs-csi
+        repository: k8s.gcr.io/sig-storage/nfsplugin
         tag: v3.1.0
         pullPolicy: IfNotPresent
     csiProvisioner:
