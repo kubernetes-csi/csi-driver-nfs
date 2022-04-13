@@ -37,7 +37,7 @@ $ make build
 #### Start CSI driver locally
 ```console
 $ cd $GOPATH/src/github.com/kubernetes-csi/csi-driver-nfs
-$ ./_output/nfsplugin --endpoint tcp://127.0.0.1:10000 --nodeid CSINode -v=5 &
+$ ./bin/nfsplugin --endpoint unix:///tmp/csi.sock --nodeid CSINode -v=5 &
 ```
 
 #### 0. Set environment variables
