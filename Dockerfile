@@ -18,7 +18,6 @@ ARG ARCH
 ARG binary=./bin/${ARCH}/nfsplugin
 COPY ${binary} /nfsplugin
 
-RUN apt update && apt upgrade -y && apt-mark unhold libcap2
-RUN clean-install ca-certificates mount nfs-common netbase
+RUN apt update && apt upgrade -y && apt-mark unhold libcap2 && clean-install ca-certificates mount nfs-common netbase
 
 ENTRYPOINT ["/nfsplugin"]
