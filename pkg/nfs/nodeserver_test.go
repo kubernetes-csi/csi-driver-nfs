@@ -189,9 +189,8 @@ func TestNodeUnpublishVolume(t *testing.T) {
 			expectedErr: status.Error(codes.Internal, "fake IsLikelyNotMountPoint: fake error"),
 		},
 		{
-			desc:        "[Error] Volume not mounted",
-			req:         csi.NodeUnpublishVolumeRequest{TargetPath: targetFile, VolumeId: "vol_1"},
-			expectedErr: status.Error(codes.NotFound, "Volume not mounted"),
+			desc: "[Success] Volume not mounted",
+			req:  csi.NodeUnpublishVolumeRequest{TargetPath: targetFile, VolumeId: "vol_1"},
 		},
 	}
 
