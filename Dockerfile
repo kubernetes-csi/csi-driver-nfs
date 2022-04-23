@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM k8s.gcr.io/build-image/debian-base:bullseye-v1.2.0
+FROM registry.k8s.io/build-image/debian-base:bullseye-v1.2.0
 
 ARG ARCH
 ARG binary=./bin/${ARCH}/nfsplugin

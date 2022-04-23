@@ -29,7 +29,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: csi-provisioner
-          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.2.2
+          image: registry.k8s.io/sig-storage/csi-provisioner:v2.2.2
           args:
             - "-v=2"
             - "--csi-address=$(ADDRESS)"
@@ -48,7 +48,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: liveness-probe
-          image: k8s.gcr.io/sig-storage/livenessprobe:v2.5.0
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.5.0
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
@@ -65,7 +65,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: nfs
-          image: k8s.gcr.io/sig-storage/nfsplugin:v3.0.0
+          image: registry.k8s.io/sig-storage/nfsplugin:v3.0.0
           securityContext:
             privileged: true
             capabilities:
