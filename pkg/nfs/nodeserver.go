@@ -139,7 +139,8 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if notMnt {
-		return nil, status.Error(codes.NotFound, "Volume not mounted")
+		klog.V(2).Infof("NodeUnpublishVolume: Targetpath %s of volumeID(%s) is not mounted", targetPath, volumeID)
+		return &csi.NodeUnpublishVolumeResponse{}, nil
 	}
 
 	klog.V(2).Infof("NodeUnpublishVolume: CleanupMountPoint %s on volumeID(%s)", targetPath, volumeID)
