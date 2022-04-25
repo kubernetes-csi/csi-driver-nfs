@@ -130,24 +130,13 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	if len(targetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
-	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 
+	klog.V(2).Infof("NodeUnpublishVolume: unmounting volume %s on %s", volumeID, targetPath)
+	err := mount.CleanupMountPoint(targetPath, ns.mounter, true /*extensiveMountPointCheck*/)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, status.Error(codes.NotFound, "Targetpath not found")
-		}
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "failed to unmount target %q: %v", targetPath, err)
 	}
-	if notMnt {
-		klog.V(2).Infof("NodeUnpublishVolume: Targetpath %s of volumeID(%s) is not mounted", targetPath, volumeID)
-		return &csi.NodeUnpublishVolumeResponse{}, nil
-	}
-
-	klog.V(2).Infof("NodeUnpublishVolume: CleanupMountPoint %s on volumeID(%s)", targetPath, volumeID)
-	err = mount.CleanupMountPoint(targetPath, ns.mounter, false)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	klog.V(2).Infof("NodeUnpublishVolume: unmount volume %s on %s successfully", volumeID, targetPath)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }

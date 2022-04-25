@@ -19,8 +19,10 @@ package nfs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -186,7 +188,7 @@ func TestNodeUnpublishVolume(t *testing.T) {
 		{
 			desc:        "[Error] Unmount error mocked by IsLikelyNotMountPoint",
 			req:         csi.NodeUnpublishVolumeRequest{TargetPath: errorTarget, VolumeId: "vol_1"},
-			expectedErr: status.Error(codes.Internal, "fake IsLikelyNotMountPoint: fake error"),
+			expectedErr: fmt.Errorf("fake IsLikelyNotMountPoint: fake error"),
 		},
 		{
 			desc: "[Success] Volume not mounted",
@@ -203,7 +205,9 @@ func TestNodeUnpublishVolume(t *testing.T) {
 		}
 		_, err := ns.NodeUnpublishVolume(context.Background(), &tc.req)
 		if !reflect.DeepEqual(err, tc.expectedErr) {
-			t.Errorf("Desc:%v\nUnexpected error: %v\nExpected: %v", tc.desc, err, tc.expectedErr)
+			if err == nil || tc.expectedErr == nil || !strings.Contains(err.Error(), tc.expectedErr.Error()) {
+				t.Errorf("Desc:%v\nUnexpected error: %v\nExpected: %v", tc.desc, err, tc.expectedErr)
+			}
 		}
 		if tc.cleanup != nil {
 			tc.cleanup()
