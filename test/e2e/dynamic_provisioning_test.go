@@ -70,7 +70,29 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 			Pods:                   pods,
 			StorageClassParameters: defaultStorageClassParameters,
 		}
+		test.Run(cs, ns)
+	})
 
+	ginkgo.It("should create a volume on demand with zero mountPermissions [nfs.csi.k8s.io]", func() {
+		pods := []testsuites.PodDetails{
+			{
+				Cmd: "echo 'hello world' > /mnt/test-1/data && grep 'hello world' /mnt/test-1/data",
+				Volumes: []testsuites.VolumeDetails{
+					{
+						ClaimSize: "10Gi",
+						VolumeMount: testsuites.VolumeMountDetails{
+							NameGenerate:      "test-volume-",
+							MountPathGenerate: "/mnt/test-",
+						},
+					},
+				},
+			},
+		}
+		test := testsuites.DynamicallyProvisionedCmdVolumeTest{
+			CSIDriver:              testDriver,
+			Pods:                   pods,
+			StorageClassParameters: storageClassParametersWithZeroMountPermisssions,
+		}
 		test.Run(cs, ns)
 	})
 

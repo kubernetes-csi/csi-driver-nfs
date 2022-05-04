@@ -58,6 +58,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	var server, baseDir string
 	mountPermissions := ns.Driver.mountPermissions
+	performChmodOp := (mountPermissions > 0)
 	for k, v := range req.GetVolumeContext() {
 		switch strings.ToLower(k) {
 		case paramServer:
@@ -71,8 +72,14 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		case mountPermissionsField:
 			if v != "" {
 				var err error
-				if mountPermissions, err = strconv.ParseUint(v, 8, 32); err != nil {
+				var perm uint64
+				if perm, err = strconv.ParseUint(v, 8, 32); err != nil {
 					return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("invalid mountPermissions %s", v))
+				}
+				if perm == 0 {
+					performChmodOp = false
+				} else {
+					mountPermissions = perm
 				}
 			}
 		}
@@ -114,8 +121,12 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	klog.V(2).Infof("volumeID(%v): mount targetPath(%s) with permissions(0%o)", volumeID, targetPath, mountPermissions)
-	if err := os.Chmod(targetPath, os.FileMode(mountPermissions)); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	if performChmodOp {
+		if err := os.Chmod(targetPath, os.FileMode(mountPermissions)); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	} else {
+		klog.V(2).Infof("skip chmod on targetPath(%s) since mountPermissions is set as 0", targetPath)
 	}
 	return &csi.NodePublishVolumeResponse{}, nil
 }
