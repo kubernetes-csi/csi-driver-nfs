@@ -8,7 +8,7 @@ Name | Meaning | Example Value | Mandatory | Default value
 --- | --- | --- | --- | ---
 server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 share | NFS share path | `/` | Yes |
-mountPermissions | mounted folder permissions. The default is `0777` |  | No |
+mountPermissions | mounted folder permissions. The default is `0777`, if set as `0`, driver will not perform `chmod` after mount |  | No |
 
 ### PV/PVC usage (static provisioning)
 > [`PersistentVolume` example](../deploy/example/pv-nfs-csi.yaml)
