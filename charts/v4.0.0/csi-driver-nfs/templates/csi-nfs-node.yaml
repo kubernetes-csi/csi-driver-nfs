@@ -1,0 +1,126 @@
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: {{ .Values.node.name }}
+  namespace: {{ .Release.Namespace }}
+{{ include "nfs.labels" . | indent 2 }}
+spec:
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: {{ .Values.node.maxUnavailable }}
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: {{ .Values.node.name }}
+  template:
+    metadata:
+{{ include "nfs.labels" . | indent 6 }}
+        app: {{ .Values.node.name }}
+    spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{- end }}
+      hostNetwork: true # original nfs connection would be broken without hostNetwork setting
+      dnsPolicy: {{ .Values.controller.dnsPolicy }}
+      nodeSelector:
+        kubernetes.io/os: linux
+{{- with .Values.node.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+      containers:
+        - name: liveness-probe
+          image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
+          args:
+            - --csi-address=/csi/csi.sock
+            - --probe-timeout=3s
+            - --health-port={{ .Values.node.livenessProbe.healthPort }}
+            - --v=2
+          imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources: {{- toYaml .Values.node.resources.livenessProbe | nindent 12 }}
+        - name: node-driver-registrar
+          image: "{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
+          livenessProbe:
+            exec:
+              command:
+                - /csi-node-driver-registrar
+                - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+                - --mode=kubelet-registration-probe
+            initialDelaySeconds: 30
+            timeoutSeconds: 15
+          args:
+            - --v=2
+            - --csi-address=/csi/csi.sock
+            - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+          env:
+            - name: DRIVER_REG_SOCK_PATH
+              value: {{ .Values.kubeletDir }}/plugins/csi-nfsplugin/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          imagePullPolicy: {{ .Values.image.nodeDriverRegistrar.pullPolicy }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+          resources: {{- toYaml .Values.node.resources.nodeDriverRegistrar | nindent 12 }}
+        - name: nfs
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
+          args :
+            - "--v={{ .Values.node.logLevel }}"
+            - "--nodeid=$(NODE_ID)"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--drivername={{ .Values.driver.name }}"
+            - "--mount-permissions={{ .Values.driver.mountPermissions }}"
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+          ports:
+            - containerPort: {{ .Values.node.livenessProbe.healthPort }}
+              name: healthz
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+            periodSeconds: 30
+          imagePullPolicy: {{ .Values.image.nfs.pullPolicy }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: pods-mount-dir
+              mountPath: {{ .Values.kubeletDir }}/pods
+              mountPropagation: "Bidirectional"
+          resources: {{- toYaml .Values.node.resources.nfs | nindent 12 }}
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: {{ .Values.kubeletDir }}/plugins/csi-nfsplugin
+            type: DirectoryOrCreate
+        - name: pods-mount-dir
+          hostPath:
+            path: {{ .Values.kubeletDir }}/pods
+            type: Directory
+        - hostPath:
+            path: {{ .Values.kubeletDir }}/plugins_registry
+            type: Directory
+          name: registration-dir

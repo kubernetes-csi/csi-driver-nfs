@@ -1,0 +1,110 @@
+customLabels: {}
+image:
+    nfs:
+        repository: registry.k8s.io/sig-storage/nfsplugin
+        tag: v4.0.0
+        pullPolicy: IfNotPresent
+    csiProvisioner:
+        repository: registry.k8s.io/sig-storage/csi-provisioner
+        tag: v3.1.0
+        pullPolicy: IfNotPresent
+    livenessProbe:
+        repository: registry.k8s.io/sig-storage/livenessprobe
+        tag: v2.6.0
+        pullPolicy: IfNotPresent
+    nodeDriverRegistrar:
+        repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
+        tag: v2.5.0
+        pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true # When true, service accounts will be created for you. Set to false if you want to use your own.
+  controller: csi-nfs-controller-sa # Name of Service Account to be created or used
+
+rbac:
+  create: true
+  name: nfs
+
+driver:
+  name: nfs.csi.k8s.io
+  mountPermissions: 0777
+
+feature:
+  enableFSGroupPolicy: true
+  enableInlineVolume: false
+
+kubeletDir: /var/lib/kubelet
+
+controller:
+  name: csi-nfs-controller
+  replicas: 1
+  runOnMaster: false
+  livenessProbe:
+    healthPort: 29652
+  logLevel: 5
+  workingMountDir: "/tmp"
+  dnsPolicy: Default  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
+  tolerations:
+    - key: "node-role.kubernetes.io/master"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "node-role.kubernetes.io/controlplane"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+  resources:
+    csiProvisioner:
+      limits:
+        memory: 400Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    livenessProbe:
+      limits:
+        memory: 100Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    nfs:
+      limits:
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+
+node:
+  name: csi-nfs-node
+  dnsPolicy: Default  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
+  maxUnavailable: 1
+  logLevel: 5
+  livenessProbe:
+    healthPort: 29653
+  tolerations:
+    - operator: "Exists"
+  resources:
+    livenessProbe:
+      limits:
+        memory: 100Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    nodeDriverRegistrar:
+      limits:
+        memory: 100Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    nfs:
+      limits:
+        memory: 300Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+
+## Reference to one or more secrets to be used when pulling images
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+##
+imagePullSecrets: []
+# - name: "image-pull-secret"

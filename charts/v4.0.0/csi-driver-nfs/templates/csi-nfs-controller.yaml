@@ -1,0 +1,110 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ .Values.controller.name }}
+  namespace: {{ .Release.Namespace }}
+{{ include "nfs.labels" . | indent 2 }}
+spec:
+  replicas: {{ .Values.controller.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.controller.name }}
+  template:
+    metadata:
+{{ include "nfs.labels" . | indent 6 }}
+        app: {{ .Values.controller.name }}
+    spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{- end }}
+      hostNetwork: true  # controller also needs to mount nfs to create dir
+      dnsPolicy: {{ .Values.controller.dnsPolicy }}
+      serviceAccountName: {{ .Values.serviceAccount.controller }}
+      nodeSelector:
+        kubernetes.io/os: linux
+        {{- if .Values.controller.runOnMaster}}
+        kubernetes.io/role: master
+        {{- end}}
+      priorityClassName: system-cluster-critical
+{{- with .Values.controller.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+      containers:
+        - name: csi-provisioner
+          image: "{{ .Values.image.csiProvisioner.repository }}:{{ .Values.image.csiProvisioner.tag }}"
+          args:
+            - "-v=2"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election"
+            - "--leader-election-namespace={{ .Release.Namespace }}"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: {{ .Values.image.csiProvisioner.pullPolicy }}
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+          resources: {{- toYaml .Values.controller.resources.csiProvisioner | nindent 12 }}
+        - name: liveness-probe
+          image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
+          args:
+            - --csi-address=/csi/csi.sock
+            - --probe-timeout=3s
+            - --health-port={{ .Values.controller.livenessProbe.healthPort }}
+            - --v=2
+          imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources: {{- toYaml .Values.controller.resources.livenessProbe | nindent 12 }}
+        - name: nfs
+          image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          imagePullPolicy: {{ .Values.image.nfs.pullPolicy }}
+          args:
+            - "--v={{ .Values.controller.logLevel }}"
+            - "--nodeid=$(NODE_ID)"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--drivername={{ .Values.driver.name }}"
+            - "--mount-permissions={{ .Values.driver.mountPermissions }}"
+            - "--working-mount-dir={{ .Values.controller.workingMountDir }}"
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+          ports:
+            - containerPort: {{ .Values.controller.livenessProbe.healthPort }}
+              name: healthz
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+            periodSeconds: 30
+          volumeMounts:
+            - name: pods-mount-dir
+              mountPath: {{ .Values.kubeletDir }}/pods
+              mountPropagation: "Bidirectional"
+            - mountPath: /csi
+              name: socket-dir
+          resources: {{- toYaml .Values.controller.resources.nfs | nindent 12 }}
+      volumes:
+        - name: pods-mount-dir
+          hostPath:
+            path: {{ .Values.kubeletDir }}/pods
+            type: Directory
+        - name: socket-dir
+          emptyDir: {}
