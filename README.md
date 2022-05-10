@@ -25,7 +25,6 @@ This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System
 Please refer to [`nfs.csi.k8s.io` driver parameters](./docs/driver-parameters.md)
 
 ### Examples
- - [Set up a NFS Server on a Kubernetes cluster](./deploy/example/nfs-provisioner/README.md)
  - [Basic usage](./deploy/example/README.md)
  - [fsGroupPolicy](./deploy/example/fsgroup)
 
