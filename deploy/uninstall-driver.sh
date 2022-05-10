@@ -37,5 +37,5 @@ echo "Uninstalling NFS driver, version: $ver ..."
 kubectl delete -f $repo/csi-nfs-controller.yaml --ignore-not-found
 kubectl delete -f $repo/csi-nfs-node.yaml --ignore-not-found
 kubectl delete -f $repo/csi-nfs-driverinfo.yaml --ignore-not-found
-kubectl delete -f $repo/rbac-csi-nfs-controller.yaml --ignore-not-found
+kubectl delete -f $repo/rbac-csi-nfs.yaml --ignore-not-found
 echo 'Uninstalled NFS driver successfully.'

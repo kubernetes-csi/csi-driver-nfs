@@ -34,7 +34,7 @@ if [ $ver != "master" ]; then
 fi
 
 echo "Installing NFS CSI driver, version: $ver ..."
-kubectl apply -f $repo/rbac-csi-nfs-controller.yaml
+kubectl apply -f $repo/rbac-csi-nfs.yaml
 kubectl apply -f $repo/csi-nfs-driverinfo.yaml
 kubectl apply -f $repo/csi-nfs-controller.yaml
 kubectl apply -f $repo/csi-nfs-node.yaml

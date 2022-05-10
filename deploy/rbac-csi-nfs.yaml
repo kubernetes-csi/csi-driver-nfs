@@ -4,7 +4,12 @@ kind: ServiceAccount
 metadata:
   name: csi-nfs-controller-sa
   namespace: kube-system
-
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-nfs-node-sa
+  namespace: kube-system
 ---
 
 kind: ClusterRole
