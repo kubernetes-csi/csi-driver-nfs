@@ -26,7 +26,6 @@ Please refer to [`nfs.csi.k8s.io` driver parameters](./docs/driver-parameters.md
 
 ### Examples
  - [Basic usage](./deploy/example/README.md)
- - [fsGroupPolicy](./deploy/example/fsgroup)
 
 ### Troubleshooting
  - [CSI driver troubleshooting guide](./docs/csi-debug.md) 

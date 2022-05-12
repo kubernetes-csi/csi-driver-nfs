@@ -30,7 +30,6 @@ driver:
   mountPermissions: 0777
 
 feature:
-  enableFSGroupPolicy: true
   enableInlineVolume: false
 
 kubeletDir: /var/lib/kubelet
