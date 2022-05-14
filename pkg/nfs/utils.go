@@ -18,6 +18,7 @@ package nfs
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -131,4 +132,22 @@ func getMountOptions(context map[string]string) string {
 		}
 	}
 	return ""
+}
+
+// chmodIfPermissionMismatch only perform chmod when permission mismatches
+func chmodIfPermissionMismatch(targetPath string, mode os.FileMode) error {
+	info, err := os.Lstat(targetPath)
+	if err != nil {
+		return err
+	}
+	perm := info.Mode() & os.ModePerm
+	if perm != mode {
+		klog.V(2).Infof("chmod targetPath(%s, mode:0%o) with permissions(0%o)", targetPath, info.Mode(), mode)
+		if err := os.Chmod(targetPath, mode); err != nil {
+			return err
+		}
+	} else {
+		klog.V(2).Infof("skip chmod on targetPath(%s) since mode is already 0%o)", targetPath, info.Mode())
+	}
+	return nil
 }

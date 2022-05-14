@@ -121,18 +121,8 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	if performChmodOp {
-		info, err := os.Lstat(targetPath)
-		if err != nil {
+		if err := chmodIfPermissionMismatch(targetPath, os.FileMode(mountPermissions)); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
-		}
-		perm := info.Mode() & os.ModePerm
-		if perm != os.FileMode(mountPermissions) {
-			klog.V(2).Infof("volumeID(%v): chmod targetPath(%s, mode:0%o) with permissions(0%o)", volumeID, targetPath, info.Mode(), mountPermissions)
-			if err := os.Chmod(targetPath, os.FileMode(mountPermissions)); err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
-			}
-		} else {
-			klog.V(2).Infof("skip chmod on targetPath(%s) since mode is already 0%o)", targetPath, info.Mode())
 		}
 	} else {
 		klog.V(2).Infof("skip chmod on targetPath(%s) since mountPermissions is set as 0", targetPath)
