@@ -1,6 +1,6 @@
 ## CSI driver debug tips
 
-### Case#1: volume create/delete failed
+### case#1: volume create/delete failed
  - locate csi driver pod
 ```console
 $ kubectl get pod -o wide -n kube-system | grep csi-nfs-controller
@@ -14,7 +14,7 @@ $ kubectl logs csi-nfs-controller-56bfddd689-dh5tk -c nfs -n kube-system > csi-n
 ```
 > note: there could be multiple controller pods, if there are no helpful logs, try to get logs from other controller pods
 
-### Case#2: volume mount/unmount failed
+### case#2: volume mount/unmount failed
  - locate csi driver pod that does the actual volume mount/unmount
 
 ```console
