@@ -20,6 +20,7 @@ require (
 	k8s.io/klog/v2 v2.30.0
 	k8s.io/kubernetes v1.23.3
 	k8s.io/mount-utils v0.23.3
+	k8s.io/utils v0.0.0-20211116205334-6203023598ed
 	sigs.k8s.io/yaml v1.2.0
 )
 

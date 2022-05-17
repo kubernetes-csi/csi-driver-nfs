@@ -211,3 +211,39 @@ func getWorkDirPath(dir string) (string, error) {
 	}
 	return fmt.Sprintf("%s%c%s", path, os.PathSeparator, dir), nil
 }
+
+func TestGetServerFromSource(t *testing.T) {
+	tests := []struct {
+		desc   string
+		server string
+		result string
+	}{
+		{
+			desc:   "ipv4",
+			server: "10.127.0.1",
+			result: "10.127.0.1",
+		},
+		{
+			desc:   "ipv6",
+			server: "0:0:0:0:0:0:0:1",
+			result: "[0:0:0:0:0:0:0:1]",
+		},
+		{
+			desc:   "ipv6 with brackets",
+			server: "[0:0:0:0:0:0:0:2]",
+			result: "[0:0:0:0:0:0:0:2]",
+		},
+		{
+			desc:   "other fqdn",
+			server: "bing.com",
+			result: "bing.com",
+		},
+	}
+
+	for _, test := range tests {
+		result := getServerFromSource(test.server)
+		if result != test.result {
+			t.Errorf("Unexpected result: %s, expected: %s", result, test.result)
+		}
+	}
+}

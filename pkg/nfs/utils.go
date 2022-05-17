@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"k8s.io/klog/v2"
+	netutil "k8s.io/utils/net"
 )
 
 func NewDefaultIdentityServer(d *Driver) *IdentityServer {
@@ -150,4 +151,12 @@ func chmodIfPermissionMismatch(targetPath string, mode os.FileMode) error {
 		klog.V(2).Infof("skip chmod on targetPath(%s) since mode is already 0%o)", targetPath, info.Mode())
 	}
 	return nil
+}
+
+// getServerFromSource if server is IPv6, return [IPv6]
+func getServerFromSource(server string) string {
+	if netutil.IsIPv6String(server) {
+		return fmt.Sprintf("[%s]", server)
+	}
+	return server
 }

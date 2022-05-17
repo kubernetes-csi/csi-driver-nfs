@@ -91,6 +91,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if baseDir == "" {
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("%v is a required parameter", paramShare))
 	}
+	server = getServerFromSource(server)
 	source := fmt.Sprintf("%s:%s", server, baseDir)
 
 	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
