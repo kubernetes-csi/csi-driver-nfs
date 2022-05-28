@@ -29,7 +29,7 @@ setup_e2e_binaries() {
     curl -sL https://storage.googleapis.com/kubernetes-release/release/v1.24.0/kubernetes-test-linux-amd64.tar.gz --output e2e-tests.tar.gz
     tar -xvf e2e-tests.tar.gz && rm e2e-tests.tar.gz
 
-    export EXTRA_HELM_OPTIONS="--set driver.name=$DRIVER.csi.k8s.io --set controller.name=csi-$DRIVER-controller --set node.name=csi-$DRIVER-node --set feature.enableInlineVolume=true"
+    export EXTRA_HELM_OPTIONS="--set driver.name=$DRIVER.csi.k8s.io --set controller.name=csi-$DRIVER-controller --set node.name=csi-$DRIVER-node --set feature.enableInlineVolume=true --set controller.runOnMaster=true"
 
     # test on alternative driver name
     sed -i "s/nfs.csi.k8s.io/$DRIVER.csi.k8s.io/g" deploy/example/storageclass-nfs.yaml
