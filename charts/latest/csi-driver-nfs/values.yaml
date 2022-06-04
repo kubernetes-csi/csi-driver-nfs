@@ -44,6 +44,8 @@ controller:
   logLevel: 5
   workingMountDir: "/tmp"
   dnsPolicy: Default  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
+  affinity: {}
+  nodeSelector: {}
   tolerations:
     - key: "node-role.kubernetes.io/master"
       operator: "Exists"
@@ -81,6 +83,8 @@ node:
   logLevel: 5
   livenessProbe:
     healthPort: 29653
+  affinity: {}
+  nodeSelector: {}
   tolerations:
     - operator: "Exists"
   resources:

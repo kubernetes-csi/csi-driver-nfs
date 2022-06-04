@@ -22,11 +22,21 @@ spec:
       hostNetwork: true  # controller also needs to mount nfs to create dir
       dnsPolicy: {{ .Values.controller.dnsPolicy }}
       serviceAccountName: {{ .Values.serviceAccount.controller }}
+{{- with .Values.controller.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
       nodeSelector:
         kubernetes.io/os: linux
         {{- if .Values.controller.runOnMaster}}
         node-role.kubernetes.io/master: ""
         {{- end}}
+        {{- if .Values.controller.runOnControlPlane}}
+        node-role.kubernetes.io/control-plane: ""
+        {{- end}}
+{{- with .Values.controller.nodeSelector }}
+{{ toYaml . | indent 8 }}
+{{- end }}
       priorityClassName: system-cluster-critical
 {{- with .Values.controller.tolerations }}
       tolerations:

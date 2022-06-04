@@ -25,8 +25,15 @@ spec:
       hostNetwork: true # original nfs connection would be broken without hostNetwork setting
       dnsPolicy: {{ .Values.controller.dnsPolicy }}
       serviceAccountName: csi-nfs-node-sa
+{{- with .Values.node.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
       nodeSelector:
         kubernetes.io/os: linux
+{{- with .Values.node.nodeSelector }}
+{{ toYaml . | indent 8 }}
+{{- end }}
 {{- with .Values.node.tolerations }}
       tolerations:
 {{ toYaml . | indent 8 }}
