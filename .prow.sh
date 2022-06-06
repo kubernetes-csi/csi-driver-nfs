@@ -19,6 +19,7 @@
 # Only these tests make sense for csi-driver-nfs until we can integrate k/k
 # e2es.
 : ${CSI_PROW_TESTS:="unit"}
+: ${CSI_PROW_E2E_GATES[_LATEST]:="GenericEphemeralVolume=true,CSIStorageCapacity=true,PodSecurity=false"}
 
 . release-tools/prow.sh
 

@@ -1253,8 +1253,9 @@ main () {
             focus="($focus|CSI.mock.volume)"
         fi
 
-        if tests_need_non_alpha_cluster; then
-            start_cluster || die "starting the non-alpha cluster failed"
+        if tests_need_non_alpha_cluster  && [ "${CSI_PROW_E2E_GATES[_LATEST]}" ]; then
+            # Need to (re)create the cluster.
+            start_cluster "${CSI_PROW_E2E_GATES[_LATEST]}" || die "starting non alpha cluster failed"
 
             # Install necessary snapshot CRDs and snapshot controller
             install_snapshot_crds
