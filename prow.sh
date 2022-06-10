@@ -349,6 +349,9 @@ configvar CSI_PROW_E2E_ALPHA "$(get_versioned_variable CSI_PROW_E2E_ALPHA "${csi
 configvar CSI_PROW_E2E_ALPHA_GATES_LATEST '' "alpha feature gates for latest Kubernetes"
 configvar CSI_PROW_E2E_ALPHA_GATES "$(get_versioned_variable CSI_PROW_E2E_ALPHA_GATES "${csi_prow_kubernetes_version_suffix}")" "alpha E2E feature gates"
 
+configvar CSI_PROW_E2E_GATES_LATEST '' "non alpha feature gates for latest Kubernetes"
+configvar CSI_PROW_E2E_GATES "$(get_versioned_variable CSI_PROW_E2E_GATES "${csi_prow_kubernetes_version_suffix}")" "non alpha E2E feature gates"
+
 # Which external-snapshotter tag to use for the snapshotter CRD and snapshot-controller deployment
 default_csi_snapshotter_version () {
 	if [ "${CSI_PROW_KUBERNETES_VERSION}" = "latest" ] || [ "${CSI_PROW_DRIVER_CANARY}" = "canary" ]; then
@@ -1254,7 +1257,8 @@ main () {
         fi
 
         if tests_need_non_alpha_cluster; then
-            start_cluster || die "starting the non-alpha cluster failed"
+            # Need to (re)create the cluster.
+            start_cluster "${CSI_PROW_E2E_GATES}" || die "starting the non-alpha cluster failed"
 
             # Install necessary snapshot CRDs and snapshot controller
             install_snapshot_crds
