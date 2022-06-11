@@ -59,6 +59,14 @@ var (
 		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
 		"mountPermissions": "0",
 	}
+	subDirStorageClassParameters = map[string]string{
+		"server": nfsServerAddress,
+		"share":  nfsShare,
+		"subDir": "subDirectory",
+		"csi.storage.k8s.io/provisioner-secret-name":      "mount-options",
+		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
+		"mountPermissions": "0755",
+	}
 	controllerServer *nfs.ControllerServer
 )
 

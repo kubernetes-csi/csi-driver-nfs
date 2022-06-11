@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -37,16 +38,12 @@ const (
 	testServer            = "test-server"
 	testBaseDir           = "test-base-dir"
 	testBaseDirNested     = "test/base/dir"
-	testCSIVolume         = "test-csi"
-	testVolumeID          = "test-server/test-base-dir/test-csi"
-	newTestVolumeID       = "test-server#test-base-dir#test-csi"
-	testVolumeIDNested    = "test-server/test/base/dir/test-csi"
-	newTestVolumeIDNested = "test-server#test/base/dir#test-csi"
-)
-
-// for Windows support in the future
-var (
-	testShare = filepath.Join(string(filepath.Separator), testBaseDir, string(filepath.Separator), testCSIVolume)
+	testCSIVolume         = "volume-name"
+	testVolumeID          = "test-server/test-base-dir/volume-name"
+	newTestVolumeID       = "test-server#test-base-dir#volume-name#"
+	testVolumeIDNested    = "test-server/test/base/dir/volume-name"
+	newTestVolumeIDNested = "test-server#test/base/dir#volume-name#"
+	newTestVolumeIDUUID   = "test-server#test-base-dir#volume-name#uuid"
 )
 
 func initTestController(t *testing.T) *ControllerServer {
@@ -110,7 +107,8 @@ func TestCreateVolume(t *testing.T) {
 					VolumeId: newTestVolumeID,
 					VolumeContext: map[string]string{
 						paramServer:           testServer,
-						paramShare:            testShare,
+						paramShare:            testBaseDir,
+						paramSubDir:           testCSIVolume,
 						mountPermissionsField: "0750",
 					},
 				},
@@ -133,14 +131,16 @@ func TestCreateVolume(t *testing.T) {
 				Parameters: map[string]string{
 					paramServer: testServer,
 					paramShare:  testBaseDir,
+					paramSubDir: testCSIVolume,
 				},
 			},
 			resp: &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
-					VolumeId: newTestVolumeID,
+					VolumeId: newTestVolumeID + testCSIVolume,
 					VolumeContext: map[string]string{
 						paramServer: testServer,
-						paramShare:  testShare,
+						paramShare:  testBaseDir,
+						paramSubDir: testCSIVolume,
 					},
 				},
 			},
@@ -417,6 +417,18 @@ func TestNfsVolFromId(t *testing.T) {
 			},
 			expectErr: false,
 		},
+		{
+			name:     "valid request nested baseDir with newTestVolumeIDNested",
+			volumeID: newTestVolumeIDUUID,
+			resp: &nfsVolume{
+				id:      newTestVolumeIDUUID,
+				server:  testServer,
+				baseDir: testBaseDir,
+				subDir:  testCSIVolume,
+				uuid:    "uuid",
+			},
+			expectErr: false,
+		},
 	}
 
 	for _, test := range cases {
@@ -477,5 +489,43 @@ func TestIsValidVolumeCapabilities(t *testing.T) {
 		if !reflect.DeepEqual(err, test.expectErr) {
 			t.Errorf("[test: %s] Unexpected error: %v, expected error: %v", test.desc, err, test.expectErr)
 		}
+	}
+}
+
+func TestGetInternalMountPath(t *testing.T) {
+	cases := []struct {
+		desc            string
+		workingMountDir string
+		vol             *nfsVolume
+		result          string
+	}{
+		{
+			desc:            "nil volume",
+			workingMountDir: "/tmp",
+			result:          "",
+		},
+		{
+			desc:            "uuid not empty",
+			workingMountDir: "/tmp",
+			vol: &nfsVolume{
+				subDir: "subdir",
+				uuid:   "uuid",
+			},
+			result: filepath.Join("/tmp", "uuid"),
+		},
+		{
+			desc:            "uuid empty",
+			workingMountDir: "/tmp",
+			vol: &nfsVolume{
+				subDir: "subdir",
+				uuid:   "",
+			},
+			result: filepath.Join("/tmp", "subdir"),
+		},
+	}
+
+	for _, test := range cases {
+		path := getInternalMountPath(test.workingMountDir, test.vol)
+		assert.Equal(t, path, test.result)
 	}
 }

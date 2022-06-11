@@ -242,7 +242,7 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 		test := testsuites.DynamicallyProvisionedPodWithMultiplePVsTest{
 			CSIDriver:              testDriver,
 			Pods:                   pods,
-			StorageClassParameters: defaultStorageClassParameters,
+			StorageClassParameters: subDirStorageClassParameters,
 		}
 		test.Run(cs, ns)
 	})

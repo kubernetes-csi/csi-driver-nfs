@@ -56,7 +56,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		mountOptions = append(mountOptions, "ro")
 	}
 
-	var server, baseDir string
+	var server, baseDir, subDir string
 	mountPermissions := ns.Driver.mountPermissions
 	performChmodOp := (mountPermissions > 0)
 	for k, v := range req.GetVolumeContext() {
@@ -65,6 +65,8 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			server = v
 		case paramShare:
 			baseDir = v
+		case paramSubDir:
+			subDir = v
 		case mountOptionsField:
 			if v != "" {
 				mountOptions = append(mountOptions, v)
@@ -93,6 +95,10 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 	server = getServerFromSource(server)
 	source := fmt.Sprintf("%s:%s", server, baseDir)
+	if subDir != "" {
+		source = strings.TrimRight(source, "/")
+		source = fmt.Sprintf("%s/%s", source, subDir)
+	}
 
 	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {

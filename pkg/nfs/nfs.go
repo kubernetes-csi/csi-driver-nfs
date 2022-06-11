@@ -55,6 +55,7 @@ const (
 	// The root directory is omitted from the string, for example:
 	//     "base" instead of "/base"
 	paramShare            = "share"
+	paramSubDir           = "subdir"
 	mountOptionsField     = "mountoptions"
 	mountPermissionsField = "mountpermissions"
 )
