@@ -186,6 +186,35 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 		test.Run(cs, ns)
 	})
 
+	ginkgo.It("[subDir]should create a deployment object, write and read to it, delete the pod and write and read to it again [nfs.csi.k8s.io]", func() {
+		pod := testsuites.PodDetails{
+			Cmd: "echo 'hello world' >> /mnt/test-1/data && while true; do sleep 100; done",
+			Volumes: []testsuites.VolumeDetails{
+				{
+					ClaimSize: "10Gi",
+					VolumeMount: testsuites.VolumeMountDetails{
+						NameGenerate:      "test-volume-",
+						MountPathGenerate: "/mnt/test-",
+					},
+				},
+			},
+		}
+
+		podCheckCmd := []string{"cat", "/mnt/test-1/data"}
+		expectedString := "hello world\n"
+
+		test := testsuites.DynamicallyProvisionedDeletePodTest{
+			CSIDriver: testDriver,
+			Pod:       pod,
+			PodCheck: &testsuites.PodExecCheck{
+				Cmd:            podCheckCmd,
+				ExpectedString: expectedString, // pod will be restarted so expect to see 2 instances of string
+			},
+			StorageClassParameters: subDirStorageClassParameters,
+		}
+		test.Run(cs, ns)
+	})
+
 	ginkgo.It(fmt.Sprintf("should delete PV with reclaimPolicy %q [nfs.csi.k8s.io]", v1.PersistentVolumeReclaimDelete), func() {
 		reclaimPolicy := v1.PersistentVolumeReclaimDelete
 		volumes := []testsuites.VolumeDetails{
@@ -242,7 +271,7 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 		test := testsuites.DynamicallyProvisionedPodWithMultiplePVsTest{
 			CSIDriver:              testDriver,
 			Pods:                   pods,
-			StorageClassParameters: defaultStorageClassParameters,
+			StorageClassParameters: subDirStorageClassParameters,
 		}
 		test.Run(cs, ns)
 	})

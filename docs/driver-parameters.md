@@ -8,6 +8,7 @@ Name | Meaning | Example Value | Mandatory | Default value
 --- | --- | --- | --- | ---
 server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 share | NFS share path | `/` | Yes |
+subDir | sub directory under nfs share |  | No | if sub directory does not exist, this driver would create a new one
 mountPermissions | mounted folder permissions. The default is `0777`, if set as `0`, driver will not perform `chmod` after mount |  | No |
 
 ### PV/PVC usage (static provisioning)
