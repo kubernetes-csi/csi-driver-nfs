@@ -39,6 +39,7 @@ controller:
   name: csi-nfs-controller
   replicas: 1
   runOnMaster: false
+  runOnControlPlane: false
   livenessProbe:
     healthPort: 29652
   logLevel: 5
