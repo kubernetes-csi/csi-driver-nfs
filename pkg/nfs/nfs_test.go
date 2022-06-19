@@ -178,3 +178,55 @@ func TestNewNodeServiceCapability(t *testing.T) {
 		assert.Equal(t, resp.XXX_sizecache, int32(0))
 	}
 }
+
+func TestReplaceWithMap(t *testing.T) {
+	tests := []struct {
+		desc     string
+		str      string
+		m        map[string]string
+		expected string
+	}{
+		{
+			desc:     "empty string",
+			str:      "",
+			expected: "",
+		},
+		{
+			desc:     "empty map",
+			str:      "",
+			m:        map[string]string{},
+			expected: "",
+		},
+		{
+			desc:     "empty key",
+			str:      "prefix-" + pvNameMetadata,
+			m:        map[string]string{"": "pv"},
+			expected: "prefix-" + pvNameMetadata,
+		},
+		{
+			desc:     "empty value",
+			str:      "prefix-" + pvNameMetadata,
+			m:        map[string]string{pvNameMetadata: ""},
+			expected: "prefix-",
+		},
+		{
+			desc:     "one replacement",
+			str:      "prefix-" + pvNameMetadata,
+			m:        map[string]string{pvNameMetadata: "pv"},
+			expected: "prefix-pv",
+		},
+		{
+			desc:     "multiple replacements",
+			str:      pvcNamespaceMetadata + pvcNameMetadata,
+			m:        map[string]string{pvcNamespaceMetadata: "namespace", pvcNameMetadata: "pvcname"},
+			expected: "namespacepvcname",
+		},
+	}
+
+	for _, test := range tests {
+		result := replaceWithMap(test.str, test.m)
+		if result != test.expected {
+			t.Errorf("test[%s]: unexpected output: %v, expected result: %v", test.desc, result, test.expected)
+		}
+	}
+}

@@ -21,6 +21,12 @@ volumeAttributes.share | NFS share path | `/` |  Yes  |
 volumeAttributes.mountPermissions | mounted folder permissions. The default is `0777` |  | No |
 
 ### Tips
+#### `subDir` parameter supports following pv/pvc metadata transform
+> if `subDir` value contains following strings, it would transforms into corresponding pv/pvc name or namespace
+ - `${pvc.metadata.name}`
+ - `${pvc.metadata.namespace}`
+ - `${pv.metadata.name}`
+
 #### provide `mountOptions` for `DeleteVolume`
 > since `DeleteVolumeRequest` does not provide `mountOptions`, following is the workaround to provide `mountOptions` for `DeleteVolume`, check details [here](https://github.com/kubernetes-csi/csi-driver-nfs/issues/260)
   - create a secret with `mountOptions`

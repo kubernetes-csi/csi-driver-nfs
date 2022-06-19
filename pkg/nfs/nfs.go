@@ -17,6 +17,8 @@ limitations under the License.
 package nfs
 
 import (
+	"strings"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/klog/v2"
 	mount "k8s.io/mount-utils"
@@ -58,6 +60,12 @@ const (
 	paramSubDir           = "subdir"
 	mountOptionsField     = "mountoptions"
 	mountPermissionsField = "mountpermissions"
+	pvcNameKey            = "csi.storage.k8s.io/pvc/name"
+	pvcNamespaceKey       = "csi.storage.k8s.io/pvc/namespace"
+	pvNameKey             = "csi.storage.k8s.io/pv/name"
+	pvcNameMetadata       = "${pvc.metadata.name}"
+	pvcNamespaceMetadata  = "${pvc.metadata.namespace}"
+	pvNameMetadata        = "${pv.metadata.name}"
 )
 
 func NewDriver(options *DriverOptions) *Driver {
@@ -131,4 +139,14 @@ func (n *Driver) AddNodeServiceCapabilities(nl []csi.NodeServiceCapability_RPC_T
 func IsCorruptedDir(dir string) bool {
 	_, pathErr := mount.PathExists(dir)
 	return pathErr != nil && mount.IsCorruptedMnt(pathErr)
+}
+
+// replaceWithMap replace key with value for str
+func replaceWithMap(str string, m map[string]string) string {
+	for k, v := range m {
+		if k != "" {
+			str = strings.ReplaceAll(str, k, v)
+		}
+	}
+	return str
 }

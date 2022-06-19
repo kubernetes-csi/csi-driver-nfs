@@ -529,3 +529,87 @@ func TestGetInternalMountPath(t *testing.T) {
 		assert.Equal(t, path, test.result)
 	}
 }
+
+func TestNewNFSVolume(t *testing.T) {
+	cases := []struct {
+		desc      string
+		name      string
+		size      int64
+		params    map[string]string
+		expectVol *nfsVolume
+		expectErr error
+	}{
+		{
+			desc: "subDir is specified",
+			name: "pv-name",
+			size: 100,
+			params: map[string]string{
+				paramServer: "//nfs-server.default.svc.cluster.local",
+				paramShare:  "share",
+				paramSubDir: "subdir",
+			},
+			expectVol: &nfsVolume{
+				id:      "nfs-server.default.svc.cluster.local#share#subdir#pv-name",
+				server:  "//nfs-server.default.svc.cluster.local",
+				baseDir: "share",
+				subDir:  "subdir",
+				size:    100,
+				uuid:    "pv-name",
+			},
+		},
+		{
+			desc: "subDir with pv/pvc metadata is specified",
+			name: "pv-name",
+			size: 100,
+			params: map[string]string{
+				paramServer:     "//nfs-server.default.svc.cluster.local",
+				paramShare:      "share",
+				paramSubDir:     fmt.Sprintf("subdir-%s-%s-%s", pvcNameMetadata, pvcNamespaceMetadata, pvNameMetadata),
+				pvcNameKey:      "pvcname",
+				pvcNamespaceKey: "pvcnamespace",
+				pvNameKey:       "pvname",
+			},
+			expectVol: &nfsVolume{
+				id:      "nfs-server.default.svc.cluster.local#share#subdir-pvcname-pvcnamespace-pvname#pv-name",
+				server:  "//nfs-server.default.svc.cluster.local",
+				baseDir: "share",
+				subDir:  "subdir-pvcname-pvcnamespace-pvname",
+				size:    100,
+				uuid:    "pv-name",
+			},
+		},
+		{
+			desc: "subDir not specified",
+			name: "pv-name",
+			size: 200,
+			params: map[string]string{
+				paramServer: "//nfs-server.default.svc.cluster.local",
+				paramShare:  "share",
+			},
+			expectVol: &nfsVolume{
+				id:      "nfs-server.default.svc.cluster.local#share#pv-name#",
+				server:  "//nfs-server.default.svc.cluster.local",
+				baseDir: "share",
+				subDir:  "pv-name",
+				size:    200,
+				uuid:    "",
+			},
+		},
+		{
+			desc:      "server value is empty",
+			params:    map[string]string{},
+			expectVol: nil,
+			expectErr: fmt.Errorf("%s is a required parameter", paramServer),
+		},
+	}
+
+	for _, test := range cases {
+		vol, err := newNFSVolume(test.name, test.size, test.params)
+		if !reflect.DeepEqual(err, test.expectErr) {
+			t.Errorf("[test: %s] Unexpected error: %v, expected error: %v", test.desc, err, test.expectErr)
+		}
+		if !reflect.DeepEqual(vol, test.expectVol) {
+			t.Errorf("[test: %s] Unexpected vol: %v, expected vol: %v", test.desc, vol, test.expectVol)
+		}
+	}
+}
