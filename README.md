@@ -18,6 +18,7 @@ This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System
 |v2.0.0          | 1.14+                 | alpha  |
 
 ### Install driver on a Kubernetes cluster
+ > [install NFS CSI driver on microk8s](https://microk8s.io/docs/nfs)
  - install by [kubectl](./docs/install-nfs-csi-driver.md)
  - install by [helm charts](./charts)
 
