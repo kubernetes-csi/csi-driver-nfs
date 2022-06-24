@@ -47,6 +47,13 @@ func TestNodePublishVolume(t *testing.T) {
 		"share":               "share",
 		mountPermissionsField: "0755",
 	}
+	paramsWithMetadata := map[string]string{
+		"server":        "server",
+		"share":         "share",
+		pvcNameKey:      "pvcname",
+		pvcNamespaceKey: "pvcnamespace",
+		pvNameKey:       "pvname",
+	}
 	paramsWithZeroPermissions := map[string]string{
 		"server":              "server",
 		"share":               "share",
@@ -120,6 +127,16 @@ func TestNodePublishVolume(t *testing.T) {
 			desc: "[Success] Valid request",
 			req: csi.NodePublishVolumeRequest{
 				VolumeContext:    params,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest,
+				Readonly:         true},
+			expectedErr: nil,
+		},
+		{
+			desc: "[Success] Valid request with pv/pvc metadata",
+			req: csi.NodePublishVolumeRequest{
+				VolumeContext:    paramsWithMetadata,
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:         "vol_1",
 				TargetPath:       targetTest,

@@ -93,10 +93,11 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	for k, v := range parameters {
 		switch strings.ToLower(k) {
 		case paramServer:
-			// no op
 		case paramShare:
-			// no op
 		case paramSubDir:
+		case pvcNamespaceKey:
+		case pvcNameKey:
+		case pvNameKey:
 			// no op
 		case mountPermissionsField:
 			if v != "" {
@@ -110,7 +111,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}
 
-	nfsVol, err := cs.newNFSVolume(name, reqCapacity, parameters)
+	nfsVol, err := newNFSVolume(name, reqCapacity, parameters)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -304,9 +305,10 @@ func (cs *ControllerServer) internalUnmount(ctx context.Context, vol *nfsVolume)
 	return err
 }
 
-// Convert VolumeCreate parameters to an nfsVolume
-func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[string]string) (*nfsVolume, error) {
+// newNFSVolume Convert VolumeCreate parameters to an nfsVolume
+func newNFSVolume(name string, size int64, params map[string]string) (*nfsVolume, error) {
 	var server, baseDir, subDir string
+	subDirReplaceMap := map[string]string{}
 
 	// validate parameters (case-insensitive)
 	for k, v := range params {
@@ -317,14 +319,17 @@ func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[str
 			baseDir = v
 		case paramSubDir:
 			subDir = v
+		case pvcNamespaceKey:
+			subDirReplaceMap[pvcNamespaceMetadata] = v
+		case pvcNameKey:
+			subDirReplaceMap[pvcNameMetadata] = v
+		case pvNameKey:
+			subDirReplaceMap[pvNameMetadata] = v
 		}
 	}
 
 	if server == "" {
 		return nil, fmt.Errorf("%v is a required parameter", paramServer)
-	}
-	if baseDir == "" {
-		return nil, fmt.Errorf("%v is a required parameter", paramShare)
 	}
 
 	vol := &nfsVolume{
@@ -336,11 +341,12 @@ func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[str
 		// use pv name by default if not specified
 		vol.subDir = name
 	} else {
-		vol.subDir = subDir
+		// replace pv/pvc name namespace metadata in subDir
+		vol.subDir = replaceWithMap(subDir, subDirReplaceMap)
 		// make volume id unique if subDir is provided
 		vol.uuid = name
 	}
-	vol.id = cs.getVolumeIDFromNfsVol(vol)
+	vol.id = getVolumeIDFromNfsVol(vol)
 	return vol, nil
 }
 
@@ -368,7 +374,7 @@ func getInternalVolumePath(workingMountDir string, vol *nfsVolume) string {
 }
 
 // Given a nfsVolume, return a CSI volume id
-func (cs *ControllerServer) getVolumeIDFromNfsVol(vol *nfsVolume) string {
+func getVolumeIDFromNfsVol(vol *nfsVolume) string {
 	idElements := make([]string, totalIDElements)
 	idElements[idServer] = strings.Trim(vol.server, "/")
 	idElements[idBaseDir] = strings.Trim(vol.baseDir, "/")
