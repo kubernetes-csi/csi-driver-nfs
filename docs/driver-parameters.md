@@ -21,8 +21,8 @@ volumeAttributes.share | NFS share path | `/` |  Yes  |
 volumeAttributes.mountPermissions | mounted folder permissions. The default is `0777` |  | No |
 
 ### Tips
-#### `subDir` parameter supports following pv/pvc metadata transform
-> if `subDir` value contains following strings, it would transforms into corresponding pv/pvc name or namespace
+#### `subDir` parameter supports following pv/pvc metadata conversion
+> if `subDir` value contains following strings, it would be converted into corresponding pv/pvc name or namespace
  - `${pvc.metadata.name}`
  - `${pvc.metadata.namespace}`
  - `${pv.metadata.name}`
