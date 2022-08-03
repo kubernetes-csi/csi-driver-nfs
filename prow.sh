@@ -93,7 +93,10 @@ configvar CSI_PROW_GO_VERSION_KIND "${CSI_PROW_GO_VERSION_BUILD}" "Go version fo
 configvar CSI_PROW_GO_VERSION_GINKGO "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building ginkgo" # depends on CSI_PROW_GINKGO_VERSION below
 
 # ginkgo test runner version to use. If the pre-installed version is
-# different, the desired version is built from source.
+# different, the desired version is built from source. For Kubernetes,
+# the version built via "make WHAT=vendor/github.com/onsi/ginkgo/ginkgo" is
+# used, which is guaranteed to match what the Kubernetes e2e.test binary
+# needs.
 configvar CSI_PROW_GINKGO_VERSION v1.7.0 "Ginkgo"
 
 # Ginkgo runs the E2E test in parallel. The default is based on the number
@@ -440,6 +443,10 @@ install_kind () {
 
 # Ensure that we have the desired version of the ginkgo test runner.
 install_ginkgo () {
+    if [ -e "${CSI_PROW_BIN}/ginkgo" ]; then
+        return
+    fi
+
     # CSI_PROW_GINKGO_VERSION contains the tag with v prefix, the command line output does not.
     if [ "v$(ginkgo version 2>/dev/null | sed -e 's/.* //')" = "${CSI_PROW_GINKGO_VERSION}" ]; then
         return
@@ -943,7 +950,9 @@ install_e2e () {
         patch_kubernetes "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" "${CSI_PROW_WORK}" &&
         go_version="${CSI_PROW_GO_VERSION_E2E:-$(go_version_for_kubernetes "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" "${CSI_PROW_E2E_VERSION}")}" &&
         run_with_go "$go_version" make WHAT=test/e2e/e2e.test "-C${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" &&
-        ln -s "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}/_output/bin/e2e.test" "${CSI_PROW_WORK}"
+        ln -s "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}/_output/bin/e2e.test" "${CSI_PROW_WORK}" &&
+        run_with_go "$go_version" make WHAT=vendor/github.com/onsi/ginkgo/ginkgo "-C${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" &&
+        ln -s "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}/_output/bin/ginkgo" "${CSI_PROW_BIN}"
     else
         run_with_go "${CSI_PROW_GO_VERSION_E2E}" go test -c -o "${CSI_PROW_WORK}/e2e.test" "${CSI_PROW_E2E_IMPORT_PATH}/test/e2e"
     fi
