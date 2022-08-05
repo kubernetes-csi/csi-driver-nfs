@@ -121,7 +121,7 @@ configvar CSI_PROW_BUILD_JOB true "building code in repo enabled"
 # use the same settings as for "latest" Kubernetes. This works
 # as long as there are no breaking changes in Kubernetes, like
 # deprecating or changing the implementation of an alpha feature.
-configvar CSI_PROW_KUBERNETES_VERSION 1.17.0 "Kubernetes"
+configvar CSI_PROW_KUBERNETES_VERSION 1.22.0 "Kubernetes"
 
 # CSI_PROW_KUBERNETES_VERSION reduced to first two version numbers and
 # with underscore (1_13 instead of 1.13.3) and in uppercase (LATEST
