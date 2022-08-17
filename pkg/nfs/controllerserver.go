@@ -364,8 +364,8 @@ func getInternalMountPath(workingMountDir string, vol *nfsVolume) string {
 
 // Get internal path where the volume is created
 // The reason why the internal path is "workingDir/subDir/subDir" is because:
-//   * the semantic is actually "workingDir/volId/subDir" and volId == subDir.
-//   * we need a mount directory per volId because you can have multiple
+//   - the semantic is actually "workingDir/volId/subDir" and volId == subDir.
+//   - we need a mount directory per volId because you can have multiple
 //     CreateVolume calls in parallel and they may use the same underlying share.
 //     Instead of refcounting how many CreateVolume calls are using the same
 //     share, it's simpler to just do a mount per request.
@@ -385,10 +385,11 @@ func getVolumeIDFromNfsVol(vol *nfsVolume) string {
 
 // Given a CSI volume id, return a nfsVolume
 // sample volume Id:
-//   new volumeID:
-//	    nfs-server.default.svc.cluster.local#share#pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
-//	    nfs-server.default.svc.cluster.local#share#subdir#pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
-//   old volumeID: nfs-server.default.svc.cluster.local/share/pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
+//
+//	  new volumeID:
+//		    nfs-server.default.svc.cluster.local#share#pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
+//		    nfs-server.default.svc.cluster.local#share#subdir#pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
+//	  old volumeID: nfs-server.default.svc.cluster.local/share/pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
 func getNfsVolFromID(id string) (*nfsVolume, error) {
 	var server, baseDir, subDir, uuid string
 	segments := strings.Split(id, separator)

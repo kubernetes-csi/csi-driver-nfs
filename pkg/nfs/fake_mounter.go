@@ -49,7 +49,7 @@ func (f *fakeMounter) MountSensitive(source string, target string, fstype string
 	return nil
 }
 
-//IsLikelyNotMountPoint overrides mount.FakeMounter.IsLikelyNotMountPoint.
+// IsLikelyNotMountPoint overrides mount.FakeMounter.IsLikelyNotMountPoint.
 func (f *fakeMounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	if strings.Contains(file, "error_is_likely") {
 		return false, fmt.Errorf("fake IsLikelyNotMountPoint: fake error")

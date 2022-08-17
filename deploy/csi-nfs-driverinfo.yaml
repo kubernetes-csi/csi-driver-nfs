@@ -7,5 +7,4 @@ spec:
   attachRequired: false
   volumeLifecycleModes:
     - Persistent
-    - Ephemeral
   fsGroupPolicy: File
