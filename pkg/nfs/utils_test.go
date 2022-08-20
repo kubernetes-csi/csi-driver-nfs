@@ -286,7 +286,7 @@ func TestSetKeyValueInMap(t *testing.T) {
 			expected: map[string]string{"subDir": "value"},
 		},
 		{
-			desc:     "case insentive key already exists",
+			desc:     "case insensitive key already exists",
 			m:        map[string]string{"subDir": "value2"},
 			key:      "subdir",
 			value:    "value",
