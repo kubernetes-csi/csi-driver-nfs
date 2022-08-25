@@ -27,7 +27,7 @@ csi-nfs-node-dr4s4                        3/3     Running   0          7m4s    1
 
  - get pod description and logs
 ```console
-$ kubectl describe po csi-nfs-node-cvgbs -n kube-system > csi-nfs-node-description.log
+$ kubectl describe pod csi-nfs-node-cvgbs -n kube-system > csi-nfs-node-description.log
 $ kubectl logs csi-nfs-node-cvgbs -c nfs -n kube-system > csi-nfs-node.log
 ```
 
