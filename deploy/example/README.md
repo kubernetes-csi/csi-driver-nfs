@@ -28,7 +28,6 @@ parameters:
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 mountOptions:
-  - nconnect=8  # only supported on linux kernel version >= 5.3
   - nfsvers=4.1
 ```
 
