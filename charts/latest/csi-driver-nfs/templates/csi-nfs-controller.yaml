@@ -10,6 +10,8 @@ spec:
   selector:
     matchLabels:
       app: {{ .Values.controller.name }}
+  strategy:
+    type: {{ .Values.controller.strategyType }}
   template:
     metadata:
 {{ include "nfs.labels" . | indent 6 }}
