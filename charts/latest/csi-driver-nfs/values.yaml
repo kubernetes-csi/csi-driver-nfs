@@ -38,6 +38,7 @@ kubeletDir: /var/lib/kubelet
 controller:
   name: csi-nfs-controller
   replicas: 1
+  strategyType: Recreate
   runOnMaster: false
   runOnControlPlane: false
   livenessProbe:
