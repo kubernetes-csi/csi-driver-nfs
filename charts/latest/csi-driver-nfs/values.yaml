@@ -6,15 +6,15 @@ image:
         pullPolicy: IfNotPresent
     csiProvisioner:
         repository: registry.k8s.io/sig-storage/csi-provisioner
-        tag: v3.2.0
+        tag: v3.3.0
         pullPolicy: IfNotPresent
     livenessProbe:
         repository: registry.k8s.io/sig-storage/livenessprobe
-        tag: v2.7.0
+        tag: v2.8.0
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
         repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-        tag: v2.5.1
+        tag: v2.6.0
         pullPolicy: IfNotPresent
 
 serviceAccount:
