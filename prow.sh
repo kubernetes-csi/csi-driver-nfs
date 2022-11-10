@@ -381,7 +381,7 @@ configvar CSI_SNAPSHOTTER_VERSION "$(default_csi_snapshotter_version)" "external
 # whether they can run with the current cluster provider, but until
 # they are, we filter them out by name. Like the other test selection
 # variables, this is again a space separated list of regular expressions.
-configvar CSI_PROW_E2E_SKIP 'Disruptive' "tests that need to be skipped"
+configvar CSI_PROW_E2E_SKIP '\[Disruptive\]|\[Feature:SELinux\]' "tests that need to be skipped"
 
 # This creates directories that are required for testing.
 ensure_paths () {
