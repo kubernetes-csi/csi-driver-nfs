@@ -60,7 +60,6 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	subDirReplaceMap := map[string]string{}
 
 	mountPermissions := ns.Driver.mountPermissions
-	performChmodOp := (mountPermissions > 0)
 	for k, v := range req.GetVolumeContext() {
 		switch strings.ToLower(k) {
 		case paramServer:
@@ -82,14 +81,8 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		case mountPermissionsField:
 			if v != "" {
 				var err error
-				var perm uint64
-				if perm, err = strconv.ParseUint(v, 8, 32); err != nil {
+				if mountPermissions, err = strconv.ParseUint(v, 8, 32); err != nil {
 					return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("invalid mountPermissions %s", v))
-				}
-				if perm == 0 {
-					performChmodOp = false
-				} else {
-					mountPermissions = perm
 				}
 			}
 		}
@@ -138,7 +131,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if performChmodOp {
+	if mountPermissions > 0 {
 		if err := chmodIfPermissionMismatch(targetPath, os.FileMode(mountPermissions)); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}

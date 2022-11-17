@@ -130,15 +130,17 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}()
 
-	fileMode := os.FileMode(mountPermissions)
 	// Create subdirectory under base-dir
 	internalVolumePath := getInternalVolumePath(cs.Driver.workingMountDir, nfsVol)
-	if err = os.Mkdir(internalVolumePath, fileMode); err != nil && !os.IsExist(err) {
+	if err = os.Mkdir(internalVolumePath, 0777); err != nil && !os.IsExist(err) {
 		return nil, status.Errorf(codes.Internal, "failed to make subdirectory: %v", err.Error())
 	}
-	// Reset directory permissions because of umask problems
-	if err = os.Chmod(internalVolumePath, fileMode); err != nil {
-		klog.Warningf("failed to chmod subdirectory: %v", err.Error())
+
+	if mountPermissions > 0 {
+		// Reset directory permissions because of umask problems
+		if err = os.Chmod(internalVolumePath, os.FileMode(mountPermissions)); err != nil {
+			klog.Warningf("failed to chmod subdirectory: %v", err.Error())
+		}
 	}
 
 	setKeyValueInMap(parameters, paramSubDir, nfsVol.subDir)

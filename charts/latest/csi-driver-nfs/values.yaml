@@ -27,7 +27,7 @@ rbac:
 
 driver:
   name: nfs.csi.k8s.io
-  mountPermissions: 0777
+  mountPermissions: 0
 
 feature:
   enableFSGroupPolicy: true
