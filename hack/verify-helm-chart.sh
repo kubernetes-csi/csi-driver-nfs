@@ -35,6 +35,15 @@ function validate_image() {
   fi
 }
 
+echo "Running helm lint"
+
+if [[ -z "$(command -v helm)" ]]; then
+  echo "Cannot find helm. Installing helm..."
+  curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+fi
+
+helm lint ${PKG_ROOT}/charts/latest/csi-driver-nfs
+
 echo "Comparing image version between helm chart and manifests in deploy folder"
 
 if [[ -z "$(command -v pip)" ]]; then
