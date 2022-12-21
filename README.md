@@ -11,7 +11,7 @@ This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System
 ### Container Images & Kubernetes Compatibility:
 |driver version  | supported k8s version | status |
 |----------------|-----------------------|--------|
-|master branch   | 1.20+                 | GA     |
+|master branch   | 1.21+                 | GA     |
 |v4.1.0          | 1.20+                 | GA     |
 |v4.0.0          | 1.20+                 | GA     |
 |v3.1.0          | 1.19+                 | beta   |
