@@ -108,7 +108,7 @@ func (n *Driver) Run(testMode bool) {
 	}
 	klog.V(2).Infof("\nDRIVER INFORMATION:\n-------------------\n%s\n\nStreaming logs below:", versionMeta)
 
-	n.ns = NewNodeServer(n, mount.New(""))
+	n.ns = NewNodeServer(n, mount.New("").(mount.MounterForceUnmounter))
 	s := NewNonBlockingGRPCServer()
 	s.Start(n.endpoint,
 		NewDefaultIdentityServer(n),
