@@ -6,6 +6,11 @@
 ### Tips
  - run controller on control plane node: `--set controller.runOnControlPlane=true`
  - set replica of controller as `2`: `--set controller.replicas=2`
+ - Microk8s based kubernetes recommended settings:
+    - `--set linux.dnsPolicy=ClusterFirstWithHostNet` with `--set controller.dnsPolicy=ClusterFirstWithHostNet` -
+      external smb server cannot be found based on Default dns.
+    - `--set linux.kubelet="/var/snap/microk8s/common/var/lib/kubelet"` - sets correct path to microk8s kubelet even
+      though a user has a folder link to it.
 
 ### install a specific version
 ```console
