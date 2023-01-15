@@ -17,6 +17,7 @@ limitations under the License.
 package nfs
 
 import (
+	"runtime"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -108,7 +109,12 @@ func (n *Driver) Run(testMode bool) {
 	}
 	klog.V(2).Infof("\nDRIVER INFORMATION:\n-------------------\n%s\n\nStreaming logs below:", versionMeta)
 
-	n.ns = NewNodeServer(n, mount.New(""))
+	mounter := mount.New("")
+	if runtime.GOOS == "linux" {
+		// MounterForceUnmounter is only implemented on Linux now
+		mounter = mounter.(mount.MounterForceUnmounter)
+	}
+	n.ns = NewNodeServer(n, mounter)
 	s := NewNonBlockingGRPCServer()
 	s.Start(n.endpoint,
 		NewDefaultIdentityServer(n),

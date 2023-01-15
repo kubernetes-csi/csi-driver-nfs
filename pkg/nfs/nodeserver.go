@@ -21,6 +21,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
@@ -154,7 +155,15 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 
 	klog.V(2).Infof("NodeUnpublishVolume: unmounting volume %s on %s", volumeID, targetPath)
-	err := mount.CleanupMountPoint(targetPath, ns.mounter, true /*extensiveMountPointCheck*/)
+	var err error
+	extensiveMountPointCheck := true
+	forceUnmounter, ok := ns.mounter.(mount.MounterForceUnmounter)
+	if ok {
+		klog.V(2).Infof("force unmount %s on %s", volumeID, targetPath)
+		err = mount.CleanupMountWithForce(targetPath, forceUnmounter, extensiveMountPointCheck, 30*time.Second)
+	} else {
+		err = mount.CleanupMountPoint(targetPath, ns.mounter, extensiveMountPointCheck)
+	}
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to unmount target %q: %v", targetPath, err)
 	}
