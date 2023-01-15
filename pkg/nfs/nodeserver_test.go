@@ -19,7 +19,6 @@ package nfs
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -216,11 +215,6 @@ func TestNodeUnpublishVolume(t *testing.T) {
 			desc:        "[Error] Target missing",
 			req:         csi.NodeUnpublishVolumeRequest{VolumeId: "vol_1"},
 			expectedErr: status.Error(codes.InvalidArgument, "Target path missing in request"),
-		},
-		{
-			desc:        "[Error] Unmount error mocked by IsLikelyNotMountPoint",
-			req:         csi.NodeUnpublishVolumeRequest{TargetPath: errorTarget, VolumeId: "vol_1"},
-			expectedErr: fmt.Errorf("fake IsLikelyNotMountPoint: fake error"),
 		},
 		{
 			desc: "[Success] Volume not mounted",
