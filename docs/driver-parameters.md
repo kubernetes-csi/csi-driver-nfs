@@ -11,11 +11,18 @@ share | NFS share path | `/` | Yes |
 subDir | sub directory under nfs share |  | No | if sub directory does not exist, this driver would create a new one
 mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount |  | No |
 
+ - VolumeID(`volumeHandle`) is the identifier of the volume handled by the driver, format of VolumeID:
+```
+{nfs-server-address}#{sub-dir-name}#{share-name}
+```
+> example: `nfs-server.default.svc.cluster.local/share#subdir#`
+
 ### PV/PVC usage (static provisioning)
 > [`PersistentVolume` example](../deploy/example/pv-nfs-csi.yaml)
 
 Name | Meaning | Example Value | Mandatory | Default value
 --- | --- | --- | --- | ---
+volumeHandle | Specify a value the driver can use to uniquely identify the share in the cluster. | A recommended way to produce a unique value is to combine the nfs-server address, sub directory name and share name: `{nfs-server-address}#{sub-dir-name}#{share-name}`. | Yes |
 volumeAttributes.server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 volumeAttributes.share | NFS share path | `/` |  Yes  |
 volumeAttributes.mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount |  | No |
