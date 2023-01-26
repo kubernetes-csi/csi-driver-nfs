@@ -19,5 +19,6 @@ ARG binary=./bin/${ARCH}/nfsplugin
 COPY ${binary} /nfsplugin
 
 RUN apt update && apt upgrade -y && apt-mark unhold libcap2 && clean-install ca-certificates mount nfs-common netbase
+RUN apt remove python3.9 python3.9-minimal libpython3.9-minimal libpython3.9-stdlib -y
 
 ENTRYPOINT ["/nfsplugin"]
