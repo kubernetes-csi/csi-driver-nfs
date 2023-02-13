@@ -87,11 +87,13 @@ nfs-armv7:
 .PHONY: container-build
 container-build:
 	docker buildx build --pull --output=type=$(OUTPUT_TYPE) --platform="linux/$(ARCH)" \
+		--provenance=false --sbom=false \
 		-t $(IMAGE_TAG)-linux-$(ARCH) --build-arg ARCH=$(ARCH) .
 
 .PHONY: container-linux-armv7
 container-linux-armv7:
 	docker buildx build --pull --output=type=$(OUTPUT_TYPE) --platform="linux/arm/v7" \
+		--provenance=false --sbom=false \
 		-t $(IMAGE_TAG)-linux-arm-v7 --build-arg ARCH=arm/v7 .
 
 .PHONY: container
