@@ -132,7 +132,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// Create subdirectory under base-dir
 	internalVolumePath := getInternalVolumePath(cs.Driver.workingMountDir, nfsVol)
-	if err = os.Mkdir(internalVolumePath, 0777); err != nil && !os.IsExist(err) {
+	if err = os.MkdirAll(internalVolumePath, 0777); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to make subdirectory: %v", err.Error())
 	}
 
