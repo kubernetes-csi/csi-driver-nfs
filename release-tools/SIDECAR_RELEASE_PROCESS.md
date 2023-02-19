@@ -92,6 +92,8 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
 1. Check that all [canary CI
   jobs](https://k8s-testgrid.appspot.com/sig-storage-csi-ci) are passing,
   and that test coverage is adequate for the changes that are going into the release.
+1. Check that the post-\<sidecar\>-push-images builds are succeeding.
+   [Example](https://k8s-testgrid.appspot.com/sig-storage-image-build#post-external-snapshotter-push-images)
 1. Make sure that no new PRs have merged in the meantime, and no PRs are in
    flight and soon to be merged.
 1. Create a new release following a previous release as a template. Be sure to select the correct

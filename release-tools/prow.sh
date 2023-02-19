@@ -196,7 +196,7 @@ kindest/node:v1.18.20@sha256:738cdc23ed4be6cc0b7ea277a2ebcc454c8373d7d8fb991a7fc
 # If the deployment script is called with CSI_PROW_TEST_DRIVER=<file name> as
 # environment variable, then it must write a suitable test driver configuration
 # into that file in addition to installing the driver.
-configvar CSI_PROW_DRIVER_VERSION "v1.8.0" "CSI driver version"
+configvar CSI_PROW_DRIVER_VERSION "v1.11.0" "CSI driver version"
 configvar CSI_PROW_DRIVER_REPO https://github.com/kubernetes-csi/csi-driver-host-path "CSI driver repo"
 configvar CSI_PROW_DEPLOYMENT "" "deployment"
 configvar CSI_PROW_DEPLOYMENT_SUFFIX "" "additional suffix in kubernetes-x.yy[suffix].yaml files"
@@ -1008,7 +1008,10 @@ run_e2e () (
     # the full Kubernetes E2E testsuite while only running a few tests.
     move_junit () {
         if ls "${ARTIFACTS}"/junit_[0-9]*.xml 2>/dev/null >/dev/null; then
-            run_filter_junit -t="External.Storage|CSI.mock.volume" -o "${ARTIFACTS}/junit_${name}.xml" "${ARTIFACTS}"/junit_[0-9]*.xml && rm -f "${ARTIFACTS}"/junit_[0-9]*.xml
+            mkdir -p "${ARTIFACTS}/junit/${name}" &&
+                mkdir -p "${ARTIFACTS}/junit/steps" &&
+                run_filter_junit -t="External.Storage|CSI.mock.volume" -o "${ARTIFACTS}/junit/steps/junit_${name}.xml" "${ARTIFACTS}"/junit_[0-9]*.xml &&
+                mv "${ARTIFACTS}"/junit_[0-9]*.xml "${ARTIFACTS}/junit/${name}/"
         fi
     }
     trap move_junit EXIT
@@ -1085,13 +1088,14 @@ kubectl exec "$pod" -c "${CSI_PROW_SANITY_CONTAINER}" -- /bin/sh -c "\${CHECK_PA
 EOF
 
     chmod u+x "${CSI_PROW_WORK}"/*dir_in_pod.sh
+    mkdir -p "${ARTIFACTS}/junit/steps"
 
     # This cannot run in parallel, because -csi.junitfile output
     # from different Ginkgo nodes would go to the same file. Also the
     # staging and target directories are the same.
     run_with_loggers "${CSI_PROW_WORK}/csi-sanity" \
                      -ginkgo.v \
-                     -csi.junitfile "${ARTIFACTS}/junit_sanity.xml" \
+                     -csi.junitfile "${ARTIFACTS}/junit/steps/junit_sanity.xml" \
                      -csi.endpoint "dns:///$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' csi-prow-control-plane):$(kubectl get "services/${CSI_PROW_SANITY_SERVICE}" -o "jsonpath={..nodePort}")" \
                      -csi.stagingdir "/tmp/staging" \
                      -csi.mountdir "/tmp/mount" \
@@ -1121,7 +1125,8 @@ make_test_to_junit () {
     # Plain make-test.xml was not delivered as text/xml by the web
     # server and ignored by spyglass. It seems that the name has to
     # match junit*.xml.
-    out="${ARTIFACTS}/junit_make_test.xml"
+    out="${ARTIFACTS}/junit/steps/junit_make_test.xml"
+    mkdir -p "$(dirname "$out")"
     testname=
     echo "<testsuite>" >>"$out"
 
@@ -1385,8 +1390,8 @@ main () {
     fi
 
     # Merge all junit files into one. This gets rid of duplicated "skipped" tests.
-    if ls "${ARTIFACTS}"/junit_*.xml 2>/dev/null >&2; then
-        run_filter_junit -o "${CSI_PROW_WORK}/junit_final.xml" "${ARTIFACTS}"/junit_*.xml && rm "${ARTIFACTS}"/junit_*.xml && mv "${CSI_PROW_WORK}/junit_final.xml" "${ARTIFACTS}"
+    if ls "${ARTIFACTS}"/junit/steps/junit_*.xml 2>/dev/null >&2; then
+        run_filter_junit -o "${ARTIFACTS}/junit_final.xml" "${ARTIFACTS}"/junit/steps/junit_*.xml
     fi
 
     return "$ret"
