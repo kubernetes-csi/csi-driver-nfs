@@ -56,6 +56,7 @@ type TestCase struct {
 	Name      string     `xml:"name,attr"`
 	Time      string     `xml:"time,attr"`
 	SystemOut string     `xml:"system-out,omitempty"`
+	SystemErr string     `xml:"system-err,omitempty"`
 	Failure   string     `xml:"failure,omitempty"`
 	Skipped   SkipReason `xml:"skipped,omitempty"`
 }
@@ -109,7 +110,7 @@ func main() {
 			if err := xml.Unmarshal(data, &junitv2); err != nil {
 				panic(err)
 			}
-			junit = junitv2.TestSuite
+			junit.TestCases = append(junit.TestCases, junitv2.TestSuite.TestCases...)
 		}
 	}
 
