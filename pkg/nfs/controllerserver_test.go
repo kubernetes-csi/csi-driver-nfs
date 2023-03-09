@@ -325,6 +325,13 @@ func TestControllerGetCapabilities(t *testing.T) {
 							},
 						},
 					},
+					{
+						Type: &csi.ControllerServiceCapability_Rpc{
+							Rpc: &csi.ControllerServiceCapability_RPC{
+								Type: csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
+							},
+						},
+					},
 				},
 			},
 			expectedErr: nil,

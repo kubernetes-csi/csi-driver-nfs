@@ -19,6 +19,7 @@ package nfs
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -143,12 +144,19 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}
 
+	if req.GetVolumeContentSource() != nil {
+		if err := cs.copyVolume(ctx, req, nfsVol); err != nil {
+			return nil, err
+		}
+	}
+
 	setKeyValueInMap(parameters, paramSubDir, nfsVol.subDir)
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			VolumeId:      nfsVol.id,
 			CapacityBytes: 0, // by setting it to zero, Provisioner will use PVC requested size as PV size
 			VolumeContext: parameters,
+			ContentSource: req.GetVolumeContentSource(),
 		},
 	}, nil
 }
@@ -305,6 +313,58 @@ func (cs *ControllerServer) internalUnmount(ctx context.Context, vol *nfsVolume)
 		TargetPath: targetPath,
 	})
 	return err
+}
+
+func (cs *ControllerServer) copyFromVolume(ctx context.Context, req *csi.CreateVolumeRequest, dstVol *nfsVolume) error {
+	srcVol, err := getNfsVolFromID(req.GetVolumeContentSource().GetVolume().GetVolumeId())
+	if err != nil {
+		return status.Error(codes.NotFound, err.Error())
+	}
+	srcPath := getInternalVolumePath(cs.Driver.workingMountDir, srcVol)
+	dstPath := getInternalVolumePath(cs.Driver.workingMountDir, dstVol)
+	klog.V(2).Infof("copy volume from volume %v -> %v", srcPath, dstPath)
+
+	var volCap *csi.VolumeCapability
+	if len(req.GetVolumeCapabilities()) > 0 {
+		volCap = req.GetVolumeCapabilities()[0]
+	}
+	if err = cs.internalMount(ctx, srcVol, nil, volCap); err != nil {
+		return status.Errorf(codes.Internal, "failed to mount src nfs server: %v", err.Error())
+	}
+	defer func() {
+		if err = cs.internalUnmount(ctx, srcVol); err != nil {
+			klog.Warningf("failed to unmount nfs server: %v", err.Error())
+		}
+	}()
+	if err = cs.internalMount(ctx, dstVol, nil, volCap); err != nil {
+		return status.Errorf(codes.Internal, "failed to mount dst nfs server: %v", err.Error())
+	}
+	defer func() {
+		if err = cs.internalUnmount(ctx, dstVol); err != nil {
+			klog.Warningf("failed to unmount dst nfs server: %v", err.Error())
+		}
+	}()
+
+	// recursive 'cp' with '-a' to handle symlinks. Note that the source path must include trailing '/.',
+	// which is the reason why 'filepath.Join()' is not used as it would perform path cleaning
+	out, err := exec.Command("cp", "-a", fmt.Sprintf("%v%v.", srcPath, filepath.Separator), dstPath).CombinedOutput()
+	klog.V(2).Infof("copied %s -> %s output: %v", srcPath, dstPath, string(out))
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+	return nil
+}
+
+func (cs *ControllerServer) copyVolume(ctx context.Context, req *csi.CreateVolumeRequest, vol *nfsVolume) error {
+	vs := req.VolumeContentSource
+	switch vs.Type.(type) {
+	case *csi.VolumeContentSource_Snapshot:
+		return status.Error(codes.Unimplemented, "Currently only volume copy from another volume is supported")
+	case *csi.VolumeContentSource_Volume:
+		return cs.copyFromVolume(ctx, req, vol)
+	default:
+		return status.Errorf(codes.InvalidArgument, "%v not a proper volume source", vs)
+	}
 }
 
 // newNFSVolume Convert VolumeCreate parameters to an nfsVolume
