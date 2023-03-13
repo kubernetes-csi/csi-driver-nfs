@@ -12,6 +12,7 @@ DriverInfo:
     multipods: true
     RWX: true
     fsGroup: true
+    pvcDataSource: true
 InlineVolumes:
 - Attributes:
     server: nfs-server.default.svc.cluster.local
