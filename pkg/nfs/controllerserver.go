@@ -320,7 +320,8 @@ func (cs *ControllerServer) copyFromVolume(ctx context.Context, req *csi.CreateV
 	if err != nil {
 		return status.Error(codes.NotFound, err.Error())
 	}
-	srcPath := getInternalVolumePath(cs.Driver.workingMountDir, srcVol)
+	// Note that the source path must include trailing '/.', can't use 'filepath.Join()' as it performs path cleaning
+	srcPath := fmt.Sprintf("%v/.", getInternalVolumePath(cs.Driver.workingMountDir, srcVol))
 	dstPath := getInternalVolumePath(cs.Driver.workingMountDir, dstVol)
 	klog.V(2).Infof("copy volume from volume %v -> %v", srcPath, dstPath)
 
@@ -345,13 +346,12 @@ func (cs *ControllerServer) copyFromVolume(ctx context.Context, req *csi.CreateV
 		}
 	}()
 
-	// recursive 'cp' with '-a' to handle symlinks. Note that the source path must include trailing '/.',
-	// which is the reason why 'filepath.Join()' is not used as it would perform path cleaning
-	out, err := exec.Command("cp", "-a", fmt.Sprintf("%v%v.", srcPath, filepath.Separator), dstPath).CombinedOutput()
-	klog.V(2).Infof("copied %s -> %s output: %v", srcPath, dstPath, string(out))
+	// recursive 'cp' with '-a' to handle symlinks
+	out, err := exec.Command("cp", "-a", srcPath, dstPath).CombinedOutput()
 	if err != nil {
-		return status.Error(codes.Internal, err.Error())
+		return status.Error(codes.Internal, fmt.Sprintf("%v: %v", err, string(out)))
 	}
+	klog.V(2).Infof("copied %s -> %s", srcPath, dstPath)
 	return nil
 }
 
