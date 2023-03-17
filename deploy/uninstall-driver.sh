@@ -16,6 +16,10 @@
 
 set -euo pipefail
 
+# external-snapshotter to install for snapshots to work
+snap_controller_repo='github.com/kubernetes-csi/external-snapshotter/deploy/kubernetes/snapshot-controller?ref=v6.2.1'
+snap_crd_repo='github.com/kubernetes-csi/external-snapshotter/client/config/crd?ref=v6.2.1'
+
 ver="master"
 if [[ "$#" -gt 0 ]]; then
   ver="$1"
@@ -34,6 +38,8 @@ if [ $ver != "master" ]; then
 fi
 
 echo "Uninstalling NFS driver, version: $ver ..."
+# this keeps VolumeSnapshot CRDs untouched
+kubectl -n kube-system kustomize "$snap_controller_repo" | kubectl delete --ignore-not-found -f -
 kubectl delete -f $repo/csi-nfs-controller.yaml --ignore-not-found
 kubectl delete -f $repo/csi-nfs-node.yaml --ignore-not-found
 kubectl delete -f $repo/csi-nfs-driverinfo.yaml --ignore-not-found

@@ -51,6 +51,20 @@ spec:
             requests:
               cpu: 10m
               memory: 20Mi
+        - name: csi-snapshotter
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v6.2.1
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election-namespace=kube-system"
+            - "--leader-election"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
         - name: liveness-probe
           image: registry.k8s.io/sig-storage/livenessprobe:v2.8.0
           args:

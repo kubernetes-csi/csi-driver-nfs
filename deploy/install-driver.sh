@@ -16,6 +16,13 @@
 
 set -euo pipefail
 
+# min version of this nfs plugin supporting CSI snapshots
+snap_ver='4.3.0'
+
+# external-snapshotter to install for snapshots to work
+snap_controller_repo='github.com/kubernetes-csi/external-snapshotter/deploy/kubernetes/snapshot-controller?ref=v6.2.1'
+snap_crd_repo='github.com/kubernetes-csi/external-snapshotter/client/config/crd?ref=v6.2.1'
+
 ver="master"
 if [[ "$#" -gt 0 ]]; then
   ver="$1"
@@ -31,6 +38,12 @@ fi
 
 if [ $ver != "master" ]; then
   repo="$repo/$ver"
+fi
+
+# check for min supported version for snapshots or master to install external-snapshotter
+if [[ "$ver" == master || "$(printf '%s\n' "$ver" "$snap_ver" | sort -V | head -n1)" = "$snap_ver" ]]; then
+  kubectl kustomize "$snap_crd_repo" | kubectl apply -f -
+  kubectl -n kube-system kustomize "$snap_controller_repo" | kubectl apply -f -
 fi
 
 echo "Installing NFS CSI driver, version: $ver ..."
