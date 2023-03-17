@@ -88,6 +88,7 @@ func NewDriver(options *DriverOptions) *Driver {
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
 		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 	})
 
 	n.AddNodeServiceCapabilities([]csi.NodeServiceCapability_RPC_Type{
