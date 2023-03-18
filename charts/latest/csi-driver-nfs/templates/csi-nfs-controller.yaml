@@ -61,6 +61,8 @@ spec:
             - mountPath: /csi
               name: socket-dir
           resources: {{- toYaml .Values.controller.resources.csiProvisioner | nindent 12 }}
+          securityContext:
+            readOnlyRootFilesystem: true
         - name: liveness-probe
           image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
           args:
@@ -73,6 +75,8 @@ spec:
             - name: socket-dir
               mountPath: /csi
           resources: {{- toYaml .Values.controller.resources.livenessProbe | nindent 12 }}
+          securityContext:
+            readOnlyRootFilesystem: true
         - name: nfs
           image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
           securityContext:
@@ -80,6 +84,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
+            readOnlyRootFilesystem: true
           imagePullPolicy: {{ .Values.image.nfs.pullPolicy }}
           args:
             - "--v={{ .Values.controller.logLevel }}"
@@ -113,6 +118,8 @@ spec:
               mountPropagation: "Bidirectional"
             - mountPath: /csi
               name: socket-dir
+            - mountPath: {{ .Values.controller.workingMountDir }}
+              name: tmp-dir
           resources: {{- toYaml .Values.controller.resources.nfs | nindent 12 }}
       volumes:
         - name: pods-mount-dir
@@ -120,4 +127,6 @@ spec:
             path: {{ .Values.kubeletDir }}/pods
             type: Directory
         - name: socket-dir
+          emptyDir: {}
+        - name: tmp-dir
           emptyDir: {}

@@ -51,6 +51,8 @@ spec:
             - name: socket-dir
               mountPath: /csi
           resources: {{- toYaml .Values.node.resources.livenessProbe | nindent 12 }}
+          securityContext:
+            readOnlyRootFilesystem: true
         - name: node-driver-registrar
           image: "{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
           livenessProbe:
@@ -85,6 +87,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
+            readOnlyRootFilesystem: true
           image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
           args :
             - "--v={{ .Values.node.logLevel }}"
