@@ -59,6 +59,7 @@ const (
 	//     "base" instead of "/base"
 	paramShare            = "share"
 	paramSubDir           = "subdir"
+	paramOnDelete         = "onDelete"
 	mountOptionsField     = "mountoptions"
 	mountPermissionsField = "mountpermissions"
 	pvcNameKey            = "csi.storage.k8s.io/pvc/name"
