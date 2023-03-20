@@ -99,6 +99,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		case paramServer:
 		case paramShare:
 		case paramSubDir:
+		case paramOnDelete:
 		case pvcNamespaceKey:
 		case pvcNameKey:
 		case pvNameKey:
@@ -115,7 +116,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}
 
-	nfsVol, err := newNFSVolume(name, reqCapacity, parameters)
+	nfsVol, err := newNFSVolume(name, reqCapacity, parameters, cs.Driver.defaultOnDeletePolicy)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -188,6 +189,10 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 				},
 			},
 		}
+	}
+
+	if nfsVol.onDelete == "" {
+		nfsVol.onDelete = cs.Driver.defaultOnDeletePolicy
 	}
 
 	deleteSubdirOnVolumeDelete := nfsVol.onDelete != "retain"
@@ -377,7 +382,7 @@ func (cs *ControllerServer) copyVolume(ctx context.Context, req *csi.CreateVolum
 }
 
 // newNFSVolume Convert VolumeCreate parameters to an nfsVolume
-func newNFSVolume(name string, size int64, params map[string]string) (*nfsVolume, error) {
+func newNFSVolume(name string, size int64, params map[string]string, defaultOnDeletePolicy string) (*nfsVolume, error) {
 	var server, baseDir, subDir, onDelete string
 	subDirReplaceMap := map[string]string{}
 
@@ -421,7 +426,11 @@ func newNFSVolume(name string, size int64, params map[string]string) (*nfsVolume
 	}
 
 	if onDelete == "" {
-		vol.onDelete = "delete"
+		if defaultOnDeletePolicy == "" {
+			vol.onDelete = "delete"
+		} else {
+			vol.onDelete = defaultOnDeletePolicy
+		}
 	} else {
 		if (onDelete != "retain") && (onDelete != "delete") {
 			return nil, fmt.Errorf("%v is not a valid value for %v", onDelete, paramOnDelete)

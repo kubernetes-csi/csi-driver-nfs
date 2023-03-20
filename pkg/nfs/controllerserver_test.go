@@ -661,7 +661,7 @@ func TestNewNFSVolume(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		vol, err := newNFSVolume(test.name, test.size, test.params)
+		vol, err := newNFSVolume(test.name, test.size, test.params, "delete")
 		if !reflect.DeepEqual(err, test.expectErr) {
 			t.Errorf("[test: %s] Unexpected error: %v, expected error: %v", test.desc, err, test.expectErr)
 		}
