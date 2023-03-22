@@ -620,3 +620,84 @@ func TestNewNFSVolume(t *testing.T) {
 		}
 	}
 }
+
+func TestCopyVolume(t *testing.T) {
+	cases := []struct {
+		desc      string
+		req       *csi.CreateVolumeRequest
+		dstVol    *nfsVolume
+		expectErr bool
+	}{
+		{
+			desc: "copy volume from valid volume",
+			req: &csi.CreateVolumeRequest{
+				Name: "snapshot-name",
+				VolumeContentSource: &csi.VolumeContentSource{
+					Type: &csi.VolumeContentSource_Volume{
+						Volume: &csi.VolumeContentSource_VolumeSource{
+							VolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-name",
+						},
+					},
+				},
+			},
+			dstVol: &nfsVolume{
+				id:      "nfs-server.default.svc.cluster.local#share#subdir#dst-pv-name",
+				server:  "//nfs-server.default.svc.cluster.local",
+				baseDir: "share",
+				subDir:  "subdir",
+				uuid:    "dst-pv-name",
+			},
+		},
+		{
+			desc: "copy volume missing source id",
+			req: &csi.CreateVolumeRequest{
+				Name: "snapshot-name",
+				VolumeContentSource: &csi.VolumeContentSource{
+					Type: &csi.VolumeContentSource_Volume{
+						Volume: &csi.VolumeContentSource_VolumeSource{
+							VolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-name",
+						},
+					},
+				},
+			},
+			dstVol: &nfsVolume{
+				server:  "//nfs-server.default.svc.cluster.local",
+				baseDir: "share",
+				subDir:  "subdir",
+				uuid:    "dst-pv-name",
+			},
+			expectErr: true,
+		},
+		{
+			desc: "copy volume missing dst",
+			req: &csi.CreateVolumeRequest{
+				Name: "snapshot-name",
+				VolumeContentSource: &csi.VolumeContentSource{
+					Type: &csi.VolumeContentSource_Volume{
+						Volume: &csi.VolumeContentSource_VolumeSource{},
+					},
+				},
+			},
+			dstVol: &nfsVolume{
+				id:      "nfs-server.default.svc.cluster.local#share#subdir#dst-pv-name",
+				server:  "//nfs-server.default.svc.cluster.local",
+				baseDir: "share",
+				subDir:  "subdir",
+				uuid:    "dst-pv-name",
+			},
+			expectErr: true,
+		},
+	}
+	if err := os.MkdirAll("/tmp/src-pv-name/subdir", 0777); err != nil {
+		t.Fatalf("Unexpected error when creating srcVolume: %v", err)
+	}
+	for _, test := range cases {
+		t.Run(test.desc, func(t *testing.T) {
+			cs := initTestController(t)
+			err := cs.copyVolume(context.TODO(), test.req, test.dstVol)
+			if (err == nil) == test.expectErr {
+				t.Errorf(`[test: %s] Error expectation mismatch, expected error: "%v", received: %q`, test.desc, test.expectErr, err)
+			}
+		})
+	}
+}
