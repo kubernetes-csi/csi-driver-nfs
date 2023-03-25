@@ -658,6 +658,16 @@ func TestNewNFSVolume(t *testing.T) {
 			expectVol: nil,
 			expectErr: fmt.Errorf("%s is a required parameter", paramServer),
 		},
+		{
+			desc:      "invalid onDelete value",
+			params:    map[string]string{
+				paramServer: "//nfs-server.default.svc.cluster.local",
+				paramShare:  "share",
+				paramOnDelete: "invalid",
+			},
+			expectVol: nil,
+			expectErr: fmt.Errorf("invalid is not a valid value for %s", paramOnDelete),
+		},
 	}
 
 	for _, test := range cases {
