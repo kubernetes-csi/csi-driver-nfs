@@ -17,6 +17,8 @@ limitations under the License.
 package nfs
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -31,6 +33,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	mount "k8s.io/mount-utils"
 )
 
@@ -349,6 +352,13 @@ func TestControllerGetCapabilities(t *testing.T) {
 						Type: &csi.ControllerServiceCapability_Rpc{
 							Rpc: &csi.ControllerServiceCapability_RPC{
 								Type: csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
+							},
+						},
+					},
+					{
+						Type: &csi.ControllerServiceCapability_Rpc{
+							Rpc: &csi.ControllerServiceCapability_RPC{
+								Type: csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 							},
 						},
 					},
@@ -687,6 +697,8 @@ func TestCopyVolume(t *testing.T) {
 		req       *csi.CreateVolumeRequest
 		dstVol    *nfsVolume
 		expectErr bool
+		prepare   func() error
+		cleanup   func() error
 	}{
 		{
 			desc: "copy volume from valid volume",
@@ -707,6 +719,56 @@ func TestCopyVolume(t *testing.T) {
 				subDir:  "subdir",
 				uuid:    "dst-pv-name",
 			},
+			prepare: func() error { return os.MkdirAll("/tmp/src-pv-name/subdir", 0777) },
+			cleanup: func() error { return os.RemoveAll("/tmp/src-pv-name") },
+		},
+		{
+			desc: "copy volume from valid snapshot",
+			req: &csi.CreateVolumeRequest{
+				Name: "snapshot-name",
+				VolumeContentSource: &csi.VolumeContentSource{
+					Type: &csi.VolumeContentSource_Snapshot{
+						Snapshot: &csi.VolumeContentSource_SnapshotSource{
+							SnapshotId: "nfs-server.default.svc.cluster.local#share#snapshot-name#snapshot-name#src-pv-name",
+						},
+					},
+				},
+			},
+			dstVol: &nfsVolume{
+				id:      "nfs-server.default.svc.cluster.local#share#subdir#dst-pv-name",
+				server:  "//nfs-server.default.svc.cluster.local",
+				baseDir: "share",
+				subDir:  "subdir",
+				uuid:    "dst-pv-name",
+			},
+			prepare: func() error {
+				if err := os.MkdirAll("/tmp/snapshot-name/share/snapshot-name/", 0777); err != nil {
+					return err
+				}
+				file, err := os.Create("/tmp/snapshot-name/share/snapshot-name/src-pv-name.tar.gz")
+				if err != nil {
+					return err
+				}
+				defer file.Close()
+				gzipWriter := gzip.NewWriter(file)
+				defer gzipWriter.Close()
+				tarWriter := tar.NewWriter(gzipWriter)
+				defer tarWriter.Close()
+				body := "test file"
+				hdr := &tar.Header{
+					Name: "test.txt",
+					Mode: 0777,
+					Size: int64(len(body)),
+				}
+				if err := tarWriter.WriteHeader(hdr); err != nil {
+					return err
+				}
+				if _, err := tarWriter.Write([]byte(body)); err != nil {
+					return err
+				}
+				return nil
+			},
+			cleanup: func() error { return os.RemoveAll("/tmp/snapshot-name") },
 		},
 		{
 			desc: "copy volume missing source id",
@@ -747,17 +809,263 @@ func TestCopyVolume(t *testing.T) {
 			},
 			expectErr: true,
 		},
-	}
-	if err := os.MkdirAll("/tmp/src-pv-name/subdir", 0777); err != nil {
-		t.Fatalf("Unexpected error when creating srcVolume: %v", err)
+		{
+			desc: "copy volume from broken snapshot",
+			req: &csi.CreateVolumeRequest{
+				Name: "snapshot-name",
+				VolumeContentSource: &csi.VolumeContentSource{
+					Type: &csi.VolumeContentSource_Snapshot{
+						Snapshot: &csi.VolumeContentSource_SnapshotSource{
+							SnapshotId: "nfs-server.default.svc.cluster.local#share#snapshot-name#snapshot-name#src-pv-name",
+						},
+					},
+				},
+			},
+			dstVol: &nfsVolume{
+				id:      "nfs-server.default.svc.cluster.local#share#subdir#dst-pv-name",
+				server:  "//nfs-server.default.svc.cluster.local",
+				baseDir: "share",
+				subDir:  "subdir",
+				uuid:    "dst-pv-name",
+			},
+			expectErr: true,
+		},
+		{
+			desc: "copy volume from missing snapshot",
+			req: &csi.CreateVolumeRequest{
+				Name: "snapshot-name",
+				VolumeContentSource: &csi.VolumeContentSource{
+					Type: &csi.VolumeContentSource_Snapshot{
+						Snapshot: &csi.VolumeContentSource_SnapshotSource{},
+					},
+				},
+			},
+			dstVol: &nfsVolume{
+				id:      "nfs-server.default.svc.cluster.local#share#subdir#dst-pv-name",
+				server:  "//nfs-server.default.svc.cluster.local",
+				baseDir: "share",
+				subDir:  "subdir",
+				uuid:    "dst-pv-name",
+			},
+			expectErr: true,
+		},
+		{
+			desc: "copy volume from snapshot into missing dst volume",
+			req: &csi.CreateVolumeRequest{
+				Name: "snapshot-name",
+				VolumeContentSource: &csi.VolumeContentSource{
+					Type: &csi.VolumeContentSource_Snapshot{
+						Snapshot: &csi.VolumeContentSource_SnapshotSource{},
+					},
+				},
+			},
+			dstVol: &nfsVolume{
+				server:  "//nfs-server.default.svc.cluster.local",
+				baseDir: "share",
+				subDir:  "subdir",
+				uuid:    "dst-pv-name",
+			},
+			expectErr: true,
+		},
 	}
 	for _, test := range cases {
 		t.Run(test.desc, func(t *testing.T) {
+			if test.prepare != nil {
+				if err := test.prepare(); err != nil {
+					t.Errorf(`[test: %s] prepare failed: "%v"`, test.desc, err)
+				}
+			}
 			cs := initTestController(t)
 			err := cs.copyVolume(context.TODO(), test.req, test.dstVol)
 			if (err == nil) == test.expectErr {
 				t.Errorf(`[test: %s] Error expectation mismatch, expected error: "%v", received: %q`, test.desc, test.expectErr, err)
 			}
+			if test.cleanup != nil {
+				if err := test.cleanup(); err != nil {
+					t.Errorf(`[test: %s] cleanup failed: "%v"`, test.desc, err)
+				}
+			}
 		})
 	}
+}
+
+func TestCreateSnapshot(t *testing.T) {
+	cases := []struct {
+		desc      string
+		req       *csi.CreateSnapshotRequest
+		expResp   *csi.CreateSnapshotResponse
+		expectErr bool
+		prepare   func() error
+		cleanup   func() error
+	}{
+		{
+			desc: "create snapshot with valid request",
+			req: &csi.CreateSnapshotRequest{
+				SourceVolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-name",
+				Name:           "snapshot-name",
+			},
+			expResp: &csi.CreateSnapshotResponse{
+				Snapshot: &csi.Snapshot{
+					SnapshotId:     "nfs-server.default.svc.cluster.local#share#snapshot-name#snapshot-name#src-pv-name",
+					SourceVolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-name",
+					ReadyToUse:     true,
+					SizeBytes:      1,                 // doesn't match exact size, just denotes non-zero size expected
+					CreationTime:   timestamppb.Now(), // doesn't match exact timestamp, just denotes non-zero ts expected
+				},
+			},
+			prepare: func() error { return os.MkdirAll("/tmp/src-pv-name/subdir", 0777) },
+			cleanup: func() error { return os.RemoveAll("/tmp/src-pv-name") },
+		},
+		{
+			desc: "create snapshot from nonexisting volume",
+			req: &csi.CreateSnapshotRequest{
+				SourceVolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-name",
+				Name:           "snapshot-name",
+			},
+			expectErr: true,
+		},
+	}
+	for _, test := range cases {
+		t.Run(test.desc, func(t *testing.T) {
+			if test.prepare != nil {
+				if err := test.prepare(); err != nil {
+					t.Errorf(`[test: %s] prepare failed: "%v"`, test.desc, err)
+				}
+			}
+			cs := initTestController(t)
+			resp, err := cs.CreateSnapshot(context.TODO(), test.req)
+			if (err == nil) == test.expectErr {
+				t.Errorf(`[test: %s] Error expectation mismatch, expected error: "%v", received: %q`, test.desc, test.expectErr, err)
+			}
+			if err := matchCreateSnapshotResponse(test.expResp, resp); err != nil {
+				t.Errorf("[test: %s] failed %q: got resp %+v, expected %+v", test.desc, err, resp, test.expResp)
+			}
+			if test.cleanup != nil {
+				if err := test.cleanup(); err != nil {
+					t.Errorf(`[test: %s] cleanup failed: "%v"`, test.desc, err)
+				}
+			}
+		})
+	}
+}
+
+func TestDeleteSnapshot(t *testing.T) {
+	cases := []struct {
+		desc      string
+		req       *csi.DeleteSnapshotRequest
+		expResp   *csi.DeleteSnapshotResponse
+		expectErr bool
+		prepare   func() error
+		cleanup   func() error
+	}{
+		{
+			desc: "delete valid snapshot",
+			req: &csi.DeleteSnapshotRequest{
+				SnapshotId: "nfs-server.default.svc.cluster.local#share#snapshot-name#snapshot-name#src-pv-name",
+			},
+			expResp: &csi.DeleteSnapshotResponse{},
+			prepare: func() error {
+				if err := os.MkdirAll("/tmp/snapshot-name/snapshot-name/", 0777); err != nil {
+					return err
+				}
+				f, err := os.OpenFile("/tmp/snapshot-name/snapshot-name/src-pv-name.tar.gz", os.O_CREATE, 0777)
+				if err != nil {
+					return err
+				}
+				return f.Close()
+			},
+			cleanup: func() error { return os.RemoveAll("/tmp/snapshot-name") },
+		},
+		{
+			desc: "delete nonexisting snapshot",
+			req: &csi.DeleteSnapshotRequest{
+				SnapshotId: "nfs-server.default.svc.cluster.local#share#snapshot-name#snapshot-name#src-pv-name",
+			},
+			expResp: &csi.DeleteSnapshotResponse{},
+		},
+		{
+			desc: "delete snapshot with improper id",
+			req: &csi.DeleteSnapshotRequest{
+				SnapshotId: "incorrect-snap-id",
+			},
+			expResp: &csi.DeleteSnapshotResponse{},
+		},
+		{
+			desc: "delete valid snapshot with mount options",
+			req: &csi.DeleteSnapshotRequest{
+				SnapshotId: "nfs-server.default.svc.cluster.local#share#snapshot-name#snapshot-name#src-pv-name",
+				Secrets:    map[string]string{"mountoptions": "nfsvers=4.1"},
+			},
+			expResp: &csi.DeleteSnapshotResponse{},
+			prepare: func() error {
+				if err := os.MkdirAll("/tmp/snapshot-name/snapshot-name/", 0777); err != nil {
+					return err
+				}
+				f, err := os.OpenFile("/tmp/snapshot-name/snapshot-name/src-pv-name.tar.gz", os.O_CREATE, 0777)
+				if err != nil {
+					return err
+				}
+				return f.Close()
+			},
+			cleanup: func() error { return os.RemoveAll("/tmp/snapshot-name") },
+		},
+	}
+	for _, test := range cases {
+		t.Run(test.desc, func(t *testing.T) {
+			if test.prepare != nil {
+				if err := test.prepare(); err != nil {
+					t.Errorf(`[test: %s] prepare failed: "%v"`, test.desc, err)
+				}
+			}
+			cs := initTestController(t)
+			resp, err := cs.DeleteSnapshot(context.TODO(), test.req)
+			if (err == nil) == test.expectErr {
+				t.Errorf(`[test: %s] Error expectation mismatch, expected error: "%v", received: %q`, test.desc, test.expectErr, err)
+			}
+			if !reflect.DeepEqual(test.expResp, resp) {
+				t.Errorf("[test: %s] got resp %+v, expected %+v", test.desc, resp, test.expResp)
+			}
+			if test.cleanup != nil {
+				if err := test.cleanup(); err != nil {
+					t.Errorf(`[test: %s] cleanup failed: "%v"`, test.desc, err)
+				}
+			}
+		})
+	}
+}
+
+func matchCreateSnapshotResponse(e, r *csi.CreateSnapshotResponse) error {
+	if e == nil && r == nil {
+		return nil
+	}
+	if e == nil || e.Snapshot == nil {
+		return fmt.Errorf("expected nil response")
+	}
+	if r == nil || r.Snapshot == nil {
+		return fmt.Errorf("unexpected nil response")
+	}
+	es, rs := e.Snapshot, r.Snapshot
+
+	var errs []string
+	// comparing ts and size just for presence, not the exact value
+	if es.CreationTime.IsValid() != rs.CreationTime.IsValid() {
+		errs = append(errs, "CreationTime")
+	}
+	if (es.SizeBytes == 0) != (rs.SizeBytes == 0) {
+		errs = append(errs, "SizeBytes")
+	}
+	// comparing remaining fields for exact match
+	if es.ReadyToUse != rs.ReadyToUse {
+		errs = append(errs, "ReadyToUse")
+	}
+	if es.SnapshotId != rs.SnapshotId {
+		errs = append(errs, "SnapshotId")
+	}
+	if es.SourceVolumeId != rs.SourceVolumeId {
+		errs = append(errs, "SourceVolumeId")
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return fmt.Errorf("mismatch CreateSnapshotResponse in fields: %v", strings.Join(errs, ", "))
 }
