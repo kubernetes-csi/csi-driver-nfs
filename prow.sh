@@ -245,7 +245,7 @@ configvar CSI_PROW_SANITY_CONTAINER "hostpath" "Kubernetes container with CSI dr
 
 # The version of dep to use for 'make test-vendor'. Ignored if the project doesn't
 # use dep. Only binary releases of dep are supported (https://github.com/golang/dep/releases).
-configvar CSI_PROW_DEP_VERSION v0.5.1 "golang dep version to be used for vendor checking"
+configvar CSI_PROW_DEP_VERSION v0.5.4 "golang dep version to be used for vendor checking"
 
 # Each job can run one or more of the following tests, identified by
 # a single word:
@@ -469,7 +469,7 @@ install_dep () {
     if dep version 2>/dev/null | grep -q "version:.*${CSI_PROW_DEP_VERSION}$"; then
         return
     fi
-    run curl --fail --location -o "${CSI_PROW_WORK}/bin/dep" "https://github.com/golang/dep/releases/download/v0.5.4/dep-linux-amd64" &&
+    run curl --fail --location -o "${CSI_PROW_WORK}/bin/dep" "https://github.com/golang/dep/releases/download/${CSI_PROW_DEP_VERSION}/dep-linux-amd64" &&
         chmod u+x "${CSI_PROW_WORK}/bin/dep"
 }
 
