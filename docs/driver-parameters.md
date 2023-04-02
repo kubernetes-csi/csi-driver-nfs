@@ -10,6 +10,7 @@ server | NFS Server address | domain name `nfs-server.default.svc.cluster.local`
 share | NFS share path | `/` | Yes |
 subDir | sub directory under nfs share |  | No | if sub directory does not exist, this driver would create a new one
 mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount |  | No |
+onDelete | when volume is deleted, keep the directory if it's `retain` | `delete`(default), `retain`  | No | `delete`
 
  - VolumeID(`volumeHandle`) is the identifier of the volume handled by the driver, format of VolumeID:
 ```

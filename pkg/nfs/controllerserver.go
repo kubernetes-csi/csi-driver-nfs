@@ -74,8 +74,6 @@ const (
 	totalIDElements // Always last
 )
 
-const separator = "#"
-
 // CreateVolume create a volume
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	name := req.GetName()
@@ -195,9 +193,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		nfsVol.onDelete = cs.Driver.defaultOnDeletePolicy
 	}
 
-	deleteSubdirOnVolumeDelete := nfsVol.onDelete != "retain"
-
-	if deleteSubdirOnVolumeDelete {
+	if !strings.EqualFold(nfsVol.onDelete, retain) {
 		// mount nfs base share so we can delete the subdirectory
 		if err = cs.internalMount(ctx, nfsVol, nil, volCap); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
@@ -425,16 +421,12 @@ func newNFSVolume(name string, size int64, params map[string]string, defaultOnDe
 		vol.uuid = name
 	}
 
-	if onDelete == "" {
-		if defaultOnDeletePolicy == "" {
-			vol.onDelete = "delete"
-		} else {
-			vol.onDelete = defaultOnDeletePolicy
-		}
-	} else {
-		if (onDelete != "retain") && (onDelete != "delete") {
-			return nil, fmt.Errorf("%v is not a valid value for %v", onDelete, paramOnDelete)
-		}
+	if err := validateOnDeleteValue(onDelete); err != nil {
+		return nil, err
+	}
+
+	vol.onDelete = defaultOnDeletePolicy
+	if onDelete != "" {
 		vol.onDelete = onDelete
 	}
 
@@ -472,7 +464,9 @@ func getVolumeIDFromNfsVol(vol *nfsVolume) string {
 	idElements[idBaseDir] = strings.Trim(vol.baseDir, "/")
 	idElements[idSubDir] = strings.Trim(vol.subDir, "/")
 	idElements[idUUID] = vol.uuid
-	idElements[idOnDelete] = vol.onDelete
+	if strings.EqualFold(vol.onDelete, retain) {
+		idElements[idOnDelete] = vol.onDelete
+	}
 	return strings.Join(idElements, separator)
 }
 
@@ -481,7 +475,7 @@ func getVolumeIDFromNfsVol(vol *nfsVolume) string {
 //
 //	  new volumeID:
 //		    nfs-server.default.svc.cluster.local#share#pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
-//		    nfs-server.default.svc.cluster.local#share#subdir#pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
+//		    nfs-server.default.svc.cluster.local#share#subdir#pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64#retain
 //	  old volumeID: nfs-server.default.svc.cluster.local/share/pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
 func getNfsVolFromID(id string) (*nfsVolume, error) {
 	var server, baseDir, subDir, uuid, onDelete string

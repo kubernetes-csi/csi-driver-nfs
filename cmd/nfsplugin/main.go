@@ -31,7 +31,7 @@ var (
 	mountPermissions      = flag.Uint64("mount-permissions", 0, "mounted folder permissions")
 	driverName            = flag.String("drivername", nfs.DefaultDriverName, "name of the driver")
 	workingMountDir       = flag.String("working-mount-dir", "/tmp", "working directory for provisioner to mount nfs shares temporarily")
-	defaultOnDeletePolicy = flag.String("default-ondelete-policy", "delete", "default policy for deleting subdirectories when deleting a volume")
+	defaultOnDeletePolicy = flag.String("default-ondelete-policy", "", "default policy for deleting subdirectory when deleting a volume")
 )
 
 func init() {

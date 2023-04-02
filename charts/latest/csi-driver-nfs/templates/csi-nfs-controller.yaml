@@ -93,6 +93,7 @@ spec:
             - "--drivername={{ .Values.driver.name }}"
             - "--mount-permissions={{ .Values.driver.mountPermissions }}"
             - "--working-mount-dir={{ .Values.controller.workingMountDir }}"
+            - "--default-ondelete-policy={{ .Values.controller.defaultOnDeletePolicy }}"
           env:
             - name: NODE_ID
               valueFrom:

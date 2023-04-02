@@ -40,8 +40,8 @@ const (
 	testBaseDirNested           = "test/base/dir"
 	testCSIVolume               = "volume-name"
 	testVolumeID                = "test-server/test-base-dir/volume-name"
-	newTestVolumeID             = "test-server#test-base-dir#volume-name##delete"
-	newTestVolumeWithVolumeID   = "test-server#test-base-dir#volume-name#volume-name#delete"
+	newTestVolumeID             = "test-server#test-base-dir#volume-name##"
+	newTestVolumeWithVolumeID   = "test-server#test-base-dir#volume-name#volume-name#"
 	testVolumeIDNested          = "test-server/test/base/dir/volume-name"
 	newTestVolumeIDNested       = "test-server#test/base/dir#volume-name#"
 	newTestVolumeIDUUID         = "test-server#test-base-dir#volume-name#uuid"
@@ -419,7 +419,7 @@ func TestNfsVolFromId(t *testing.T) {
 				server:   testServer,
 				baseDir:  testBaseDir,
 				subDir:   testCSIVolume,
-				onDelete: "delete",
+				onDelete: "",
 			},
 			expectErr: false,
 		},
@@ -603,7 +603,7 @@ func TestNewNFSVolume(t *testing.T) {
 				paramSubDir: "subdir",
 			},
 			expectVol: &nfsVolume{
-				id:       "nfs-server.default.svc.cluster.local#share#subdir#pv-name#delete",
+				id:       "nfs-server.default.svc.cluster.local#share#subdir#pv-name#",
 				server:   "//nfs-server.default.svc.cluster.local",
 				baseDir:  "share",
 				subDir:   "subdir",
@@ -625,7 +625,7 @@ func TestNewNFSVolume(t *testing.T) {
 				pvNameKey:       "pvname",
 			},
 			expectVol: &nfsVolume{
-				id:       "nfs-server.default.svc.cluster.local#share#subdir-pvcname-pvcnamespace-pvname#pv-name#delete",
+				id:       "nfs-server.default.svc.cluster.local#share#subdir-pvcname-pvcnamespace-pvname#pv-name#",
 				server:   "//nfs-server.default.svc.cluster.local",
 				baseDir:  "share",
 				subDir:   "subdir-pvcname-pvcnamespace-pvname",
@@ -643,7 +643,7 @@ func TestNewNFSVolume(t *testing.T) {
 				paramShare:  "share",
 			},
 			expectVol: &nfsVolume{
-				id:       "nfs-server.default.svc.cluster.local#share#pv-name##delete",
+				id:       "nfs-server.default.svc.cluster.local#share#pv-name##",
 				server:   "//nfs-server.default.svc.cluster.local",
 				baseDir:  "share",
 				subDir:   "pv-name",
@@ -659,14 +659,14 @@ func TestNewNFSVolume(t *testing.T) {
 			expectErr: fmt.Errorf("%s is a required parameter", paramServer),
 		},
 		{
-			desc:      "invalid onDelete value",
-			params:    map[string]string{
-				paramServer: "//nfs-server.default.svc.cluster.local",
-				paramShare:  "share",
+			desc: "invalid onDelete value",
+			params: map[string]string{
+				paramServer:   "//nfs-server.default.svc.cluster.local",
+				paramShare:    "share",
 				paramOnDelete: "invalid",
 			},
 			expectVol: nil,
-			expectErr: fmt.Errorf("invalid is not a valid value for %s", paramOnDelete),
+			expectErr: fmt.Errorf("invalid value %s for OnDelete, supported values are %v", "invalid", supportedOnDeleteValues),
 		},
 	}
 

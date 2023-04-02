@@ -44,8 +44,9 @@ controller:
   livenessProbe:
     healthPort: 29652
   logLevel: 5
-  workingMountDir: "/tmp"
+  workingMountDir: /tmp
   dnsPolicy: Default  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
+  defaultOnDeletePolicy: delete  # available values: delete, retain
   affinity: {}
   nodeSelector: {}
   tolerations:
