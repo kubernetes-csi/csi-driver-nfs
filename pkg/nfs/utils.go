@@ -32,6 +32,24 @@ import (
 	netutil "k8s.io/utils/net"
 )
 
+const (
+	separator = "#"
+	delete    = "delete"
+	retain    = "retain"
+)
+
+var supportedOnDeleteValues = []string{"", delete, retain}
+
+func validateOnDeleteValue(onDelete string) error {
+	for _, v := range supportedOnDeleteValues {
+		if strings.EqualFold(v, onDelete) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("invalid value %s for OnDelete, supported values are %v", onDelete, supportedOnDeleteValues)
+}
+
 func NewDefaultIdentityServer(d *Driver) *IdentityServer {
 	return &IdentityServer{
 		Driver: d,

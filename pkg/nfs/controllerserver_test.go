@@ -35,15 +35,18 @@ import (
 )
 
 const (
-	testServer            = "test-server"
-	testBaseDir           = "test-base-dir"
-	testBaseDirNested     = "test/base/dir"
-	testCSIVolume         = "volume-name"
-	testVolumeID          = "test-server/test-base-dir/volume-name"
-	newTestVolumeID       = "test-server#test-base-dir#volume-name#"
-	testVolumeIDNested    = "test-server/test/base/dir/volume-name"
-	newTestVolumeIDNested = "test-server#test/base/dir#volume-name#"
-	newTestVolumeIDUUID   = "test-server#test-base-dir#volume-name#uuid"
+	testServer                  = "test-server"
+	testBaseDir                 = "test-base-dir"
+	testBaseDirNested           = "test/base/dir"
+	testCSIVolume               = "volume-name"
+	testVolumeID                = "test-server/test-base-dir/volume-name"
+	newTestVolumeID             = "test-server#test-base-dir#volume-name##"
+	newTestVolumeWithVolumeID   = "test-server#test-base-dir#volume-name#volume-name#"
+	testVolumeIDNested          = "test-server/test/base/dir/volume-name"
+	newTestVolumeIDNested       = "test-server#test/base/dir#volume-name#"
+	newTestVolumeIDUUID         = "test-server#test-base-dir#volume-name#uuid"
+	newTestVolumeOnDeleteRetain = "test-server#test-base-dir#volume-name#uuid#retain"
+	newTestVolumeOnDeleteDelete = "test-server#test-base-dir#volume-name#uuid#delete"
 )
 
 func initTestController(t *testing.T) *ControllerServer {
@@ -136,7 +139,7 @@ func TestCreateVolume(t *testing.T) {
 			},
 			resp: &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
-					VolumeId: newTestVolumeID + testCSIVolume,
+					VolumeId: newTestVolumeWithVolumeID,
 					VolumeContext: map[string]string{
 						paramServer: testServer,
 						paramShare:  testBaseDir,
@@ -242,32 +245,44 @@ func TestCreateVolume(t *testing.T) {
 
 func TestDeleteVolume(t *testing.T) {
 	cases := []struct {
-		desc          string
-		testOnWindows bool
-		req           *csi.DeleteVolumeRequest
-		resp          *csi.DeleteVolumeResponse
-		expectedErr   error
+		desc                 string
+		testOnWindows        bool
+		req                  *csi.DeleteVolumeRequest
+		resp                 *csi.DeleteVolumeResponse
+		expectedDeleteSubDir bool
+		expectedErr          error
 	}{
 		{
-			desc:          "Volume ID missing",
-			testOnWindows: true,
-			req:           &csi.DeleteVolumeRequest{},
-			resp:          nil,
-			expectedErr:   status.Error(codes.InvalidArgument, "Volume ID missing in request"),
+			desc:                 "Volume ID missing",
+			testOnWindows:        true,
+			req:                  &csi.DeleteVolumeRequest{},
+			resp:                 nil,
+			expectedErr:          status.Error(codes.InvalidArgument, "Volume ID missing in request"),
+			expectedDeleteSubDir: false,
 		},
 		{
-			desc:          "Valid request",
-			testOnWindows: false,
-			req:           &csi.DeleteVolumeRequest{VolumeId: testVolumeID},
-			resp:          &csi.DeleteVolumeResponse{},
-			expectedErr:   nil,
+			desc:                 "Valid request",
+			testOnWindows:        false,
+			req:                  &csi.DeleteVolumeRequest{VolumeId: testVolumeID},
+			resp:                 &csi.DeleteVolumeResponse{},
+			expectedErr:          nil,
+			expectedDeleteSubDir: true,
 		},
 		{
-			desc:          "Valid request with newTestVolumeID",
-			testOnWindows: true,
-			req:           &csi.DeleteVolumeRequest{VolumeId: newTestVolumeID},
-			resp:          &csi.DeleteVolumeResponse{},
-			expectedErr:   nil,
+			desc:                 "Valid request with newTestVolumeID",
+			testOnWindows:        true,
+			req:                  &csi.DeleteVolumeRequest{VolumeId: newTestVolumeID},
+			resp:                 &csi.DeleteVolumeResponse{},
+			expectedErr:          nil,
+			expectedDeleteSubDir: true,
+		},
+		{
+			desc:                 "Valid request with onDelete:retain",
+			testOnWindows:        true,
+			req:                  &csi.DeleteVolumeRequest{VolumeId: newTestVolumeOnDeleteRetain},
+			resp:                 &csi.DeleteVolumeResponse{},
+			expectedErr:          nil,
+			expectedDeleteSubDir: false,
 		},
 	}
 
@@ -292,8 +307,13 @@ func TestDeleteVolume(t *testing.T) {
 			if !reflect.DeepEqual(resp, test.resp) {
 				t.Errorf("test %q failed: got resp %+v, expected %+v", test.desc, resp, test.resp)
 			}
-			if _, err := os.Stat(filepath.Join(cs.Driver.workingMountDir, testCSIVolume, testCSIVolume)); test.expectedErr == nil && !os.IsNotExist(err) {
-				t.Errorf("test %q failed: expected volume subdirectory deleted, it still exists", test.desc)
+
+			if _, err := os.Stat(filepath.Join(cs.Driver.workingMountDir, testCSIVolume, testCSIVolume)); test.expectedErr == nil {
+				if !os.IsNotExist(err) && test.expectedDeleteSubDir {
+					t.Errorf("test %q failed: expected volume subdirectory deleted, it still exists", test.desc)
+				} else if os.IsNotExist(err) && !test.expectedDeleteSubDir {
+					t.Errorf("test %q failed: expected volume subdirectory not deleted, it was deleted", test.desc)
+				}
 			}
 		})
 	}
@@ -395,10 +415,11 @@ func TestNfsVolFromId(t *testing.T) {
 			name:     "valid request single baseDir with newTestVolumeID",
 			volumeID: newTestVolumeID,
 			resp: &nfsVolume{
-				id:      newTestVolumeID,
-				server:  testServer,
-				baseDir: testBaseDir,
-				subDir:  testCSIVolume,
+				id:       newTestVolumeID,
+				server:   testServer,
+				baseDir:  testBaseDir,
+				subDir:   testCSIVolume,
+				onDelete: "",
 			},
 			expectErr: false,
 		},
@@ -433,6 +454,32 @@ func TestNfsVolFromId(t *testing.T) {
 				baseDir: testBaseDir,
 				subDir:  testCSIVolume,
 				uuid:    "uuid",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid request nested ondelete retain",
+			volumeID: newTestVolumeOnDeleteRetain,
+			resp: &nfsVolume{
+				id:       newTestVolumeOnDeleteRetain,
+				server:   testServer,
+				baseDir:  testBaseDir,
+				subDir:   testCSIVolume,
+				uuid:     "uuid",
+				onDelete: "retain",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid request nested ondelete delete",
+			volumeID: newTestVolumeOnDeleteDelete,
+			resp: &nfsVolume{
+				id:       newTestVolumeOnDeleteDelete,
+				server:   testServer,
+				baseDir:  testBaseDir,
+				subDir:   testCSIVolume,
+				uuid:     "uuid",
+				onDelete: "delete",
 			},
 			expectErr: false,
 		},
@@ -556,12 +603,13 @@ func TestNewNFSVolume(t *testing.T) {
 				paramSubDir: "subdir",
 			},
 			expectVol: &nfsVolume{
-				id:      "nfs-server.default.svc.cluster.local#share#subdir#pv-name",
-				server:  "//nfs-server.default.svc.cluster.local",
-				baseDir: "share",
-				subDir:  "subdir",
-				size:    100,
-				uuid:    "pv-name",
+				id:       "nfs-server.default.svc.cluster.local#share#subdir#pv-name#",
+				server:   "//nfs-server.default.svc.cluster.local",
+				baseDir:  "share",
+				subDir:   "subdir",
+				size:     100,
+				uuid:     "pv-name",
+				onDelete: "delete",
 			},
 		},
 		{
@@ -577,12 +625,13 @@ func TestNewNFSVolume(t *testing.T) {
 				pvNameKey:       "pvname",
 			},
 			expectVol: &nfsVolume{
-				id:      "nfs-server.default.svc.cluster.local#share#subdir-pvcname-pvcnamespace-pvname#pv-name",
-				server:  "//nfs-server.default.svc.cluster.local",
-				baseDir: "share",
-				subDir:  "subdir-pvcname-pvcnamespace-pvname",
-				size:    100,
-				uuid:    "pv-name",
+				id:       "nfs-server.default.svc.cluster.local#share#subdir-pvcname-pvcnamespace-pvname#pv-name#",
+				server:   "//nfs-server.default.svc.cluster.local",
+				baseDir:  "share",
+				subDir:   "subdir-pvcname-pvcnamespace-pvname",
+				size:     100,
+				uuid:     "pv-name",
+				onDelete: "delete",
 			},
 		},
 		{
@@ -594,12 +643,13 @@ func TestNewNFSVolume(t *testing.T) {
 				paramShare:  "share",
 			},
 			expectVol: &nfsVolume{
-				id:      "nfs-server.default.svc.cluster.local#share#pv-name#",
-				server:  "//nfs-server.default.svc.cluster.local",
-				baseDir: "share",
-				subDir:  "pv-name",
-				size:    200,
-				uuid:    "",
+				id:       "nfs-server.default.svc.cluster.local#share#pv-name##",
+				server:   "//nfs-server.default.svc.cluster.local",
+				baseDir:  "share",
+				subDir:   "pv-name",
+				size:     200,
+				uuid:     "",
+				onDelete: "delete",
 			},
 		},
 		{
@@ -608,10 +658,20 @@ func TestNewNFSVolume(t *testing.T) {
 			expectVol: nil,
 			expectErr: fmt.Errorf("%s is a required parameter", paramServer),
 		},
+		{
+			desc: "invalid onDelete value",
+			params: map[string]string{
+				paramServer:   "//nfs-server.default.svc.cluster.local",
+				paramShare:    "share",
+				paramOnDelete: "invalid",
+			},
+			expectVol: nil,
+			expectErr: fmt.Errorf("invalid value %s for OnDelete, supported values are %v", "invalid", supportedOnDeleteValues),
+		},
 	}
 
 	for _, test := range cases {
-		vol, err := newNFSVolume(test.name, test.size, test.params)
+		vol, err := newNFSVolume(test.name, test.size, test.params, "delete")
 		if !reflect.DeepEqual(err, test.expectErr) {
 			t.Errorf("[test: %s] Unexpected error: %v, expected error: %v", test.desc, err, test.expectErr)
 		}

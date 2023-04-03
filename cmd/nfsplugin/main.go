@@ -26,11 +26,12 @@ import (
 )
 
 var (
-	endpoint         = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	nodeID           = flag.String("nodeid", "", "node id")
-	mountPermissions = flag.Uint64("mount-permissions", 0, "mounted folder permissions")
-	driverName       = flag.String("drivername", nfs.DefaultDriverName, "name of the driver")
-	workingMountDir  = flag.String("working-mount-dir", "/tmp", "working directory for provisioner to mount nfs shares temporarily")
+	endpoint              = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	nodeID                = flag.String("nodeid", "", "node id")
+	mountPermissions      = flag.Uint64("mount-permissions", 0, "mounted folder permissions")
+	driverName            = flag.String("drivername", nfs.DefaultDriverName, "name of the driver")
+	workingMountDir       = flag.String("working-mount-dir", "/tmp", "working directory for provisioner to mount nfs shares temporarily")
+	defaultOnDeletePolicy = flag.String("default-ondelete-policy", "", "default policy for deleting subdirectory when deleting a volume")
 )
 
 func init() {
@@ -50,11 +51,12 @@ func main() {
 
 func handle() {
 	driverOptions := nfs.DriverOptions{
-		NodeID:           *nodeID,
-		DriverName:       *driverName,
-		Endpoint:         *endpoint,
-		MountPermissions: *mountPermissions,
-		WorkingMountDir:  *workingMountDir,
+		NodeID:                *nodeID,
+		DriverName:            *driverName,
+		Endpoint:              *endpoint,
+		MountPermissions:      *mountPermissions,
+		WorkingMountDir:       *workingMountDir,
+		DefaultOnDeletePolicy: *defaultOnDeletePolicy,
 	}
 	d := nfs.NewDriver(&driverOptions)
 	d.Run(false)

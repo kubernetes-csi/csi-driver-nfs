@@ -67,6 +67,14 @@ var (
 		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
 		"mountPermissions": "0755",
 	}
+	retainStorageClassParameters = map[string]string{
+		"server": nfsServerAddress,
+		"share":  nfsShare,
+		"csi.storage.k8s.io/provisioner-secret-name":      "mount-options",
+		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
+		"mountPermissions": "0755",
+		"onDelete":         "retain",
+	}
 	controllerServer *nfs.ControllerServer
 )
 

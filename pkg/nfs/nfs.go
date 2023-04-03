@@ -27,20 +27,22 @@ import (
 
 // DriverOptions defines driver parameters specified in driver deployment
 type DriverOptions struct {
-	NodeID           string
-	DriverName       string
-	Endpoint         string
-	MountPermissions uint64
-	WorkingMountDir  string
+	NodeID                string
+	DriverName            string
+	Endpoint              string
+	MountPermissions      uint64
+	WorkingMountDir       string
+	DefaultOnDeletePolicy string
 }
 
 type Driver struct {
-	name             string
-	nodeID           string
-	version          string
-	endpoint         string
-	mountPermissions uint64
-	workingMountDir  string
+	name                  string
+	nodeID                string
+	version               string
+	endpoint              string
+	mountPermissions      uint64
+	workingMountDir       string
+	defaultOnDeletePolicy string
 
 	//ids *identityServer
 	ns          *NodeServer
@@ -59,6 +61,7 @@ const (
 	//     "base" instead of "/base"
 	paramShare            = "share"
 	paramSubDir           = "subdir"
+	paramOnDelete         = "ondelete"
 	mountOptionsField     = "mountoptions"
 	mountPermissionsField = "mountpermissions"
 	pvcNameKey            = "csi.storage.k8s.io/pvc/name"
