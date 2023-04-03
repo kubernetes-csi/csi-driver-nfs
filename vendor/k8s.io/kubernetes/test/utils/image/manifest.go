@@ -17,10 +17,13 @@ limitations under the License.
 package image
 
 import (
+	"bufio"
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -73,9 +76,20 @@ func initReg() RegistryList {
 		return registry
 	}
 
-	fileContent, err := ioutil.ReadFile(repoList)
-	if err != nil {
-		panic(fmt.Errorf("Error reading '%v' file contents: %v", repoList, err))
+	var fileContent []byte
+	var err error
+	if strings.HasPrefix(repoList, "https://") || strings.HasPrefix(repoList, "http://") {
+		var b bytes.Buffer
+		err = readFromURL(repoList, bufio.NewWriter(&b))
+		if err != nil {
+			panic(fmt.Errorf("error reading '%v' url contents: %v", repoList, err))
+		}
+		fileContent = b.Bytes()
+	} else {
+		fileContent, err = os.ReadFile(repoList)
+		if err != nil {
+			panic(fmt.Errorf("error reading '%v' file contents: %v", repoList, err))
+		}
 	}
 
 	err = yaml.Unmarshal(fileContent, &registry)
@@ -83,6 +97,27 @@ func initReg() RegistryList {
 		panic(fmt.Errorf("Error unmarshalling '%v' YAML file: %v", repoList, err))
 	}
 	return registry
+}
+
+// Essentially curl url | writer
+func readFromURL(url string, writer io.Writer) error {
+	httpTransport := new(http.Transport)
+	httpTransport.Proxy = http.ProxyFromEnvironment
+
+	c := &http.Client{Transport: httpTransport}
+	r, err := c.Get(url)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+	if r.StatusCode >= 400 {
+		return fmt.Errorf("%v returned %d", url, r.StatusCode)
+	}
+	_, err = io.Copy(writer, r.Body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 var (
@@ -198,7 +233,7 @@ const (
 
 func initImageConfigs(list RegistryList) (map[int]Config, map[int]Config) {
 	configs := map[int]Config{}
-	configs[Agnhost] = Config{list.PromoterE2eRegistry, "agnhost", "2.33"}
+	configs[Agnhost] = Config{list.PromoterE2eRegistry, "agnhost", "2.39"}
 	configs[AgnhostPrivate] = Config{list.PrivateRegistry, "agnhost", "2.6"}
 	configs[AuthenticatedAlpine] = Config{list.GcAuthenticatedRegistry, "alpine", "3.7"}
 	configs[AuthenticatedWindowsNanoServer] = Config{list.GcAuthenticatedRegistry, "windows-nanoserver", "v1"}
@@ -210,7 +245,7 @@ func initImageConfigs(list RegistryList) (map[int]Config, map[int]Config) {
 	configs[CudaVectorAdd2] = Config{list.PromoterE2eRegistry, "cuda-vector-add", "2.2"}
 	configs[DebianIptables] = Config{list.BuildImageRegistry, "debian-iptables", "bullseye-v1.1.0"}
 	configs[EchoServer] = Config{list.PromoterE2eRegistry, "echoserver", "2.4"}
-	configs[Etcd] = Config{list.GcEtcdRegistry, "etcd", "3.5.1-0"}
+	configs[Etcd] = Config{list.GcEtcdRegistry, "etcd", "3.5.5-0"}
 	configs[GlusterDynamicProvisioner] = Config{list.PromoterE2eRegistry, "glusterdynamic-provisioner", "v1.3"}
 	configs[Httpd] = Config{list.PromoterE2eRegistry, "httpd", "2.4.38-2"}
 	configs[HttpdNew] = Config{list.PromoterE2eRegistry, "httpd", "2.4.39-2"}
