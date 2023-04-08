@@ -40,6 +40,10 @@ spec:
         app: {{ .Values.externalSnapshotter.name }}
     spec:
       serviceAccountName: {{ .Values.externalSnapshotter.name }}
+      priorityClassName: system-cluster-critical
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: {{ .Values.externalSnapshotter.name }}
           image: {{ .Values.image.externalSnapshotter.repository }}:{{ .Values.image.externalSnapshotter.tag }}

@@ -31,6 +31,10 @@ spec:
         app: snapshot-controller
     spec:
       serviceAccountName: snapshot-controller
+      priorityClassName: system-cluster-critical
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: snapshot-controller
           image: registry.k8s.io/sig-storage/snapshot-controller:v6.1.0
