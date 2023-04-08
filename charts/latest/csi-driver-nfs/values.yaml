@@ -8,6 +8,10 @@ image:
         repository: registry.k8s.io/sig-storage/csi-provisioner
         tag: v3.3.0
         pullPolicy: IfNotPresent
+    csiSnapshotter:
+        repository: registry.k8s.io/sig-storage/csi-snapshotter
+        tag: v6.2.1
+        pullPolicy: IfNotPresent
     livenessProbe:
         repository: registry.k8s.io/sig-storage/livenessprobe
         tag: v2.8.0
@@ -15,6 +19,10 @@ image:
     nodeDriverRegistrar:
         repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
         tag: v2.6.2
+        pullPolicy: IfNotPresent
+    externalSnapshotter:
+        repository: registry.k8s.io/sig-storage/snapshot-controller
+        tag: v6.1.0
         pullPolicy: IfNotPresent
 
 serviceAccount:
@@ -109,6 +117,12 @@ node:
       requests:
         cpu: 10m
         memory: 20Mi
+
+externalSnapshotter:
+  enabled: true
+  name: snapshot-controller
+  controller:
+    replicas: 1
 
 ## Reference to one or more secrets to be used when pulling images
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/

@@ -3,6 +3,8 @@
 
 StorageClass:
   FromFile: /tmp/csi/storageclass.yaml
+SnapshotClass:
+  FromName: true
 DriverInfo:
   Name: test.csi.k8s.io
   SupportedFsType: {"nfs"}
@@ -13,6 +15,7 @@ DriverInfo:
     RWX: true
     fsGroup: true
     pvcDataSource: true
+    snapshotDataSource: true
 InlineVolumes:
 - Attributes:
     server: nfs-server.default.svc.cluster.local
