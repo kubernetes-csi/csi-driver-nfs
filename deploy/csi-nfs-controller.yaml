@@ -20,6 +20,9 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux  # add "kubernetes.io/role: master" to run controller on master node
       priorityClassName: system-cluster-critical
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       tolerations:
         - key: "node-role.kubernetes.io/master"
           operator: "Exists"

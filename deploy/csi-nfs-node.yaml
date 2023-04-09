@@ -20,6 +20,10 @@ spec:
       hostNetwork: true  # original nfs connection would be broken without hostNetwork setting
       dnsPolicy: Default  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
       serviceAccountName: csi-nfs-node-sa
+      priorityClassName: system-node-critical
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       nodeSelector:
         kubernetes.io/os: linux
       tolerations:
