@@ -148,7 +148,7 @@ DOCKER_BUILDX_CREATE_ARGS ?=
 $(CMDS:%=push-multiarch-%): push-multiarch-%: check-pull-base-ref build-%
 	set -ex; \
 	export DOCKER_CLI_EXPERIMENTAL=enabled; \
-	docker buildx create $(DOCKER_BUILDX_CREATE_ARGS) --use --name multiarchimage-buildertest; \
+	docker buildx create $(DOCKER_BUILDX_CREATE_ARGS) --use --name multiarchimage-buildertest --driver-opt image=moby/buildkit:v0.10.6; \
 	trap "docker buildx rm multiarchimage-buildertest" EXIT; \
 	dockerfile_linux=$$(if [ -e ./$(CMDS_DIR)/$*/Dockerfile ]; then echo ./$(CMDS_DIR)/$*/Dockerfile; else echo Dockerfile; fi); \
 	dockerfile_windows=$$(if [ -e ./$(CMDS_DIR)/$*/Dockerfile.Windows ]; then echo ./$(CMDS_DIR)/$*/Dockerfile.Windows; else echo Dockerfile.Windows; fi); \
