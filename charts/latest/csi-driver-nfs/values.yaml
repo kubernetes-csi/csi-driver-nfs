@@ -53,7 +53,7 @@ controller:
     healthPort: 29652
   logLevel: 5
   workingMountDir: /tmp
-  dnsPolicy: Default  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
+  dnsPolicy: ClusterFirstWithHostNet  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
   defaultOnDeletePolicy: delete  # available values: delete, retain
   affinity: {}
   nodeSelector: {}
@@ -89,7 +89,7 @@ controller:
 
 node:
   name: csi-nfs-node
-  dnsPolicy: Default  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
+  dnsPolicy: ClusterFirstWithHostNet  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
   maxUnavailable: 1
   logLevel: 5
   livenessProbe:
