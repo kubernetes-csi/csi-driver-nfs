@@ -147,7 +147,6 @@ e2e-bootstrap: install-helm
 	OUTPUT_TYPE=registry $(MAKE) container push
 	helm install csi-driver-nfs ./charts/latest/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
 		${E2E_HELM_OPTIONS} \
-		--set controller.dnsPolicy=ClusterFirstWithHostNet \
 		--set controller.logLevel=8 \
 		--set node.logLevel=8
 

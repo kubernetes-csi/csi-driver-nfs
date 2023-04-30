@@ -65,7 +65,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.replicas`                             | replica number of csi-nfs-controller                         | `1`                                                                 |
 | `controller.runOnMaster`                          | run controller on master node(deprecated on k8s 1.25+)                                                          |`false`                                                           |
 | `controller.runOnControlPlane`                    | run controller on control plane node                                                          |`false`                                                           |
-| `controller.dnsPolicy`                            | dnsPolicy of controller driver, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`                              | `Default`                                                             |
+| `controller.dnsPolicy`                            | dnsPolicy of controller driver, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`                              | `ClusterFirstWithHostNet`                                                             |
 | `controller.defaultOnDeletePolicy`                | default policy for deleting subdirectory when deleting a volume, available values: `delete`, `retain`                              | `delete`                                                             |
 | `controller.logLevel`                             | controller driver log level                                                          |`5`                                                           |
 | `controller.workingMountDir`                      | working directory for provisioner to mount nfs shares temporarily                  | `/tmp`                                                             |
@@ -82,7 +82,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.resources.nfs.requests.cpu`               | csi-driver-nfs cpu requests limits                   | 10m                                                            |
 | `controller.resources.nfs.requests.memory`            | csi-driver-nfs memory requests limits                | 20Mi                                                           |
 | `node.name`                                           | driver node daemonset name                            | `csi-nfs-node`
-| `node.dnsPolicy`                                      | dnsPolicy of driver node daemonset, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`                              |
+| `node.dnsPolicy`                                      | dnsPolicy of driver node daemonset, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`          |`ClusterFirstWithHostNet`
 | `node.maxUnavailable`                             | `maxUnavailable` value of driver node daemonset                            | `1`
 | `node.logLevel`                                   | node driver log level                                                          |`5`                                                           |
 | `node.livenessProbe.healthPort `                  | the health check port for liveness probe                    |`29653`                                                           |
