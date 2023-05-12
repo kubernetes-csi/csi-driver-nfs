@@ -25,7 +25,7 @@ install_ginkgo () {
 
 setup_e2e_binaries() {
     # download k8s external e2e binary
-    curl -sL https://storage.googleapis.com/kubernetes-release/release/v1.24.0/kubernetes-test-linux-amd64.tar.gz --output e2e-tests.tar.gz
+    curl -sL https://dl.k8s.io/release/v1.24.0/kubernetes-test-linux-amd64.tar.gz --output e2e-tests.tar.gz
     tar -xvf e2e-tests.tar.gz && rm e2e-tests.tar.gz
 
     export EXTRA_HELM_OPTIONS="--set driver.name=$DRIVER.csi.k8s.io --set controller.name=csi-$DRIVER-controller --set node.name=csi-$DRIVER-node --set feature.enableInlineVolume=true"
