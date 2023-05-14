@@ -153,7 +153,7 @@ var _ = ginkgo.AfterSuite(func() {
 	// install/uninstall CSI Driver deployment scripts test
 	installDriver := testCmd{
 		command:  "bash",
-		args:     []string{"deploy/install-driver.sh", "master", "local"},
+		args:     []string{"deploy/install-driver.sh", "master", "local,snapshot"},
 		startLog: "===================install CSI Driver deployment scripts test===================",
 		endLog:   "===================================================",
 	}
