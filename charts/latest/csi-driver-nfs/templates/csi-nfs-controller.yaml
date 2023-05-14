@@ -70,7 +70,7 @@ spec:
         - name: csi-snapshotter
           image: "{{ .Values.image.csiSnapshotter.repository }}:{{ .Values.image.csiSnapshotter.tag }}"
           args:
-            - "--v=5"
+            - "--v=2"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election-namespace={{ .Release.Namespace }}"
             - "--leader-election"

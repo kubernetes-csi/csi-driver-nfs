@@ -31,14 +31,35 @@ spec:
         app: snapshot-controller
     spec:
       serviceAccountName: snapshot-controller
+      nodeSelector:
+        kubernetes.io/os: linux
       priorityClassName: system-cluster-critical
       securityContext:
         seccompProfile:
           type: RuntimeDefault
+      tolerations:
+        - key: "node-role.kubernetes.io/master"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/controlplane"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
       containers:
         - name: snapshot-controller
-          image: registry.k8s.io/sig-storage/snapshot-controller:v6.1.0
+          image: registry.k8s.io/sig-storage/snapshot-controller:v6.2.1
           args:
-            - "--v=5"
+            - "--v=2"
             - "--leader-election=true"
-          imagePullPolicy: IfNotPresent
+            - "--leader-election-namespace=kube-system"
+          resources:
+            limits:
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
