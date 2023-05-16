@@ -144,7 +144,7 @@ def main():
             for version in eol_versions:
                 print(f"{version[0]}\t{version[1].strftime('%Y-%m-%d')}\t{duration_ago(version[1])}")
 
-        # TODO : generate proper doc ouput for the tables of: https://kubernetes-csi.github.io/docs/sidecar-containers.html
+        # TODO : generate proper doc output for the tables of: https://kubernetes-csi.github.io/docs/sidecar-containers.html
         if args.doc:
             print("\nSupported Versions with docker images for each end of life version:\n")
             for version in eol_versions:
