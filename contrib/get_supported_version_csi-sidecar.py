@@ -6,15 +6,20 @@ import subprocess
 import shutil
 from dateutil.relativedelta import relativedelta
 
-# Check that the `gh` command is in the path
 def check_gh_command():
+    """
+    Pretty much everything is processed from `gh`
+    Check that the `gh` command is in the path before anything else
+    """
     if not shutil.which('gh'):
         print("Error: The `gh` command is not available in the PATH.")
         print("Please install the GitHub CLI (https://cli.github.com/) and try again.")
         exit(1)
 
-# humanize duration outputs
 def duration_ago(dt):
+    """
+    Humanize duration ouputs
+    """
     delta = relativedelta(datetime.datetime.now(), dt)
     if delta.years > 0:
         return f"{delta.years} year{'s' if delta.years > 1 else ''} ago"
@@ -30,16 +35,29 @@ def duration_ago(dt):
         return "just now"
 
 def parse_version(version):
-    # version pattern
+    """
+    Parse version assuming it is in the form of v1.2.3
+    """
     pattern = r"v(\d+)\.(\d+)\.(\d+)"
     match = re.match(pattern, version)
     if match:
         major, minor, patch =  map(int, match.groups())
         return (major, minor, patch)
 
-# Calculate the end of life date for a minor release version 
-# according to : https://kubernetes-csi.github.io/docs/project-policies.html#support
 def end_of_life_grouped_versions(versions):
+    """
+    Calculate the end of life date for a minor release version according to : https://kubernetes-csi.github.io/docs/project-policies.html#support
+
+    The input is an array of tuples of:
+      * grouped versions (e.g. 1.0, 1.1)
+      * array of that contains all versions and their release date (e.g. 1.0.0, 01-01-2013)
+
+    versions structure example :
+      [((3, 5), [('v3.5.0', datetime.datetime(2023, 4, 27, 22, 28, 6))]),
+       ((3, 4),
+       [('v3.4.1', datetime.datetime(2023, 4, 5, 17, 41, 15)),
+        ('v3.4.0', datetime.datetime(2022, 12, 27, 23, 43, 41))])]
+    """
     supported_versions = []
     # Prepare dates for later calculation
     now          = datetime.datetime.now()
@@ -48,14 +66,9 @@ def end_of_life_grouped_versions(versions):
 
     # get the newer versions on top
     sorted_versions_list = sorted(versions.items(), key=lambda x: x[0], reverse=True)
-    # structure example :
-    #  [((3, 5), [('v3.5.0', datetime.datetime(2023, 4, 27, 22, 28, 6))]),
-    #   ((3, 4),
-    #   [('v3.4.1', datetime.datetime(2023, 4, 5, 17, 41, 15)),
-    #    ('v3.4.0', datetime.datetime(2022, 12, 27, 23, 43, 41))])]
-    latest = sorted_versions_list.pop(0)
 
     # the latest version is always supported no matter the release date
+    latest = sorted_versions_list.pop(0)
     supported_versions.append(latest[1][-1])
 
     for v in sorted_versions_list:
@@ -70,12 +83,21 @@ def end_of_life_grouped_versions(versions):
     return supported_versions
 
 def get_release_docker_image(repo, version):
+    """
+    Extract docker image name from the relase page documentation
+    """
     output = subprocess.check_output(['gh', 'release', '-R', repo, 'view', version], text=True)
-    match = re.search(r"`docker pull (.*)`", output)
-    docker_image = match.group(1)
+    #Extract matching image name excluding `
+    match = re.search(r"docker pull ([\.\/\-\:\w\d]*)", output)
+    docker_image = match.group(1) if match else ''
     return((version, docker_image))
 
 def get_versions_from_releases(repo):
+    """
+    Using `gh` cli get the github releases page details then
+    create a list of grouped version on major.minor 
+    and for each give all major.minor.patch with release dates
+    """
     # Run the `gh release` command to get the release list
     output = subprocess.check_output(['gh', 'release', '-R', repo, 'list'], text=True)
     # Parse the output and group by major and minor version numbers
@@ -95,15 +117,15 @@ def get_versions_from_releases(repo):
 
 
 def main():
-    # Argument parser
-    parser = argparse.ArgumentParser(description='Get the currently supported versions for a GitHub repository.')
-    parser.add_argument(
-                        '--repo',
-                        '-R', required=True,
-                        action='append', dest='repos',
-                        help='''The name of the repository in the format owner/repo. You can specify multiple -R repo to query multiple repositories e.g.:\n
-                                python -R kubernetes-csi/external-attacher -R kubernetes-csi/external-provisioner -R kubernetes-csi/external-resizer -R kubernetes-csi/external-snapshotter -R kubernetes-csi/livenessprobe -R kubernetes-csi/node-driver-registrar -R kubernetes-csi/external-health-monitor'''
-                        )
+    manual = """
+    This script lists the supported versions Github releases according to https://kubernetes-csi.github.io/docs/project-policies.html#support
+    It has been designed to help to update the tables from : https://kubernetes-csi.github.io/docs/sidecar-containers.html\n\n
+    It can take multiple repos as argument, for all CSI sidecars details you can run:
+    ./get_supported_version_csi-sidecar.py -R kubernetes-csi/external-attacher -R kubernetes-csi/external-provisioner -R kubernetes-csi/external-resizer -R kubernetes-csi/external-snapshotter -R kubernetes-csi/livenessprobe -R kubernetes-csi/node-driver-registrar -R kubernetes-csi/external-health-monitor\n
+    With the output you can then update the documentation manually.
+    """
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=manual)
+    parser.add_argument('--repo', '-R', required=True, action='append', dest='repos', help='The name of the repository in the format owner/repo.')
     parser.add_argument('--display', '-d', action='store_true', help='(default) Display EOL versions with their dates', default=True)
     parser.add_argument('--doc', '-D', action='store_true', help='Helper to https://kubernetes-csi.github.io/docs/ that prints Docker image for each EOL version')
 
@@ -126,7 +148,7 @@ def main():
         if args.doc:
             print("\nSupported Versions with docker images for each end of life version:\n")
             for version in eol_versions:
-                _, image = get_release_docker_image(args.repo, version[0])
+                _, image = get_release_docker_image(repo, version[0])
                 print(f"{version[0]}\t{image}")
         print()
 
