@@ -40,16 +40,28 @@ spec:
         app: {{ .Values.externalSnapshotter.name }}
     spec:
       serviceAccountName: {{ .Values.externalSnapshotter.name }}
+      nodeSelector:
+        kubernetes.io/os: linux
       priorityClassName: system-cluster-critical
       securityContext:
         seccompProfile:
           type: RuntimeDefault
+{{- with .Values.controller.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}
       containers:
         - name: {{ .Values.externalSnapshotter.name }}
           image: {{ .Values.image.externalSnapshotter.repository }}:{{ .Values.image.externalSnapshotter.tag }}
           args:
-            - "--v=5"
+            - "--v=2"
             - "--leader-election=true"
             - "--leader-election-namespace={{ .Release.Namespace }}"
+          resources:
+            limits:
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
           imagePullPolicy: {{ .Values.image.externalSnapshotter.pullPolicy }}
 {{- end -}}

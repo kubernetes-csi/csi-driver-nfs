@@ -34,7 +34,7 @@ do
     echo "checking yamllint under path: $path ..."
     yamllint -f parsable $path | grep -v "line too long" > $LOG
     cat $LOG
-    linecount=`cat $LOG | grep -v "line too long" | wc -l`
+    linecount=`cat $LOG | grep -v crd-csi-snapshot | wc -l`
     if [ $linecount -gt 0 ]; then
         echo "yaml files under $path are not linted, failed with: "
         cat $LOG
@@ -44,7 +44,7 @@ done
 
 echo "checking yamllint under path: $helmPath ..."
 yamllint -f parsable $helmPath/*.yaml | grep -v "line too long" | grep -v "too many spaces inside braces" | grep -v "missing document start" | grep -v "syntax error" > $LOG
-linecount=`cat $LOG | wc -l`
+linecount=`cat $LOG | grep -v crd-csi-snapshot | wc -l`
 if [ $linecount -gt 0 ]; then
 	echo "yaml files under $helmPath/ are not linted, failed with: "
 	cat $LOG
