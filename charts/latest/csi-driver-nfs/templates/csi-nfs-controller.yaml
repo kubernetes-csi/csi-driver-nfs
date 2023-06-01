@@ -78,6 +78,7 @@ spec:
             - name: ADDRESS
               value: /csi/csi.sock
           imagePullPolicy: {{ .Values.image.csiSnapshotter.pullPolicy }}
+          resources: {{- toYaml .Values.controller.resources.csiSnapshotter | nindent 12 }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi

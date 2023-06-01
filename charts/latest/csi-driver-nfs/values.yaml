@@ -74,6 +74,12 @@ controller:
       requests:
         cpu: 10m
         memory: 20Mi
+    csiSnapshotter:
+      limits:
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
     livenessProbe:
       limits:
         memory: 100Mi
@@ -123,7 +129,12 @@ externalSnapshotter:
   name: snapshot-controller
   controller:
     replicas: 1
-
+  resources:
+    limits:
+      memory: 300Mi
+    requests:
+      cpu: 10m
+      memory: 20Mi
 ## Reference to one or more secrets to be used when pulling images
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 ##
