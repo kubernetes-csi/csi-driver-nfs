@@ -57,11 +57,6 @@ spec:
             - "--v=2"
             - "--leader-election=true"
             - "--leader-election-namespace={{ .Release.Namespace }}"
-          resources:
-            limits:
-              memory: 100Mi
-            requests:
-              cpu: 10m
-              memory: 20Mi
+          resources: {{- toYaml .Values.externalSnapshotter.resources | nindent 12 }}
           imagePullPolicy: {{ .Values.image.externalSnapshotter.pullPolicy }}
 {{- end -}}

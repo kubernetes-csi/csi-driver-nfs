@@ -68,6 +68,12 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
         - name: liveness-probe
           image: registry.k8s.io/sig-storage/livenessprobe:v2.10.0
           args:
