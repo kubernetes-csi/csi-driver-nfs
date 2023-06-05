@@ -504,7 +504,7 @@ func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.Creat
 
 	// untar snapshot archive to dst path
 	snapPath := filepath.Join(getInternalVolumePath(cs.Driver.workingMountDir, snapVol), snap.archivePath())
-	dstPath := getInternalVolumePath(cs.Driver.workingMountDir, dstVol)
+	dstPath := getInternalMountPath(cs.Driver.workingMountDir, dstVol)
 	klog.V(2).Infof("copy volume from snapshot %v -> %v", snapPath, dstPath)
 	out, err := exec.Command("tar", "-xzvf", snapPath, "-C", dstPath).CombinedOutput()
 	if err != nil {
