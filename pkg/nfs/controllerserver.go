@@ -78,16 +78,8 @@ type nfsSnapshot struct {
 	src string
 }
 
-func (snap nfsSnapshot) archiveSubPath() string {
-	return snap.uuid
-}
-
 func (snap nfsSnapshot) archiveName() string {
 	return fmt.Sprintf("%v.tar.gz", snap.src)
-}
-
-func (snap nfsSnapshot) archivePath() string {
-	return filepath.Join(snap.archiveSubPath(), snap.archiveName())
 }
 
 // Ordering of elements in the CSI volume id.
@@ -331,7 +323,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			klog.Warningf("failed to unmount snapshot nfs server: %v", err)
 		}
 	}()
-	snapInternalVolPath := filepath.Join(getInternalVolumePath(cs.Driver.workingMountDir, snapVol), snapshot.archiveSubPath())
+	snapInternalVolPath := getInternalVolumePath(cs.Driver.workingMountDir, snapVol)
 	if err = os.MkdirAll(snapInternalVolPath, 0777); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to make subdirectory: %v", err)
 	}
@@ -409,7 +401,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}()
 
 	// delete snapshot archive
-	internalVolumePath := filepath.Join(getInternalVolumePath(cs.Driver.workingMountDir, vol), snap.archiveSubPath())
+	internalVolumePath := getInternalVolumePath(cs.Driver.workingMountDir, vol)
 	klog.V(2).Infof("Removing snapshot archive at %v", internalVolumePath)
 	if err = os.RemoveAll(internalVolumePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete subdirectory: %v", err.Error())
@@ -503,7 +495,7 @@ func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.Creat
 	}()
 
 	// untar snapshot archive to dst path
-	snapPath := filepath.Join(getInternalVolumePath(cs.Driver.workingMountDir, snapVol), snap.archivePath())
+	snapPath := filepath.Join(getInternalVolumePath(cs.Driver.workingMountDir, snapVol), snap.archiveName())
 	dstPath := getInternalVolumePath(cs.Driver.workingMountDir, dstVol)
 	klog.V(2).Infof("copy volume from snapshot %v -> %v", snapPath, dstPath)
 	out, err := exec.Command("tar", "-xzvf", snapPath, "-C", dstPath).CombinedOutput()
@@ -803,7 +795,7 @@ func volumeFromSnapshot(snap *nfsSnapshot) *nfsVolume {
 		id:      snap.id,
 		server:  snap.server,
 		baseDir: snap.baseDir,
-		subDir:  snap.baseDir,
+		subDir:  snap.uuid,
 		uuid:    snap.uuid,
 	}
 }
