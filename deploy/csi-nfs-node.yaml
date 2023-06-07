@@ -83,7 +83,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: registry.k8s.io/sig-storage/nfsplugin:v4.4.0
+          image: gcr.io/k8s-staging-sig-storage/nfsplugin:canary
           args:
             - "-v=5"
             - "--nodeid=$(NODE_ID)"
