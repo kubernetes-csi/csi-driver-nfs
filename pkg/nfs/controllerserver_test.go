@@ -742,10 +742,10 @@ func TestCopyVolume(t *testing.T) {
 				uuid:    "dst-pv-name",
 			},
 			prepare: func() error {
-				if err := os.MkdirAll("/tmp/snapshot-name/share/snapshot-name/", 0777); err != nil {
+				if err := os.MkdirAll("/tmp/snapshot-name/snapshot-name", 0777); err != nil {
 					return err
 				}
-				file, err := os.Create("/tmp/snapshot-name/share/snapshot-name/src-pv-name.tar.gz")
+				file, err := os.Create("/tmp/snapshot-name/snapshot-name/src-pv-name.tar.gz")
 				if err != nil {
 					return err
 				}
