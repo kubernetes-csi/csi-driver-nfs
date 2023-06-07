@@ -568,6 +568,8 @@ func newNFSSnapshot(name string, params map[string]string, vol *nfsVolume) (*nfs
 			server = v
 		case paramShare:
 			baseDir = v
+		default:
+			return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("invalid parameter %q in snapshot storage class", k))
 		}
 	}
 
