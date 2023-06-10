@@ -872,10 +872,17 @@ install_snapshot_controller() {
   cnt=0
   expected_running_pods=$(kubectl apply --dry-run=client -o "jsonpath={.spec.replicas}" -f "$SNAPSHOT_CONTROLLER_YAML")
   expected_namespace=$(kubectl apply --dry-run=client -o "jsonpath={.metadata.namespace}" -f "$SNAPSHOT_CONTROLLER_YAML")
-  while [ "$(kubectl get pods -n "$expected_namespace" -l app=snapshot-controller | grep 'Running' -c)" -lt "$expected_running_pods" ]; do
+  expect_key='app\.kubernetes\.io/name'
+  expected_label=$(kubectl apply --dry-run=client -o "jsonpath={.spec.template.metadata.labels['$expect_key']}" -f "$SNAPSHOT_CONTROLLER_YAML")
+  if [ -z "${expected_label}" ]; then
+    expect_key='app'
+    expected_label=$(kubectl apply --dry-run=client -o "jsonpath={.spec.template.metadata.labels['$expect_key']}" -f "$SNAPSHOT_CONTROLLER_YAML")
+  fi
+  expect_key=${expect_key//\\/}
+  while [ "$(kubectl get pods -n "$expected_namespace" -l "$expect_key"="$expected_label" | grep 'Running' -c)" -lt "$expected_running_pods" ]; do
     if [ $cnt -gt 30 ]; then
         echo "snapshot-controller pod status:"
-        kubectl describe pods -n "$expected_namespace" -l app=snapshot-controller
+        kubectl describe pods -n "$expected_namespace" -l "$expect_key"="$expected_label"
         echo >&2 "ERROR: snapshot controller not ready after over 5 min"
         exit 1
     fi
