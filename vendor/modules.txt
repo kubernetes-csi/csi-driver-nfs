@@ -1034,7 +1034,7 @@ k8s.io/mount-utils
 ## explicit; go 1.19
 k8s.io/pod-security-admission/api
 k8s.io/pod-security-admission/policy
-# k8s.io/utils v0.0.0-20221107191617-1a15be271d1d
+# k8s.io/utils v0.0.0-20230209194617-a36077c30491
 ## explicit; go 1.18
 k8s.io/utils/buffer
 k8s.io/utils/clock
