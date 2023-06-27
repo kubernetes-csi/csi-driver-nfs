@@ -27,7 +27,7 @@ import (
 	"testing"
 
 	"github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs"
-	"github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/pborman/uuid"
 	"k8s.io/kubernetes/test/e2e/framework"
