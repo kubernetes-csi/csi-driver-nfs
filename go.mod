@@ -9,7 +9,7 @@ require (
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.27.6
 	github.com/pborman/uuid v1.2.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.4
 	golang.org/x/net v0.9.0
 	google.golang.org/grpc v1.40.0
 	google.golang.org/protobuf v1.30.0
