@@ -33,7 +33,7 @@ import (
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 	testutils "k8s.io/kubernetes/test/utils"
 
-	"github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/v2"
 )
 
 const (
@@ -142,10 +142,6 @@ func (tk *TestKubeconfig) WriteFileViaContainer(podName, containerName string, p
 		}
 	}
 	command := fmt.Sprintf("echo '%s' > '%s'; sync", contents, path)
-	// TODO(mauriciopoppe): remove this statement once we add `sync` to the test image, ref #101172
-	if e2epod.NodeOSDistroIs("windows") {
-		command = fmt.Sprintf("echo '%s' > '%s';", contents, path)
-	}
 	stdout, stderr, err := tk.kubectlExecWithRetry(tk.Namespace, podName, containerName, "--", "/bin/sh", "-c", command)
 	if err != nil {
 		e2elog.Logf("error running kubectl exec to write file: %v\nstdout=%v\nstderr=%v)", err, string(stdout), string(stderr))
