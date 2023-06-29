@@ -40,6 +40,10 @@ spec:
         app: {{ .Values.externalSnapshotter.name }}
     spec:
       serviceAccountName: {{ .Values.externalSnapshotter.name }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{- end }}
       nodeSelector:
         kubernetes.io/os: linux
       priorityClassName: system-cluster-critical
