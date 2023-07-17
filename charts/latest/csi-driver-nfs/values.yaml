@@ -125,7 +125,7 @@ node:
         memory: 20Mi
 
 externalSnapshotter:
-  enabled: true
+  enabled: false
   name: snapshot-controller
   controller:
     replicas: 1

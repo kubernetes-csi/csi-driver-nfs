@@ -4,6 +4,7 @@
  - [install Helm](https://helm.sh/docs/intro/quickstart/#install-helm)
 
 ### Tips
+ - install csi snapshot controller: `--set externalSnapshotter.enabled=true`
  - run controller on control plane node: `--set controller.runOnControlPlane=true`
  - set replica of controller as `2`: `--set controller.replicas=2`
  - Microk8s based kubernetes recommended settings:
@@ -98,6 +99,13 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `node.resources.nfs.limits.memory`                    | csi-driver-nfs memory limits                         | 300Mi                                                         |
 | `node.resources.nfs.requests.cpu`                     | csi-driver-nfs cpu requests limits                   | 10m                                                            |
 | `node.resources.nfs.requests.memory`                  | csi-driver-nfs memory requests limits                | 20Mi                                                           |
+| `externalSnapshotter.enabled`                         | enable snapshot-controller                         | `false`
+| `externalSnapshotter.name`                            | name of snapshot-controller                         | `snapshot-controller`
+| `externalSnapshotter.controller.replicas`             | replica number of snapshot-controller                         | 1
+| `externalSnapshotter.resources.limits.memory`         | snapshot-controller memory limits                          | 300Mi                                                          |
+| `externalSnapshotter.resources.requests.cpu`          | snapshot-controller cpu requests limits                    | 10m                                                            |
+| `externalSnapshotter.resources.requests.memory`       | snapshot-controller memory requests limits                 | 20Mi                                                           |
+
 
 ## troubleshooting
  - Add `--wait -v=5 --debug` in `helm install` command to get detailed error
