@@ -42,7 +42,7 @@ spec:
       serviceAccountName: {{ .Values.externalSnapshotter.name }}
       nodeSelector:
         kubernetes.io/os: linux
-      priorityClassName: {{ .Values.externalSnapshotter.priorityClassName }
+      priorityClassName: {{ .Values.externalSnapshotter.priorityClassName }}
       securityContext:
         seccompProfile:
           type: RuntimeDefault
