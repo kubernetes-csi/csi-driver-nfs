@@ -46,7 +46,7 @@ spec:
       {{- end }}
       nodeSelector:
         kubernetes.io/os: linux
-      priorityClassName: system-cluster-critical
+      priorityClassName: {{ .Values.externalSnapshotter.priorityClassName }}
       securityContext:
         seccompProfile:
           type: RuntimeDefault

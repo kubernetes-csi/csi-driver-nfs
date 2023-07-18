@@ -73,6 +73,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.affinity`                                 | controller pod affinity                               | `{}`                                                             |
 | `controller.nodeSelector`                             | controller pod node selector                          | `{}`                                                             |
 | `controller.tolerations`                              | controller pod tolerations                            |                                                              |
+| `controller.priorityClassName`                        | controller pod priorityClassName                      | `system-cluster-critical`                                                             |
 | `controller.resources.csiProvisioner.limits.memory`   | csi-provisioner memory limits                         | 100Mi                                                          |
 | `controller.resources.csiProvisioner.requests.cpu`    | csi-provisioner cpu requests limits                   | 10m                                                            |
 | `controller.resources.csiProvisioner.requests.memory` | csi-provisioner memory requests limits                | 20Mi                                                           |
@@ -89,6 +90,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `node.livenessProbe.healthPort `                  | the health check port for liveness probe                    |`29653`                                                           |
 | `node.affinity`                                      | node pod affinity                                     | {}                                                             |
 | `node.nodeSelector`                                   | node pod node selector                                | `{}`                                                             |
+| `node.priorityClassName`                              | node pod priority class name                          | `system-cluster-critical`                                                             |
 | `node.tolerations`                              | node pod tolerations                            |                                                              |
 | `node.resources.livenessProbe.limits.memory`          | liveness-probe memory limits                          | 100Mi                                                          |
 | `node.resources.livenessProbe.requests.cpu`           | liveness-probe cpu requests limits                    | 10m                                                            |

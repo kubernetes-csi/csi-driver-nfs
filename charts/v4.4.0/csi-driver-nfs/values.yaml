@@ -57,6 +57,7 @@ controller:
   defaultOnDeletePolicy: delete  # available values: delete, retain
   affinity: {}
   nodeSelector: {}
+  priorityClassName: system-cluster-critical
   tolerations:
     - key: "node-role.kubernetes.io/master"
       operator: "Exists"
@@ -102,6 +103,7 @@ node:
     healthPort: 29653
   affinity: {}
   nodeSelector: {}
+  priorityClassName: system-cluster-critical
   tolerations:
     - operator: "Exists"
   resources:
@@ -127,6 +129,7 @@ node:
 externalSnapshotter:
   enabled: true
   name: snapshot-controller
+  priorityClassName: system-cluster-critical
   controller:
     replicas: 1
   resources:

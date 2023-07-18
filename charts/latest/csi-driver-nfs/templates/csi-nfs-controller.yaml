@@ -39,7 +39,7 @@ spec:
 {{- with .Values.controller.nodeSelector }}
 {{ toYaml . | indent 8 }}
 {{- end }}
-      priorityClassName: system-cluster-critical
+      priorityClassName: {{ .Values.controller.priorityClassName }}
       securityContext:
         seccompProfile:
           type: RuntimeDefault
