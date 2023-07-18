@@ -138,6 +138,10 @@ externalSnapshotter:
     requests:
       cpu: 10m
       memory: 20Mi
+  # Create volume snapshot CRDs. 
+  customResourceDefinitions:
+    enabled: true   #if set true, VolumeSnapshot, VolumeSnapshotContent and VolumeSnapshotClass CRDs will be created. Set it false, If they already exist in cluster.
+
 ## Reference to one or more secrets to be used when pulling images
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 ##
