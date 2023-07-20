@@ -66,7 +66,6 @@ spec:
           resources: {{- toYaml .Values.controller.resources.csiProvisioner | nindent 12 }}
           securityContext:
             readOnlyRootFilesystem: true
-        {{- if .Values.externalSnapshotter.enabled }}
         - name: csi-snapshotter
           image: "{{ .Values.image.csiSnapshotter.repository }}:{{ .Values.image.csiSnapshotter.tag }}"
           args:
@@ -82,7 +81,6 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-        {{- end }}
         - name: liveness-probe
           image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
           args:
