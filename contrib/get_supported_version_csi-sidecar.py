@@ -32,7 +32,7 @@ def check_gh_command():
 
 def duration_ago(dt):
     """
-    Humanize duration ouputs
+    Humanize duration outputs
     """
     delta = relativedelta(datetime.datetime.now(), dt)
     if delta.years > 0:
@@ -98,7 +98,7 @@ def end_of_life_grouped_versions(versions):
 
 def get_release_docker_image(repo, version):
     """
-    Extract docker image name from the relase page documentation
+    Extract docker image name from the release page documentation
     """
     output = subprocess.check_output(['gh', 'release', '-R', repo, 'view', version], text=True)
     #Extract matching image name excluding `
