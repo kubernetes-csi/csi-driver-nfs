@@ -24,7 +24,7 @@ spec:
       {{- end }}
       hostNetwork: true # original nfs connection would be broken without hostNetwork setting
       dnsPolicy: {{ .Values.controller.dnsPolicy }}
-      serviceAccountName: csi-nfs-node-sa
+      serviceAccountName: {{ .Values.serviceAccount.node }}
       priorityClassName: {{ .Values.node.priorityClassName }}
       securityContext:
         seccompProfile:
