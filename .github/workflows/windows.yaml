@@ -15,7 +15,7 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Run Windows Unit Tests
         run: |
           go version
