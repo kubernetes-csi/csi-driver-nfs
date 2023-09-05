@@ -28,6 +28,7 @@ image:
 serviceAccount:
   create: true # When true, service accounts will be created for you. Set to false if you want to use your own.
   controller: csi-nfs-controller-sa # Name of Service Account to be created or used
+  node: csi-nfs-node-sa # Name of Service Account to be created or used
 
 rbac:
   create: true
@@ -138,7 +139,7 @@ externalSnapshotter:
     requests:
       cpu: 10m
       memory: 20Mi
-  # Create volume snapshot CRDs. 
+  # Create volume snapshot CRDs.
   customResourceDefinitions:
     enabled: true   #if set true, VolumeSnapshot, VolumeSnapshotContent and VolumeSnapshotClass CRDs will be created. Set it false, If they already exist in cluster.
 
