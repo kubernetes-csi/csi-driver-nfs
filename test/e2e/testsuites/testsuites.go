@@ -35,10 +35,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/deployment"
+	e2ekubectl "k8s.io/kubernetes/test/e2e/framework/kubectl"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 	e2epv "k8s.io/kubernetes/test/e2e/framework/pv"
 	imageutils "k8s.io/kubernetes/test/utils/image"
@@ -50,6 +53,9 @@ const (
 	slowPodStartTimeout = 15 * time.Minute
 	// Description that will printed during tests
 	failedConditionDescription = "Error status code"
+	poll                       = 2 * time.Second
+	pollLongTimeout            = 5 * time.Minute
+	pollForStringTimeout       = 1 * time.Minute
 )
 
 type TestStorageClass struct {
@@ -504,9 +510,38 @@ func (t *TestDeployment) WaitForPodReady() {
 	framework.ExpectNoError(err)
 }
 
-func (t *TestDeployment) Exec(command []string, expectedString string) {
-	_, err := framework.LookForStringInPodExec(t.namespace.Name, t.podName, command, expectedString, execTimeout)
-	framework.ExpectNoError(err)
+func (t *TestDeployment) PollForStringInPodsExec(command []string, expectedString string) {
+	pollForStringInPodsExec(t.namespace.Name, []string{t.podName}, command, expectedString)
+}
+
+// Execute the command for all pods in the namespace, looking for expectedString in stdout
+func pollForStringInPodsExec(namespace string, pods []string, command []string, expectedString string) {
+	ch := make(chan error, len(pods))
+	for _, pod := range pods {
+		go pollForStringWorker(namespace, pod, command, expectedString, ch)
+	}
+	errs := make([]error, 0, len(pods))
+	for range pods {
+		errs = append(errs, <-ch)
+	}
+	framework.ExpectNoError(utilerrors.NewAggregate(errs), "Failed to find %q in at least one pod's output.", expectedString)
+}
+
+func pollForStringWorker(namespace string, pod string, command []string, expectedString string, ch chan<- error) {
+	args := append([]string{"exec", pod, "--"}, command...)
+	err := wait.PollImmediate(poll, pollForStringTimeout, func() (bool, error) {
+		stdout, err := e2ekubectl.RunKubectl(namespace, args...)
+		if err != nil {
+			framework.Logf("Error waiting for output %q in pod %q: %v.", expectedString, pod, err)
+			return false, nil
+		}
+		if !strings.Contains(stdout, expectedString) {
+			framework.Logf("The stdout did not contain output %q in pod %q, found: %q.", expectedString, pod, stdout)
+			return false, nil
+		}
+		return true, nil
+	})
+	ch <- err
 }
 
 func (t *TestDeployment) DeletePodAndWait() {
