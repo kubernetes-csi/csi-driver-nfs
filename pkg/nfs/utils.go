@@ -116,7 +116,7 @@ func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, h
 }
 
 type VolumeLocks struct {
-	locks sets.String
+	locks sets.String //nolint:staticcheck
 	mux   sync.Mutex
 }
 
