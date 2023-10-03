@@ -20,10 +20,12 @@ package mutating
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	"go.opentelemetry.io/otel/attribute"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/klog/v2"
@@ -46,7 +48,7 @@ import (
 	endpointsrequest "k8s.io/apiserver/pkg/endpoints/request"
 	webhookutil "k8s.io/apiserver/pkg/util/webhook"
 	"k8s.io/apiserver/pkg/warning"
-	utiltrace "k8s.io/utils/trace"
+	"k8s.io/component-base/tracing"
 )
 
 const (
@@ -148,7 +150,10 @@ func (a *mutatingDispatcher) Dispatch(ctx context.Context, attr admission.Attrib
 			case *webhookutil.ErrCallingWebhook:
 				if !ignoreClientCallFailures {
 					rejected = true
-					admissionmetrics.Metrics.ObserveWebhookRejection(ctx, hook.Name, "admit", string(versionedAttr.Attributes.GetOperation()), admissionmetrics.WebhookRejectionCallingWebhookError, int(err.Status.ErrStatus.Code))
+					// Ignore context cancelled from webhook metrics
+					if !errors.Is(err.Reason, context.Canceled) {
+						admissionmetrics.Metrics.ObserveWebhookRejection(ctx, hook.Name, "admit", string(versionedAttr.Attributes.GetOperation()), admissionmetrics.WebhookRejectionCallingWebhookError, int(err.Status.ErrStatus.Code))
+					}
 				}
 				admissionmetrics.Metrics.ObserveWebhook(ctx, hook.Name, time.Since(t), rejected, versionedAttr.Attributes, "admit", int(err.Status.ErrStatus.Code))
 			case *webhookutil.ErrWebhookRejection:
@@ -177,10 +182,14 @@ func (a *mutatingDispatcher) Dispatch(ctx context.Context, attr admission.Attrib
 
 		if callErr, ok := err.(*webhookutil.ErrCallingWebhook); ok {
 			if ignoreClientCallFailures {
-				klog.Warningf("Failed calling webhook, failing open %v: %v", hook.Name, callErr)
-				admissionmetrics.Metrics.ObserveWebhookFailOpen(ctx, hook.Name, "admit")
-				annotator.addFailedOpenAnnotation()
-
+				// Ignore context cancelled from webhook metrics
+				if errors.Is(callErr.Reason, context.Canceled) {
+					klog.Warningf("Context canceled when calling webhook %v", hook.Name)
+				} else {
+					klog.Warningf("Failed calling webhook, failing open %v: %v", hook.Name, callErr)
+					admissionmetrics.Metrics.ObserveWebhookFailOpen(ctx, hook.Name, "admit")
+					annotator.addFailedOpenAnnotation()
+				}
 				utilruntime.HandleError(callErr)
 
 				select {
@@ -233,14 +242,14 @@ func (a *mutatingDispatcher) callAttrMutatingHook(ctx context.Context, h *admiss
 	if err != nil {
 		return false, &webhookutil.ErrCallingWebhook{WebhookName: h.Name, Reason: fmt.Errorf("could not get REST client: %w", err), Status: apierrors.NewBadRequest("error getting REST client")}
 	}
-	trace := utiltrace.New("Call mutating webhook",
-		utiltrace.Field{"configuration", configurationName},
-		utiltrace.Field{"webhook", h.Name},
-		utiltrace.Field{"resource", attr.GetResource()},
-		utiltrace.Field{"subresource", attr.GetSubresource()},
-		utiltrace.Field{"operation", attr.GetOperation()},
-		utiltrace.Field{"UID", uid})
-	defer trace.LogIfLong(500 * time.Millisecond)
+	ctx, span := tracing.Start(ctx, "Call mutating webhook",
+		attribute.String("configuration", configurationName),
+		attribute.String("webhook", h.Name),
+		attribute.Stringer("resource", attr.GetResource()),
+		attribute.String("subresource", attr.GetSubresource()),
+		attribute.String("operation", string(attr.GetOperation())),
+		attribute.String("UID", string(uid)))
+	defer span.End(500 * time.Millisecond)
 
 	// if the webhook has a specific timeout, wrap the context to apply it
 	if h.TimeoutSeconds != nil {
@@ -279,7 +288,7 @@ func (a *mutatingDispatcher) callAttrMutatingHook(ctx context.Context, h *admiss
 		}
 		return false, &webhookutil.ErrCallingWebhook{WebhookName: h.Name, Reason: fmt.Errorf("failed to call webhook: %w", err), Status: status}
 	}
-	trace.Step("Request completed")
+	span.AddEvent("Request completed")
 
 	result, err := webhookrequest.VerifyAdmissionResponse(uid, true, response)
 	if err != nil {
@@ -353,7 +362,7 @@ func (a *mutatingDispatcher) callAttrMutatingHook(ctx context.Context, h *admiss
 	}
 
 	changed = !apiequality.Semantic.DeepEqual(attr.VersionedObject, newVersionedObject)
-	trace.Step("Patch applied")
+	span.AddEvent("Patch applied")
 	annotator.addPatchAnnotation(patchObj, result.PatchType)
 	attr.Dirty = true
 	attr.VersionedObject = newVersionedObject
