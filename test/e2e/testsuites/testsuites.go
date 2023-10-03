@@ -552,11 +552,9 @@ func (t *TestDeployment) DeletePodAndWait() {
 		return
 	}
 	framework.Logf("Waiting for pod %q in namespace %q to be fully deleted", t.podName, t.namespace.Name)
-	err = e2epod.WaitForPodNoLongerRunningInNamespace(t.client, t.podName, t.namespace.Name)
+	err = e2epod.WaitForPodNotFoundInNamespace(t.client, t.podName, t.namespace.Name, e2epod.DefaultPodDeletionTimeout)
 	if err != nil {
-		if !apierrs.IsNotFound(err) {
-			framework.ExpectNoError(fmt.Errorf("pod %q error waiting for delete: %v", t.podName, err))
-		}
+		framework.ExpectNoError(fmt.Errorf("pod %q error waiting for delete: %w", t.podName, err))
 	}
 }
 
