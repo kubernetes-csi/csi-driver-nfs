@@ -42,6 +42,7 @@ spec:
             - "--leader-election"
             - "--leader-election-namespace=kube-system"
             - "--extra-create-metadata=true"
+            - "--timeout=1200s"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
@@ -61,6 +62,7 @@ spec:
             - "--csi-address=$(ADDRESS)"
             - "--leader-election-namespace=kube-system"
             - "--leader-election"
+            - "--timeout=1200s"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
