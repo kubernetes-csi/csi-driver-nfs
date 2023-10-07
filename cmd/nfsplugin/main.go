@@ -34,12 +34,9 @@ var (
 	defaultOnDeletePolicy = flag.String("default-ondelete-policy", "", "default policy for deleting subdirectory when deleting a volume")
 )
 
-func init() {
-	_ = flag.Set("logtostderr", "true")
-}
-
 func main() {
 	klog.InitFlags(nil)
+	_ = flag.Set("logtostderr", "true")
 	flag.Parse()
 	if *nodeID == "" {
 		klog.Warning("nodeid is empty")
