@@ -41,6 +41,7 @@ driver:
 feature:
   enableFSGroupPolicy: true
   enableInlineVolume: false
+  propagateHostMountOptions: false
 
 kubeletDir: /var/lib/kubelet
 

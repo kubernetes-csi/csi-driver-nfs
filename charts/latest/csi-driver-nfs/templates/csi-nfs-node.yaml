@@ -125,6 +125,12 @@ spec:
             - name: pods-mount-dir
               mountPath: {{ .Values.kubeletDir }}/pods
               mountPropagation: "Bidirectional"
+            {{- if .Values.feature.propagateHostMountOptions }}
+            - name: host-nfsmount-conf
+              mountPath: /etc/nfsmount.conf
+            - name: host-nfsmount-conf-d
+              mountPath: /etc/nfsmount.conf.d
+            {{- end }}
           resources: {{- toYaml .Values.node.resources.nfs | nindent 12 }}
       volumes:
         - name: socket-dir
@@ -139,3 +145,13 @@ spec:
             path: {{ .Values.kubeletDir }}/plugins_registry
             type: Directory
           name: registration-dir
+        {{- if .Values.feature.propagateHostMountOptions }}
+        - hostPath:
+            path: /etc/nfsmount.conf
+            type: FileOrCreate
+          name: host-nfsmount-conf
+        - hostPath:
+            path: /etc/nfsmount.conf.d
+            type: DirectoryOrCreate
+          name: host-nfsmount-conf-d
+        {{- end }}
