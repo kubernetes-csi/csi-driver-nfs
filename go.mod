@@ -1,6 +1,6 @@
 module github.com/kubernetes-csi/csi-driver-nfs
 
-go 1.19
+go 1.20
 
 require (
 	github.com/container-storage-interface/spec v1.8.0
@@ -14,7 +14,7 @@ require (
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
 	k8s.io/api v0.26.9
-	k8s.io/apimachinery v0.26.9
+	k8s.io/apimachinery v0.28.3
 	k8s.io/client-go v0.26.9
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kubernetes v1.26.9
@@ -81,12 +81,12 @@ require (
 	go.opentelemetry.io/otel/trace v1.10.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/oauth2 v0.11.0 // indirect
+	golang.org/x/oauth2 v0.13.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
-	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
-	golang.org/x/tools v0.12.0 // indirect
+	golang.org/x/time v0.3.0 // indirect
+	golang.org/x/tools v0.14.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect
@@ -95,7 +95,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.0.0 // indirect
-	k8s.io/apiserver v0.26.9 // indirect
+	k8s.io/apiserver v0.28.3 // indirect
 	k8s.io/cloud-provider v0.26.9 // indirect
 	k8s.io/component-base v0.26.9 // indirect
 	k8s.io/component-helpers v0.26.9 // indirect
