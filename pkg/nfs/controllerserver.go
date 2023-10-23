@@ -240,15 +240,27 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 			}
 		}()
 
-		// delete subdirectory under base-dir
 		internalVolumePath := getInternalVolumePath(cs.Driver.workingMountDir, nfsVol)
 
-		klog.V(2).Infof("Removing subdirectory at %v", internalVolumePath)
-		if err = os.RemoveAll(internalVolumePath); err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to delete subdirectory: %v", err.Error())
+		if !strings.EqualFold(nfsVol.onDelete, archive) {
+			// delete subdirectory under base-dir
+			klog.V(2).Infof("Removing subdirectory at %v", internalVolumePath)
+			if err = os.RemoveAll(internalVolumePath); err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to delete subdirectory: %v", err.Error())
+			}
+		} else {
+			archivedNfsVol := *nfsVol
+			archivedNfsVol.subDir = "archived-" + nfsVol.subDir
+			archivedInternalVolumePath := getArchivedInternalVolumePath(cs.Driver.workingMountDir, nfsVol, &archivedNfsVol)
+
+			// archive subdirectory under base-dir
+			klog.V(2).Infof("Archiving subdirectory at %v", internalVolumePath)
+			if err = os.Rename(internalVolumePath, archivedInternalVolumePath); err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to archive subdirectory: %v", err.Error())
+			}
 		}
 	} else {
-		klog.V(2).Infof("DeleteVolume: volume(%s) is set to retain, not deleting subdirectory", volumeID)
+		klog.V(2).Infof("DeleteVolume: volume(%s) is set to retain, not deleting/archiving subdirectory", volumeID)
 	}
 
 	return &csi.DeleteVolumeResponse{}, nil
@@ -674,6 +686,10 @@ func getInternalVolumePath(workingMountDir string, vol *nfsVolume) string {
 	return filepath.Join(getInternalMountPath(workingMountDir, vol), vol.subDir)
 }
 
+func getArchivedInternalVolumePath(workingMountDir string, vol *nfsVolume, archVol *nfsVolume) string {
+	return filepath.Join(getInternalMountPath(workingMountDir, vol), archVol.subDir)
+}
+
 // Given a nfsVolume, return a CSI volume id
 func getVolumeIDFromNfsVol(vol *nfsVolume) string {
 	idElements := make([]string, totalIDElements)
@@ -681,9 +697,10 @@ func getVolumeIDFromNfsVol(vol *nfsVolume) string {
 	idElements[idBaseDir] = strings.Trim(vol.baseDir, "/")
 	idElements[idSubDir] = strings.Trim(vol.subDir, "/")
 	idElements[idUUID] = vol.uuid
-	if strings.EqualFold(vol.onDelete, retain) {
+	if strings.EqualFold(vol.onDelete, retain) || strings.EqualFold(vol.onDelete, archive) {
 		idElements[idOnDelete] = vol.onDelete
 	}
+
 	return strings.Join(idElements, separator)
 }
 
