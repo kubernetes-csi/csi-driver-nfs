@@ -7,7 +7,7 @@
  - install csi snapshot controller: `--set externalSnapshotter.enabled=true`
  - run controller on control plane node: `--set controller.runOnControlPlane=true`
  - set replica of controller as `2`: `--set controller.replicas=2`
- - Microk8s based kubernetes recommended settings:
+ - Microk8s based kubernetes recommended settings(refer to https://microk8s.io/docs/nfs):
     - `--set controller.dnsPolicy=ClusterFirstWithHostNet` with `--set node.dnsPolicy=ClusterFirstWithHostNet` -
       external smb server cannot be found based on Default dns.
     - `--set kubeletDir="/var/snap/microk8s/common/var/lib/kubelet"` - sets correct path to microk8s kubelet even
