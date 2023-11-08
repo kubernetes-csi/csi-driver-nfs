@@ -50,7 +50,7 @@ const (
 	newTestVolumeIDUUID          = "test-server#test-base-dir#volume-name#uuid"
 	newTestVolumeOnDeleteRetain  = "test-server#test-base-dir#volume-name#uuid#retain"
 	newTestVolumeOnDeleteDelete  = "test-server#test-base-dir#volume-name#uuid#delete"
-	newTestVolumeOnDeleteArchive = "test-server#test-base-dir#volume-name#uuid#archive"
+	newTestVolumeOnDeleteArchive = "test-server#test-base-dir#volume-name##archive"
 )
 
 func initTestController(t *testing.T) *ControllerServer {
@@ -294,7 +294,7 @@ func TestDeleteVolume(t *testing.T) {
 			req:                  &csi.DeleteVolumeRequest{VolumeId: newTestVolumeOnDeleteArchive},
 			resp:                 &csi.DeleteVolumeResponse{},
 			expectedErr:          nil,
-			expectedDeleteSubDir: false,
+			expectedDeleteSubDir: true,
 		},
 	}
 
@@ -510,7 +510,7 @@ func TestNfsVolFromId(t *testing.T) {
 				server:   testServer,
 				baseDir:  testBaseDir,
 				subDir:   testCSIVolume,
-				uuid:     "uuid",
+				uuid:     "",
 				onDelete: "archive",
 			},
 			expectErr: false,

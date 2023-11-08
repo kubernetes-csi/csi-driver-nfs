@@ -242,21 +242,21 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 		internalVolumePath := getInternalVolumePath(cs.Driver.workingMountDir, nfsVol)
 
-		if !strings.EqualFold(nfsVol.onDelete, archive) {
-			// delete subdirectory under base-dir
-			klog.V(2).Infof("Removing subdirectory at %v", internalVolumePath)
-			if err = os.RemoveAll(internalVolumePath); err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to delete subdirectory: %v", err.Error())
-			}
-		} else {
+		if strings.EqualFold(nfsVol.onDelete, archive) {
 			archivedNfsVol := *nfsVol
 			archivedNfsVol.subDir = "archived-" + nfsVol.subDir
 			archivedInternalVolumePath := getArchivedInternalVolumePath(cs.Driver.workingMountDir, nfsVol, &archivedNfsVol)
 
 			// archive subdirectory under base-dir
-			klog.V(2).Infof("Archiving subdirectory at %v", internalVolumePath)
+			klog.V(2).Infof("archiving subdirectory %s --> %s", internalVolumePath, archivedInternalVolumePath)
 			if err = os.Rename(internalVolumePath, archivedInternalVolumePath); err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to archive subdirectory: %v", err.Error())
+				return nil, status.Errorf(codes.Internal, "archive subdirectory(%s, %s) failed with %v", internalVolumePath, archivedInternalVolumePath, err.Error())
+			}
+		} else {
+			// delete subdirectory under base-dir
+			klog.V(2).Infof("removing subdirectory at %v", internalVolumePath)
+			if err = os.RemoveAll(internalVolumePath); err != nil {
+				return nil, status.Errorf(codes.Internal, "delete subdirectory(%s) failed with %v", internalVolumePath, err.Error())
 			}
 		}
 	} else {
