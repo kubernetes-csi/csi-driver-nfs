@@ -290,7 +290,7 @@ func TestDeleteVolume(t *testing.T) {
 		},
 		{
 			desc:                 "Valid request with onDelete:archive",
-			testOnWindows:        true,
+			testOnWindows:        false,
 			req:                  &csi.DeleteVolumeRequest{VolumeId: newTestVolumeOnDeleteArchive},
 			resp:                 &csi.DeleteVolumeResponse{},
 			expectedErr:          nil,
