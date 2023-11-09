@@ -334,6 +334,16 @@ func TestValidateOnDeleteValue(t *testing.T) {
 			expected: nil,
 		},
 		{
+			desc:     "Archive value",
+			onDelete: "Archive",
+			expected: nil,
+		},
+		{
+			desc:     "archive value",
+			onDelete: "archive",
+			expected: nil,
+		},
+		{
 			desc:     "invalid value",
 			onDelete: "invalid",
 			expected: fmt.Errorf("invalid value %s for OnDelete, supported values are %v", "invalid", supportedOnDeleteValues),

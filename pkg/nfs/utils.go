@@ -36,9 +36,10 @@ const (
 	separator = "#"
 	delete    = "delete"
 	retain    = "retain"
+	archive   = "archive"
 )
 
-var supportedOnDeleteValues = []string{"", delete, retain}
+var supportedOnDeleteValues = []string{"", delete, retain, archive}
 
 func validateOnDeleteValue(onDelete string) error {
 	for _, v := range supportedOnDeleteValues {
