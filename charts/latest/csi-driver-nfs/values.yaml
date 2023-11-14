@@ -6,28 +6,29 @@ image:
         pullPolicy: IfNotPresent
     csiProvisioner:
         repository: registry.k8s.io/sig-storage/csi-provisioner
-        tag: v3.5.0
+        tag: v3.6.1
         pullPolicy: IfNotPresent
     csiSnapshotter:
         repository: registry.k8s.io/sig-storage/csi-snapshotter
-        tag: v6.2.2
+        tag: v6.3.1
         pullPolicy: IfNotPresent
     livenessProbe:
         repository: registry.k8s.io/sig-storage/livenessprobe
-        tag: v2.10.0
+        tag: v2.11.0
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
         repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-        tag: v2.8.0
+        tag: v2.9.0
         pullPolicy: IfNotPresent
     externalSnapshotter:
         repository: registry.k8s.io/sig-storage/snapshot-controller
-        tag: v6.2.2
+        tag: v6.3.1
         pullPolicy: IfNotPresent
 
 serviceAccount:
   create: true # When true, service accounts will be created for you. Set to false if you want to use your own.
   controller: csi-nfs-controller-sa # Name of Service Account to be created or used
+  node: csi-nfs-node-sa # Name of Service Account to be created or used
 
 rbac:
   create: true
@@ -40,6 +41,7 @@ driver:
 feature:
   enableFSGroupPolicy: true
   enableInlineVolume: false
+  propagateHostMountOptions: false
 
 kubeletDir: /var/lib/kubelet
 
@@ -138,7 +140,7 @@ externalSnapshotter:
     requests:
       cpu: 10m
       memory: 20Mi
-  # Create volume snapshot CRDs. 
+  # Create volume snapshot CRDs.
   customResourceDefinitions:
     enabled: true   #if set true, VolumeSnapshot, VolumeSnapshotContent and VolumeSnapshotClass CRDs will be created. Set it false, If they already exist in cluster.
 

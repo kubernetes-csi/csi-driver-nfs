@@ -18,7 +18,7 @@ package testsuites
 
 import (
 	"github.com/kubernetes-csi/csi-driver-nfs/test/e2e/driver"
-	"github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 )
@@ -53,7 +53,7 @@ func (t *DynamicallyProvisionedDeletePodTest) Run(client clientset.Interface, na
 
 	if t.PodCheck != nil {
 		ginkgo.By("checking pod exec")
-		tDeployment.Exec(t.PodCheck.Cmd, t.PodCheck.ExpectedString)
+		tDeployment.PollForStringInPodsExec(t.PodCheck.Cmd, t.PodCheck.ExpectedString)
 	}
 
 	ginkgo.By("deleting the pod for deployment")
@@ -65,6 +65,6 @@ func (t *DynamicallyProvisionedDeletePodTest) Run(client clientset.Interface, na
 	if t.PodCheck != nil {
 		ginkgo.By("checking pod exec")
 		// pod will be restarted so expect to see 2 instances of string
-		tDeployment.Exec(t.PodCheck.Cmd, t.PodCheck.ExpectedString+t.PodCheck.ExpectedString)
+		tDeployment.PollForStringInPodsExec(t.PodCheck.Cmd, t.PodCheck.ExpectedString+t.PodCheck.ExpectedString)
 	}
 }

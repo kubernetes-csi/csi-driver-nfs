@@ -26,7 +26,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs"
-	"github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -35,22 +35,25 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/deployment"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	e2ekubectl "k8s.io/kubernetes/test/e2e/framework/kubectl"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 	e2epv "k8s.io/kubernetes/test/e2e/framework/pv"
 	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
 const (
-	execTimeout = 10 * time.Second
 	// Some pods can take much longer to get ready due to volume attach/detach latency.
 	slowPodStartTimeout = 15 * time.Minute
 	// Description that will printed during tests
 	failedConditionDescription = "Error status code"
+	poll                       = 2 * time.Second
+	pollForStringTimeout       = 1 * time.Minute
 )
 
 type TestStorageClass struct {
@@ -92,7 +95,7 @@ type TestPod struct {
 }
 
 func (t *TestStorageClass) Cleanup() {
-	e2elog.Logf("deleting StorageClass %s", t.storageClass.Name)
+	framework.Logf("deleting StorageClass %s", t.storageClass.Name)
 	err := t.client.StorageV1().StorageClasses().Delete(context.TODO(), t.storageClass.Name, metav1.DeleteOptions{})
 	framework.ExpectNoError(err)
 }
@@ -210,7 +213,7 @@ func (t *TestPersistentVolumeClaim) removeFinalizers() {
 }
 
 func (t *TestPersistentVolumeClaim) Cleanup() {
-	e2elog.Logf("deleting PVC %q/%q", t.namespace.Name, t.persistentVolumeClaim.Name)
+	framework.Logf("deleting PVC %q/%q", t.namespace.Name, t.persistentVolumeClaim.Name)
 	err := e2epv.DeletePersistentVolumeClaim(t.client, t.persistentVolumeClaim.Name, t.namespace.Name)
 	framework.ExpectNoError(err)
 	// Wait for the PV to get deleted if reclaim policy is Delete. (If it's
@@ -384,12 +387,12 @@ func (t *TestPod) Logs() ([]byte, error) {
 }
 
 func cleanupPodOrFail(client clientset.Interface, name, namespace string) {
-	e2elog.Logf("deleting Pod %q/%q", namespace, name)
+	framework.Logf("deleting Pod %q/%q", namespace, name)
 	body, err := podLogs(client, name, namespace)
 	if err != nil {
-		e2elog.Logf("Error getting logs for pod %s: %v", name, err)
+		framework.Logf("Error getting logs for pod %s: %v", name, err)
 	} else {
-		e2elog.Logf("Pod %s has the following logs: %s", name, body)
+		framework.Logf("Pod %s has the following logs: %s", name, body)
 	}
 	e2epod.DeletePodOrFail(client, namespace, name)
 }
@@ -505,13 +508,42 @@ func (t *TestDeployment) WaitForPodReady() {
 	framework.ExpectNoError(err)
 }
 
-func (t *TestDeployment) Exec(command []string, expectedString string) {
-	_, err := framework.LookForStringInPodExec(t.namespace.Name, t.podName, command, expectedString, execTimeout)
-	framework.ExpectNoError(err)
+func (t *TestDeployment) PollForStringInPodsExec(command []string, expectedString string) {
+	pollForStringInPodsExec(t.namespace.Name, []string{t.podName}, command, expectedString)
+}
+
+// Execute the command for all pods in the namespace, looking for expectedString in stdout
+func pollForStringInPodsExec(namespace string, pods []string, command []string, expectedString string) {
+	ch := make(chan error, len(pods))
+	for _, pod := range pods {
+		go pollForStringWorker(namespace, pod, command, expectedString, ch)
+	}
+	errs := make([]error, 0, len(pods))
+	for range pods {
+		errs = append(errs, <-ch)
+	}
+	framework.ExpectNoError(utilerrors.NewAggregate(errs), "Failed to find %q in at least one pod's output.", expectedString)
+}
+
+func pollForStringWorker(namespace string, pod string, command []string, expectedString string, ch chan<- error) {
+	args := append([]string{"exec", pod, "--"}, command...)
+	err := wait.PollImmediate(poll, pollForStringTimeout, func() (bool, error) {
+		stdout, err := e2ekubectl.RunKubectl(namespace, args...)
+		if err != nil {
+			framework.Logf("Error waiting for output %q in pod %q: %v.", expectedString, pod, err)
+			return false, nil
+		}
+		if !strings.Contains(stdout, expectedString) {
+			framework.Logf("The stdout did not contain output %q in pod %q, found: %q.", expectedString, pod, stdout)
+			return false, nil
+		}
+		return true, nil
+	})
+	ch <- err
 }
 
 func (t *TestDeployment) DeletePodAndWait() {
-	e2elog.Logf("Deleting pod %q in namespace %q", t.podName, t.namespace.Name)
+	framework.Logf("Deleting pod %q in namespace %q", t.podName, t.namespace.Name)
 	err := t.client.CoreV1().Pods(t.namespace.Name).Delete(context.TODO(), t.podName, metav1.DeleteOptions{})
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
@@ -519,22 +551,20 @@ func (t *TestDeployment) DeletePodAndWait() {
 		}
 		return
 	}
-	e2elog.Logf("Waiting for pod %q in namespace %q to be fully deleted", t.podName, t.namespace.Name)
-	err = e2epod.WaitForPodNoLongerRunningInNamespace(t.client, t.podName, t.namespace.Name)
+	framework.Logf("Waiting for pod %q in namespace %q to be fully deleted", t.podName, t.namespace.Name)
+	err = e2epod.WaitForPodNotFoundInNamespace(t.client, t.podName, t.namespace.Name, e2epod.DefaultPodDeletionTimeout)
 	if err != nil {
-		if !apierrs.IsNotFound(err) {
-			framework.ExpectNoError(fmt.Errorf("pod %q error waiting for delete: %v", t.podName, err))
-		}
+		framework.ExpectNoError(fmt.Errorf("pod %q error waiting for delete: %w", t.podName, err))
 	}
 }
 
 func (t *TestDeployment) Cleanup() {
-	e2elog.Logf("deleting Deployment %q/%q", t.namespace.Name, t.deployment.Name)
+	framework.Logf("deleting Deployment %q/%q", t.namespace.Name, t.deployment.Name)
 	body, err := t.Logs()
 	if err != nil {
-		e2elog.Logf("Error getting logs for pod %s: %v", t.podName, err)
+		framework.Logf("Error getting logs for pod %s: %v", t.podName, err)
 	} else {
-		e2elog.Logf("Pod %s has the following logs: %s", t.podName, body)
+		framework.Logf("Pod %s has the following logs: %s", t.podName, body)
 	}
 	err = t.client.AppsV1().Deployments(t.namespace.Name).Delete(context.TODO(), t.deployment.Name, metav1.DeleteOptions{})
 	framework.ExpectNoError(err)

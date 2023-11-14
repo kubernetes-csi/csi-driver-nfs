@@ -27,7 +27,7 @@ import (
 	"testing"
 
 	"github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs"
-	"github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/pborman/uuid"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -74,6 +74,14 @@ var (
 		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
 		"mountPermissions": "0755",
 		"onDelete":         "retain",
+	}
+	archiveStorageClassParameters = map[string]string{
+		"server": nfsServerAddress,
+		"share":  nfsShare,
+		"csi.storage.k8s.io/provisioner-secret-name":      "mount-options",
+		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
+		"mountPermissions": "0755",
+		"onDelete":         "archive",
 	}
 	controllerServer *nfs.ControllerServer
 )

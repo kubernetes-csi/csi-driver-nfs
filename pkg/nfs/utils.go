@@ -36,9 +36,10 @@ const (
 	separator = "#"
 	delete    = "delete"
 	retain    = "retain"
+	archive   = "archive"
 )
 
-var supportedOnDeleteValues = []string{"", delete, retain}
+var supportedOnDeleteValues = []string{"", delete, retain, archive}
 
 func validateOnDeleteValue(onDelete string) error {
 	for _, v := range supportedOnDeleteValues {
@@ -116,7 +117,7 @@ func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, h
 }
 
 type VolumeLocks struct {
-	locks sets.String
+	locks sets.String //nolint:staticcheck
 	mux   sync.Mutex
 }
 

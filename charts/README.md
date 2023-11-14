@@ -7,16 +7,16 @@
  - install csi snapshot controller: `--set externalSnapshotter.enabled=true`
  - run controller on control plane node: `--set controller.runOnControlPlane=true`
  - set replica of controller as `2`: `--set controller.replicas=2`
- - Microk8s based kubernetes recommended settings:
-    - `--set linux.dnsPolicy=ClusterFirstWithHostNet` with `--set controller.dnsPolicy=ClusterFirstWithHostNet` -
+ - Microk8s based kubernetes recommended settings(refer to https://microk8s.io/docs/nfs):
+    - `--set controller.dnsPolicy=ClusterFirstWithHostNet` with `--set node.dnsPolicy=ClusterFirstWithHostNet` -
       external smb server cannot be found based on Default dns.
-    - `--set linux.kubelet="/var/snap/microk8s/common/var/lib/kubelet"` - sets correct path to microk8s kubelet even
+    - `--set kubeletDir="/var/snap/microk8s/common/var/lib/kubelet"` - sets correct path to microk8s kubelet even
       though a user has a folder link to it.
 
 ### install a specific version
 ```console
 helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
-helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version v4.4.0
+helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version v4.5.0
 ```
 
 ### install driver with customized driver name, deployment name
@@ -47,18 +47,19 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `driver.mountPermissions`                         | default mounted folder permissions                             | `0`
 | `feature.enableFSGroupPolicy`                     | enable [`fsGroupPolicy`](https://kubernetes.io/blog/2020/12/14/kubernetes-release-1.20-fsgroupchangepolicy-fsgrouppolicy/#allow-csi-drivers-to-declare-support-for-fsgroup-based-permissions) on a k8s 1.20+ cluster              | `true`                      |
 | `feature.enableInlineVolume`                      | enable inline volume                     | `false`                      |
+| `feature.propagateHostMountOptions`               | use the default host NFS mount configuration file [`/etc/nfsmount.conf`](https://man7.org/linux/man-pages/man5/nfsmount.conf.5.html) and/or the default host `/etc/nfsmount.d` mount configuration directory as source for mount options | `false`                      |
 | `kubeletDir`                                      | alternative kubelet directory                              | `/var/lib/kubelet`                                                  |
 | `image.nfs.repository`                            | csi-driver-nfs image                                       | `registry.k8s.io/sig-storage/nfsplugin`                          |
 | `image.nfs.tag`                                   | csi-driver-nfs image tag                                   | `latest`                                                |
 | `image.nfs.pullPolicy`                            | csi-driver-nfs image pull policy                           | `IfNotPresent`                                                      |
 | `image.csiProvisioner.repository`                 | csi-provisioner docker image                               | `registry.k8s.io/sig-storage/csi-provisioner`                            |
-| `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | `v3.5.0`                                                            |
+| `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | `v3.6.1`                                                            |
 | `image.csiProvisioner.pullPolicy`                 | csi-provisioner image pull policy                          | `IfNotPresent`                                                      |
 | `image.livenessProbe.repository`                  | liveness-probe docker image                                | `registry.k8s.io/sig-storage/livenessprobe`                              |
-| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | `v2.10.0`                                                            |
+| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | `v2.11.0`                                                            |
 | `image.livenessProbe.pullPolicy`                  | liveness-probe image pull policy                           | `IfNotPresent`                                                      |
 | `image.nodeDriverRegistrar.repository`            | csi-node-driver-registrar docker image                     | `registry.k8s.io/sig-storage/csi-node-driver-registrar`                  |
-| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | `v2.8.0`                                                            |
+| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | `v2.9.0`                                                            |
 | `image.nodeDriverRegistrar.pullPolicy`            | csi-node-driver-registrar image pull policy                | `IfNotPresent`                                                      |
 | `imagePullSecrets`                                | Specify docker-registry secret names as an array           | [] (does not add image pull secrets to deployed pods)                                                           |
 | `serviceAccount.create`                           | whether create service account of csi-nfs-controller       | `true`                                                              |
@@ -67,7 +68,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.runOnMaster`                          | run controller on master node(deprecated on k8s 1.25+)                                                          |`false`                                                           |
 | `controller.runOnControlPlane`                    | run controller on control plane node                                                          |`false`                                                           |
 | `controller.dnsPolicy`                            | dnsPolicy of controller driver, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`                              | `ClusterFirstWithHostNet`                                                             |
-| `controller.defaultOnDeletePolicy`                | default policy for deleting subdirectory when deleting a volume, available values: `delete`, `retain`                              | `delete`                                                             |
+| `controller.defaultOnDeletePolicy`                | default policy for deleting subdirectory when deleting a volume, available values: `delete`, `retain`, `archive`                              | `delete`                                                             |
 | `controller.logLevel`                             | controller driver log level                                                          |`5`                                                           |
 | `controller.workingMountDir`                      | working directory for provisioner to mount nfs shares temporarily                  | `/tmp`                                                             |
 | `controller.affinity`                                 | controller pod affinity                               | `{}`                                                             |
