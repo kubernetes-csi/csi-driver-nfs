@@ -32,6 +32,7 @@ import (
 	netutil "k8s.io/utils/net"
 )
 
+//nolint:revive
 const (
 	separator = "#"
 	delete    = "delete"
