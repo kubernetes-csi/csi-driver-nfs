@@ -1,0 +1,12 @@
+linters-settings:
+  depguard:
+    rules:
+      main:
+        files:
+          - $all
+          - "!$test"
+        allow:
+          - $gostd
+          - k8s.io
+          - sigs.k8s.io
+          - github.com

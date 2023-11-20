@@ -53,7 +53,7 @@ const (
 	newTestVolumeOnDeleteArchive = "test-server#test-base-dir#volume-name##archive"
 )
 
-func initTestController(t *testing.T) *ControllerServer {
+func initTestController(_ *testing.T) *ControllerServer {
 	mounter := &mount.FakeMounter{MountPoints: []mount.MountPoint{}}
 	driver := NewDriver(&DriverOptions{
 		WorkingMountDir:  "/tmp",
@@ -64,6 +64,7 @@ func initTestController(t *testing.T) *ControllerServer {
 	return cs
 }
 
+//nolint:forbidigo
 func teardown() {
 	err := os.RemoveAll("/tmp/" + testCSIVolume)
 

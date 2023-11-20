@@ -117,7 +117,7 @@ func (pod *PodDetails) SetupWithDynamicVolumes(client clientset.Interface, names
 	return tpod, cleanupFuncs
 }
 
-func (pod *PodDetails) SetupWithCSIInlineVolumes(client clientset.Interface, namespace *v1.Namespace, csiDriver driver.DynamicPVTestDriver, server, share, mountOptions string, readOnly bool) (*TestPod, []func()) {
+func (pod *PodDetails) SetupWithCSIInlineVolumes(client clientset.Interface, namespace *v1.Namespace, server, share, mountOptions string, readOnly bool) (*TestPod, []func()) {
 	tpod := NewTestPod(client, namespace, pod.Cmd)
 	cleanupFuncs := make([]func(), 0)
 	for n, v := range pod.Volumes {
