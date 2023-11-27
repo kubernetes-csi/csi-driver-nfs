@@ -38,6 +38,7 @@ spec:
           volumeMounts:
             - name: nfs
               mountPath: "/mnt/nfs"
+              readOnly: false
       volumes:
         - name: nfs
           persistentVolumeClaim:
