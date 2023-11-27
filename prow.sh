@@ -86,7 +86,7 @@ configvar CSI_PROW_BUILD_PLATFORMS "linux amd64 amd64; linux ppc64le ppc64le -pp
 # which is disabled with GOFLAGS=-mod=vendor).
 configvar GOFLAGS_VENDOR "$( [ -d vendor ] && echo '-mod=vendor' )" "Go flags for using the vendor directory"
 
-configvar CSI_PROW_GO_VERSION_BUILD "1.20" "Go version for building the component" # depends on component's source code
+configvar CSI_PROW_GO_VERSION_BUILD "1.21" "Go version for building the component" # depends on component's source code
 configvar CSI_PROW_GO_VERSION_E2E "" "override Go version for building the Kubernetes E2E test suite" # normally doesn't need to be set, see install_e2e
 configvar CSI_PROW_GO_VERSION_SANITY "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building the csi-sanity test suite" # depends on CSI_PROW_SANITY settings below
 configvar CSI_PROW_GO_VERSION_KIND "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building 'kind'" # depends on CSI_PROW_KIND_VERSION below
@@ -199,7 +199,7 @@ kindest/node:v1.18.20@sha256:738cdc23ed4be6cc0b7ea277a2ebcc454c8373d7d8fb991a7fc
 # If the deployment script is called with CSI_PROW_TEST_DRIVER=<file name> as
 # environment variable, then it must write a suitable test driver configuration
 # into that file in addition to installing the driver.
-configvar CSI_PROW_DRIVER_VERSION "v1.11.0" "CSI driver version"
+configvar CSI_PROW_DRIVER_VERSION "v1.12.0" "CSI driver version"
 configvar CSI_PROW_DRIVER_REPO https://github.com/kubernetes-csi/csi-driver-host-path "CSI driver repo"
 configvar CSI_PROW_DEPLOYMENT "" "deployment"
 configvar CSI_PROW_DEPLOYMENT_SUFFIX "" "additional suffix in kubernetes-x.yy[suffix].yaml files"
@@ -240,7 +240,7 @@ configvar CSI_PROW_SIDECAR_E2E_IMPORT_PATH "none" "CSI Sidecar E2E package"
 # of the cluster. The alternative would have been to (cross-)compile csi-sanity
 # and install it inside the cluster, which is not necessarily easier.
 configvar CSI_PROW_SANITY_REPO https://github.com/kubernetes-csi/csi-test "csi-test repo"
-configvar CSI_PROW_SANITY_VERSION v5.0.0 "csi-test version"
+configvar CSI_PROW_SANITY_VERSION v5.2.0 "csi-test version"
 configvar CSI_PROW_SANITY_PACKAGE_PATH github.com/kubernetes-csi/csi-test "csi-test package"
 configvar CSI_PROW_SANITY_SERVICE "hostpath-service" "Kubernetes TCP service name that exposes csi.sock"
 configvar CSI_PROW_SANITY_POD "csi-hostpathplugin-0" "Kubernetes pod with CSI driver"
