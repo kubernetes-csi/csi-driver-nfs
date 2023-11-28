@@ -15,7 +15,6 @@ spec:
     - nfsvers=4.1
   csi:
     driver: nfs.csi.k8s.io
-    readOnly: false
     # volumeHandle format: {nfs-server-address}#{sub-dir-name}#{share-name}
     # make sure this value is unique for every share in the cluster
     volumeHandle: nfs-server.default.svc.cluster.local/share##
@@ -50,6 +49,7 @@ spec:
       volumeMounts:
         - mountPath: /var/www
           name: pvc-nginx
+          readOnly: false
   volumes:
     - name: pvc-nginx
       persistentVolumeClaim:
