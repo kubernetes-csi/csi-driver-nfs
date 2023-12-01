@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-nfs-snapshot-restored
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: nfs-csi
+  dataSource:
+    name: test-nfs-snapshot
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
