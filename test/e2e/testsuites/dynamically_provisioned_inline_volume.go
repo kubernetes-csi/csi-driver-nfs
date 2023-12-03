@@ -17,6 +17,8 @@ limitations under the License.
 package testsuites
 
 import (
+	"context"
+
 	"github.com/kubernetes-csi/csi-driver-nfs/test/e2e/driver"
 	"github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
@@ -35,7 +37,7 @@ type DynamicallyProvisionedInlineVolumeTest struct {
 	ReadOnly     bool
 }
 
-func (t *DynamicallyProvisionedInlineVolumeTest) Run(client clientset.Interface, namespace *v1.Namespace) {
+func (t *DynamicallyProvisionedInlineVolumeTest) Run(ctx context.Context, client clientset.Interface, namespace *v1.Namespace) {
 	for _, pod := range t.Pods {
 		var tpod *TestPod
 		var cleanup []func()
@@ -46,9 +48,9 @@ func (t *DynamicallyProvisionedInlineVolumeTest) Run(client clientset.Interface,
 		}
 
 		ginkgo.By("deploying the pod")
-		tpod.Create()
-		defer tpod.Cleanup()
+		tpod.Create(ctx)
+		defer tpod.Cleanup(ctx)
 		ginkgo.By("checking that the pods command exits with no error")
-		tpod.WaitForSuccess()
+		tpod.WaitForSuccess(ctx)
 	}
 }

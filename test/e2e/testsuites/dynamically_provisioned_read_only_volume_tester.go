@@ -17,6 +17,7 @@ limitations under the License.
 package testsuites
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/kubernetes-csi/csi-driver-nfs/test/e2e/driver"
@@ -36,23 +37,23 @@ type DynamicallyProvisionedReadOnlyVolumeTest struct {
 	StorageClassParameters map[string]string
 }
 
-func (t *DynamicallyProvisionedReadOnlyVolumeTest) Run(client clientset.Interface, namespace *v1.Namespace) {
+func (t *DynamicallyProvisionedReadOnlyVolumeTest) Run(ctx context.Context, client clientset.Interface, namespace *v1.Namespace) {
 	for _, pod := range t.Pods {
 		expectedReadOnlyLog := "Read-only file system"
 
-		tpod, cleanup := pod.SetupWithDynamicVolumes(client, namespace, t.CSIDriver, t.StorageClassParameters)
+		tpod, cleanup := pod.SetupWithDynamicVolumes(ctx, client, namespace, t.CSIDriver, t.StorageClassParameters)
 		// defer must be called here for resources not get removed before using them
 		for i := range cleanup {
-			defer cleanup[i]()
+			defer cleanup[i](ctx)
 		}
 
 		ginkgo.By("deploying the pod")
-		tpod.Create()
-		defer tpod.Cleanup()
+		tpod.Create(ctx)
+		defer tpod.Cleanup(ctx)
 		ginkgo.By("checking that the pods command exits with an error")
-		tpod.WaitForFailure()
+		tpod.WaitForFailure(ctx)
 		ginkgo.By("checking that pod logs contain expected message")
-		body, err := tpod.Logs()
+		body, err := tpod.Logs(ctx)
 		framework.ExpectNoError(err, fmt.Sprintf("Error getting logs for pod %s: %v", tpod.pod.Name, err))
 		gomega.Expect(string(body)).To(gomega.ContainSubstring(expectedReadOnlyLog))
 	}
