@@ -23,6 +23,8 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/klog/v2"
 	mount "k8s.io/mount-utils"
+
+	azcache "sigs.k8s.io/cloud-provider-azure/pkg/cache"
 )
 
 // DriverOptions defines driver parameters specified in driver deployment
@@ -49,6 +51,9 @@ type Driver struct {
 	cscap       []*csi.ControllerServiceCapability
 	nscap       []*csi.NodeServiceCapability
 	volumeLocks *VolumeLocks
+
+	// a timed cache storing volume stats <volumeID, volumeStats>
+	volStatsCache azcache.Resource
 }
 
 const (
