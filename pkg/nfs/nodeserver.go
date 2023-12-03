@@ -30,6 +30,8 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/volume"
 	mount "k8s.io/mount-utils"
+
+	azcache "sigs.k8s.io/cloud-provider-azure/pkg/cache"
 )
 
 // NodeServer driver
@@ -195,6 +197,17 @@ func (ns *NodeServer) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolu
 		return nil, status.Error(codes.InvalidArgument, "NodeGetVolumeStats volume path was empty")
 	}
 
+	// check if the volume stats is cached
+	cache, err := ns.Driver.volStatsCache.Get(req.VolumeId, azcache.CacheReadTypeDefault)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	if cache != nil {
+		resp := cache.(csi.NodeGetVolumeStatsResponse)
+		klog.V(6).Infof("NodeGetVolumeStats: volume stats for volume %s path %s is cached", req.VolumeId, req.VolumePath)
+		return &resp, nil
+	}
+
 	if _, err := os.Lstat(req.VolumePath); err != nil {
 		if os.IsNotExist(err) {
 			return nil, status.Errorf(codes.NotFound, "path %s does not exist", req.VolumePath)
@@ -233,7 +246,7 @@ func (ns *NodeServer) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolu
 		return nil, status.Errorf(codes.Internal, "failed to transform disk inodes used(%v)", volumeMetrics.InodesUsed)
 	}
 
-	return &csi.NodeGetVolumeStatsResponse{
+	resp := csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{
 			{
 				Unit:      csi.VolumeUsage_BYTES,
@@ -248,7 +261,11 @@ func (ns *NodeServer) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolu
 				Used:      inodesUsed,
 			},
 		},
-	}, nil
+	}
+
+	// cache the volume stats per volume
+	ns.Driver.volStatsCache.Set(req.VolumeId, &resp)
+	return &resp, err
 }
 
 // NodeUnstageVolume unstage volume

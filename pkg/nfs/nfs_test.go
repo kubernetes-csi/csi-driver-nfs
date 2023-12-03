@@ -20,9 +20,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/stretchr/testify/assert"
+	azcache "sigs.k8s.io/cloud-provider-azure/pkg/cache"
 )
 
 const (
@@ -52,6 +54,8 @@ func NewEmptyDriver(emptyField string) *Driver {
 		}
 	}
 	d.volumeLocks = NewVolumeLocks()
+	getter := func(key string) (interface{}, error) { return nil, nil }
+	d.volStatsCache, _ = azcache.NewTimedCache(time.Minute, getter, false)
 	return d
 }
 
