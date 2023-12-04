@@ -32,11 +32,11 @@ setup_e2e_binaries() {
 
     # test on alternative driver name
     sed -i "s/nfs.csi.k8s.io/$DRIVER.csi.k8s.io/g" deploy/example/storageclass-nfs.yaml
-    sed -i "s/nfs.csi.k8s.io/$DRIVER.csi.k8s.io/g" deploy/example/snapshotclass-nfs.yaml
+    sed -i "s/nfs.csi.k8s.io/$DRIVER.csi.k8s.io/g" deploy/example/snapshot/snapshotclass-nfs.yaml
     # install csi driver
     mkdir -p /tmp/csi
     cp deploy/example/storageclass-nfs.yaml /tmp/csi/storageclass.yaml
-    cp deploy/example/snapshotclass-nfs.yaml /tmp/csi/snapshotclass.yaml
+    cp deploy/example/snapshot/snapshotclass-nfs.yaml /tmp/csi/snapshotclass.yaml
     make e2e-bootstrap
     make install-nfs-server
 }
