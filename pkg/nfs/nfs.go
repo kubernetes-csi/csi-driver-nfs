@@ -19,20 +19,24 @@ package nfs
 import (
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/klog/v2"
 	mount "k8s.io/mount-utils"
+
+	azcache "sigs.k8s.io/cloud-provider-azure/pkg/cache"
 )
 
 // DriverOptions defines driver parameters specified in driver deployment
 type DriverOptions struct {
-	NodeID                string
-	DriverName            string
-	Endpoint              string
-	MountPermissions      uint64
-	WorkingMountDir       string
-	DefaultOnDeletePolicy string
+	NodeID                       string
+	DriverName                   string
+	Endpoint                     string
+	MountPermissions             uint64
+	WorkingMountDir              string
+	DefaultOnDeletePolicy        string
+	VolStatsCacheExpireInMinutes int
 }
 
 type Driver struct {
@@ -49,6 +53,10 @@ type Driver struct {
 	cscap       []*csi.ControllerServiceCapability
 	nscap       []*csi.NodeServiceCapability
 	volumeLocks *VolumeLocks
+
+	// a timed cache storing volume stats <volumeID, volumeStats>
+	volStatsCache                azcache.Resource
+	volStatsCacheExpireInMinutes int
 }
 
 const (
@@ -76,12 +84,13 @@ func NewDriver(options *DriverOptions) *Driver {
 	klog.V(2).Infof("Driver: %v version: %v", options.DriverName, driverVersion)
 
 	n := &Driver{
-		name:             options.DriverName,
-		version:          driverVersion,
-		nodeID:           options.NodeID,
-		endpoint:         options.Endpoint,
-		mountPermissions: options.MountPermissions,
-		workingMountDir:  options.WorkingMountDir,
+		name:                         options.DriverName,
+		version:                      driverVersion,
+		nodeID:                       options.NodeID,
+		endpoint:                     options.Endpoint,
+		mountPermissions:             options.MountPermissions,
+		workingMountDir:              options.WorkingMountDir,
+		volStatsCacheExpireInMinutes: options.VolStatsCacheExpireInMinutes,
 	}
 
 	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
@@ -97,6 +106,16 @@ func NewDriver(options *DriverOptions) *Driver {
 		csi.NodeServiceCapability_RPC_UNKNOWN,
 	})
 	n.volumeLocks = NewVolumeLocks()
+
+	if options.VolStatsCacheExpireInMinutes <= 0 {
+		options.VolStatsCacheExpireInMinutes = 10 // default expire in 10 minutes
+	}
+
+	var err error
+	getter := func(key string) (interface{}, error) { return nil, nil }
+	if n.volStatsCache, err = azcache.NewTimedCache(time.Duration(options.VolStatsCacheExpireInMinutes)*time.Minute, getter, false); err != nil {
+		klog.Fatalf("%v", err)
+	}
 	return n
 }
 
