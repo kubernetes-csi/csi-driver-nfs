@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 
 # Copyright 2023 The Kubernetes Authors.
 #
@@ -27,18 +27,21 @@
 # 1. Login with "gh auth login"
 # 2. Copy this script to the kubernetes-csi directory (one directory above the
 # repos)
-# 3. Update the repos and branches
+# 3. Update the repos and master branch so locally it has the latest upstream
+# change
 # 4. Set environment variables
 # 5. Run script from the kubernetes-csi directory
 #
 # Caveats:
 # - This script doesn't handle interface incompatibility of updates.
+#   You need to resolve interface incompatibility case by case. The
+#   most frequent case is to update the interface(new parameters,  
+#   name change of the method, etc.)in the sidecar repo and make sure
+#   the build and test pass.
 
 
-die () {
-    echo >&2 "$@"
-    exit 1
-}
+set -e
+set -x
 
 MAX_RETRY=10
 
@@ -56,18 +59,18 @@ while getopts ":u:v:" option; do
 done
 
 # Only need to do this once
-gh auth login || die "gh auth login failed"
+gh auth login
 
 while read -r repo branches; do
     if [ "$repo" != "#" ]; then
     (
-        cd "$repo" || die "$repo: does not exit"
-        git fetch origin || die "$repo: git fetch"
+        cd "$repo"
+        git fetch origin
         for i in $branches; do
             if [ "$(git rev-parse --verify "module-update-$i" 2>/dev/null)" ]; then
                 git checkout master && git branch -d "module-update-$i"
             fi
-            git checkout -B "module-update-$i" "origin/$i" || die "$repo:$i checkout"
+            git checkout -B "module-update-$i" "origin/$i"
             rm -rf .git/MERGE*
             if ! git subtree pull --squash --prefix=release-tools https://github.com/kubernetes-csi/csi-release-tools.git master; then
                 # Sometimes "--squash" leads to merge conflicts. Because we know that "release-tools"
@@ -76,11 +79,11 @@ while read -r repo branches; do
                 if [ -e .git/MERGE_MSG ] && [ -e .git/FETCH_HEAD ] && grep -q "^# Conflict" .git/MERGE_MSG; then
                     rm -rf release-tools
                     mkdir release-tools
-                    git archive FETCH_HEAD  | tar -C release-tools -xf - || die "failed to re-create release-tools from FETCH_HEAD"
-                    git add release-tools || die "add release-tools"
-                    git commit --file=.git/MERGE_MSG || die "commit squashed release-tools"
+                    git archive FETCH_HEAD  | tar -C release-tools -xf -
+                    git add release-tools
+                    git commit --file=.git/MERGE_MSG
                 else
-                    die "git subtree pull --squash failed, cannot reover."
+                    exit 1
                 fi
             fi
             RETRY=0
@@ -89,12 +92,12 @@ while read -r repo branches; do
                   RETRY=$((RETRY+1))
                   go mod tidy && go mod vendor && go mod tidy
             done   
-            go mod tidy && go mod vendor && go mod tidy || die "last go mod vendor && go mod tidy failed"
-            git add --all || die "git add -all failed"
-            git commit -m "Update dependency go modules for k8s v$v" || die "commit update modules"
-            git remote set-url origin "https://github.com/$username/$repo.git" || die "git remote set-url failed"
-            make test || die "$repo:$i make test"
-            git push origin "module-update-$i" --force || die "origin:module-update-$i push failed - probably there is already an unmerged branch and pending PR"
+            go mod tidy && go mod vendor && go mod tidy
+            git add --all
+            git commit -m "Update dependency go modules for k8s v$v"
+            git remote set-url origin "https://github.com/$username/$repo.git"
+            make test
+            git push origin "module-update-$i" --force
             # Create PR
 prbody=$(cat <<EOF
 Ran kubernetes-csi/csi-release-tools go-get-kubernetes.sh -p ${v}.
@@ -107,7 +110,7 @@ EOF
 )
             gh pr create --title="Update dependency go modules for k8s v$v" --body "$prbody"  --head "$username:module-update-master" --base "master" --repo="kubernetes-csi/$repo"
         done  
-    ) || die "failed"
+    )
     fi
 done <<EOF
 csi-driver-host-path master
