@@ -46,6 +46,9 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
 ## Release Process
 1. Identify all issues and ongoing PRs that should go into the release, and
   drive them to resolution.
+1. Update dependencies for sidecars via
+   [go-modules-update.sh](https://github.com/kubernetes-csi/csi-driver-host-path/blob/HEAD/release-tools/go-modules-update.sh),
+  and get PRs approved and merged.
 1. Check that all [canary CI
   jobs](https://testgrid.k8s.io/sig-storage-csi-ci) are passing,
   and that test coverage is adequate for the changes that are going into the release.
