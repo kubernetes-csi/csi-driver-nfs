@@ -18,6 +18,7 @@ aliases:
   # when they are temporarily unable to review PRs.
   kubernetes-csi-reviewers:
   - andyzhangx
+  - carlory
   - chrishenzie
   - ggriffiths
   - gnufied
