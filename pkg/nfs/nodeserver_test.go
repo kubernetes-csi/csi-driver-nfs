@@ -19,6 +19,7 @@ package nfs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -68,6 +69,7 @@ func TestNodePublishVolume(t *testing.T) {
 	volumeCap := csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER}
 	alreadyMountedTarget := testutil.GetWorkDirPath("false_is_likely_exist_target", t)
 	targetTest := testutil.GetWorkDirPath("target_test", t)
+	lockKey := fmt.Sprintf("%s-%s", "vol_1", targetTest)
 
 	tests := []struct {
 		desc          string
@@ -92,6 +94,20 @@ func TestNodePublishVolume(t *testing.T) {
 			req: csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId: "vol_1"},
 			expectedErr: status.Error(codes.InvalidArgument, "Target path not provided"),
+		},
+		{
+			desc: "[Error] Volume operation in progress",
+			setup: func() {
+				ns.Driver.volumeLocks.TryAcquire(lockKey)
+			},
+			req: csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:      "vol_1",
+				VolumeContext: params,
+				TargetPath:    targetTest},
+			expectedErr: status.Error(codes.Aborted, fmt.Sprintf(volumeOperationAlreadyExistsFmt, "vol_1")),
+			cleanup: func() {
+				ns.Driver.volumeLocks.Release(lockKey)
+			},
 		},
 		{
 			desc: "[Success] Stage target path missing",
@@ -198,6 +214,7 @@ func TestNodeUnpublishVolume(t *testing.T) {
 	errorTarget := testutil.GetWorkDirPath("error_is_likely_target", t)
 	targetTest := testutil.GetWorkDirPath("target_test", t)
 	targetFile := testutil.GetWorkDirPath("abc.go", t)
+	lockKey := fmt.Sprintf("%s-%s", "vol_1", targetTest)
 
 	tests := []struct {
 		desc        string
@@ -219,6 +236,17 @@ func TestNodeUnpublishVolume(t *testing.T) {
 		{
 			desc: "[Success] Volume not mounted",
 			req:  csi.NodeUnpublishVolumeRequest{TargetPath: targetFile, VolumeId: "vol_1"},
+		},
+		{
+			desc: "[Error] Volume operation in progress",
+			setup: func() {
+				ns.Driver.volumeLocks.TryAcquire(lockKey)
+			},
+			req:         csi.NodeUnpublishVolumeRequest{TargetPath: targetTest, VolumeId: "vol_1"},
+			expectedErr: status.Error(codes.Aborted, fmt.Sprintf(volumeOperationAlreadyExistsFmt, "vol_1")),
+			cleanup: func() {
+				ns.Driver.volumeLocks.Release(lockKey)
+			},
 		},
 	}
 

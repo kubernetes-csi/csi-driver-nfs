@@ -34,10 +34,11 @@ import (
 
 //nolint:revive
 const (
-	separator = "#"
-	delete    = "delete"
-	retain    = "retain"
-	archive   = "archive"
+	separator                       = "#"
+	delete                          = "delete"
+	retain                          = "retain"
+	archive                         = "archive"
+	volumeOperationAlreadyExistsFmt = "An operation with the given Volume ID %s already exists"
 )
 
 var supportedOnDeleteValues = []string{"", delete, retain, archive}
