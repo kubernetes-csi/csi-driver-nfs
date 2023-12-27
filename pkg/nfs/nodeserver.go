@@ -277,7 +277,7 @@ func (ns *NodeServer) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolu
 	}
 
 	// cache the volume stats per volume
-	ns.Driver.volStatsCache.Set(req.VolumeId, &resp)
+	ns.Driver.volStatsCache.Set(req.VolumeId, resp)
 	return &resp, err
 }
 
