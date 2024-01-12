@@ -3,14 +3,14 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csi-{{ .Values.rbac.name }}-controller-sa
+  name: {{ .Values.serviceAccount.controller }}
   namespace: {{ .Release.Namespace }}
 {{ include "nfs.labels" . | indent 2 }}
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csi-{{ .Values.rbac.name }}-node-sa
+  name: {{ .Values.serviceAccount.node }}
   namespace: {{ .Release.Namespace }}
 {{ include "nfs.labels" . | indent 2 }}
 ---
@@ -66,7 +66,7 @@ metadata:
 {{ include "nfs.labels" . | indent 2 }}
 subjects:
   - kind: ServiceAccount
-    name: csi-{{ .Values.rbac.name }}-controller-sa
+    name: {{ .Values.serviceAccount.controller }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
