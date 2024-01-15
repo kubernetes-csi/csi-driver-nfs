@@ -243,9 +243,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		internalVolumePath := getInternalVolumePath(cs.Driver.workingMountDir, nfsVol)
 
 		if strings.EqualFold(nfsVol.onDelete, archive) {
-			archivedNfsVol := *nfsVol
-			archivedNfsVol.subDir = "archived-" + nfsVol.subDir
-			archivedInternalVolumePath := getArchivedInternalVolumePath(cs.Driver.workingMountDir, nfsVol, &archivedNfsVol)
+			archivedInternalVolumePath := filepath.Join(getInternalMountPath(cs.Driver.workingMountDir, nfsVol), "archived-"+nfsVol.subDir)
 
 			// archive subdirectory under base-dir
 			klog.V(2).Infof("archiving subdirectory %s --> %s", internalVolumePath, archivedInternalVolumePath)
@@ -684,10 +682,6 @@ func getInternalMountPath(workingMountDir string, vol *nfsVolume) string {
 //     share, it's simpler to just do a mount per request.
 func getInternalVolumePath(workingMountDir string, vol *nfsVolume) string {
 	return filepath.Join(getInternalMountPath(workingMountDir, vol), vol.subDir)
-}
-
-func getArchivedInternalVolumePath(workingMountDir string, vol *nfsVolume, archVol *nfsVolume) string {
-	return filepath.Join(getInternalMountPath(workingMountDir, vol), archVol.subDir)
 }
 
 // Given a nfsVolume, return a CSI volume id
