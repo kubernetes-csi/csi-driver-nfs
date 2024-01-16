@@ -12,9 +12,9 @@ This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System
 |driver version  | supported k8s version | status |
 |----------------|-----------------------|--------|
 |master branch   | 1.21+                 | GA     |
+|v4.6.0          | 1.21+                 | GA     |
 |v4.5.0          | 1.21+                 | GA     |
 |v4.4.0          | 1.21+                 | GA     |
-|v4.3.0          | 1.21+                 | GA     |
 
 ### Install driver on a Kubernetes cluster
  > [install NFS CSI driver on microk8s](https://microk8s.io/docs/nfs)
