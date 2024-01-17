@@ -2,8 +2,17 @@ apiVersion: v1
 entries:
   csi-driver-nfs:
   - apiVersion: v1
+    appVersion: v4.6.0
+    created: "2024-01-16T12:59:23.637404723Z"
+    description: CSI NFS Driver for Kubernetes
+    digest: 9d41237860a2f1f28f3723ac363abf83514e99e70d4cd23cee07023488f9b3e1
+    name: csi-driver-nfs
+    urls:
+    - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts/v4.6.0/csi-driver-nfs-v4.6.0.tgz
+    version: v4.6.0
+  - apiVersion: v1
     appVersion: v4.5.0
-    created: "2023-11-09T08:12:07.097560158Z"
+    created: "2024-01-16T12:59:23.636199508Z"
     description: CSI NFS Driver for Kubernetes
     digest: 662f6db409ac14747c72a9fb2955dedc9ade46497704cab3dd0c472f7d56d58f
     name: csi-driver-nfs
@@ -12,7 +21,7 @@ entries:
     version: v4.5.0
   - apiVersion: v1
     appVersion: v4.4.0
-    created: "2023-11-09T08:12:07.096855523Z"
+    created: "2024-01-16T12:59:23.62702442Z"
     description: CSI NFS Driver for Kubernetes
     digest: 7fba8cbfc47036a0fddadad00ee291c625e359fe1483ef37b57fd09d157c80dd
     name: csi-driver-nfs
@@ -21,7 +30,7 @@ entries:
     version: v4.4.0
   - apiVersion: v1
     appVersion: v4.3.0
-    created: "2023-11-09T08:12:07.096136236Z"
+    created: "2024-01-16T12:59:23.626309866Z"
     description: CSI NFS Driver for Kubernetes
     digest: 1aef5dec52a6c433dbed2e361bed0ab1fdd6792f845eccb99b7dc7f193c2a71e
     name: csi-driver-nfs
@@ -30,7 +39,7 @@ entries:
     version: v4.3.0
   - apiVersion: v1
     appVersion: v4.2.0
-    created: "2023-11-09T08:12:07.0954294Z"
+    created: "2024-01-16T12:59:23.625592285Z"
     description: CSI NFS Driver for Kubernetes
     digest: e702f6c9be35f2649f5736ca5fcdc40ab1c6a235f41e7fb2472d208e8a5ebf47
     name: csi-driver-nfs
@@ -39,7 +48,7 @@ entries:
     version: v4.2.0
   - apiVersion: v1
     appVersion: v4.1.0
-    created: "2023-11-09T08:12:07.094985076Z"
+    created: "2024-01-16T12:59:23.625156557Z"
     description: CSI NFS Driver for Kubernetes
     digest: b2baa2f129976cf2981c8873290aac509aa3c5937ffc319fbf69fbe3271c23eb
     name: csi-driver-nfs
@@ -48,7 +57,7 @@ entries:
     version: v4.1.0
   - apiVersion: v1
     appVersion: v4.0.0
-    created: "2023-11-09T08:12:07.094556129Z"
+    created: "2024-01-16T12:59:23.624692396Z"
     description: CSI NFS Driver for Kubernetes
     digest: 3145fd12225a639908b14675c8ae1f272bc0e57ffa2895b6f17411486a24229d
     name: csi-driver-nfs
@@ -57,7 +66,7 @@ entries:
     version: v4.0.0
   - apiVersion: v1
     appVersion: v3.1.0
-    created: "2023-11-09T08:12:07.094116135Z"
+    created: "2024-01-16T12:59:23.624230727Z"
     description: CSI NFS Driver for Kubernetes
     digest: 7e51bb9188b013195cafc265102fa365de9ec5513780e1dfc5363289f811a4d9
     name: csi-driver-nfs
@@ -66,7 +75,7 @@ entries:
     version: v3.1.0
   - apiVersion: v1
     appVersion: v3.0.0
-    created: "2023-11-09T08:12:07.093671427Z"
+    created: "2024-01-16T12:59:23.623759424Z"
     description: CSI NFS Driver for Kubernetes
     digest: 44406231cd5cdada1c62a0541b93b4f5d5a70ccc8c50b33553a8692fe6cfae96
     name: csi-driver-nfs
@@ -75,7 +84,7 @@ entries:
     version: v3.0.0
   - apiVersion: v1
     appVersion: v2.0.0
-    created: "2023-11-09T08:12:07.093194646Z"
+    created: "2024-01-16T12:59:23.623239703Z"
     description: CSI NFS Driver for Kubernetes
     digest: 1a32c6fc016526fe19a0c9e0dfbe83d0ddde67ced533bb5f5d24d713f706c613
     name: csi-driver-nfs
@@ -84,11 +93,11 @@ entries:
     version: v2.0.0
   - apiVersion: v1
     appVersion: latest
-    created: "2023-11-09T08:12:07.09290472Z"
+    created: "2024-01-16T12:59:23.622949601Z"
     description: CSI NFS Driver for Kubernetes
-    digest: cfb0d61fdf006902eaf71916479828f267d8cbe8fe0ff3c6711dda6aa2c018be
+    digest: d1f85d1ec63bfeeb709b01438febd529f7d2b66a54c7c8cee8464f49498a575b
     name: csi-driver-nfs
     urls:
     - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts/latest/csi-driver-nfs-v0.0.0.tgz
     version: v0.0.0
-generated: "2023-11-09T08:12:07.091244313Z"
+generated: "2024-01-16T12:59:23.621346658Z"
