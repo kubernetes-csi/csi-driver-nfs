@@ -1207,7 +1207,7 @@ k8s.io/kubectl/pkg/util/podutils
 # k8s.io/kubelet v0.28.4 => k8s.io/kubelet v0.28.4
 ## explicit; go 1.20
 k8s.io/kubelet/pkg/apis
-# k8s.io/kubernetes v1.28.5
+# k8s.io/kubernetes v1.28.6
 ## explicit; go 1.20
 k8s.io/kubernetes/pkg/api/legacyscheme
 k8s.io/kubernetes/pkg/api/service
