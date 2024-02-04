@@ -351,7 +351,7 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 		test.Run(ctx, cs, ns)
 	})
 
-	ginkgo.It("should create a volume on demand with archive subdir on delete [nfs.csi.k8s.io]", func(ctx ginkgo.SpecContext) {
+	ginkgo.It("should create a volume on demand with archive on delete [nfs.csi.k8s.io]", func(ctx ginkgo.SpecContext) {
 		pods := []testsuites.PodDetails{
 			{
 				Cmd: "echo 'hello world' > /mnt/test-1/data && grep 'hello world' /mnt/test-1/data",
@@ -370,6 +370,29 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 			CSIDriver:              testDriver,
 			Pods:                   pods,
 			StorageClassParameters: archiveStorageClassParameters,
+		}
+		test.Run(ctx, cs, ns)
+	})
+
+	ginkgo.It("should create a volume on demand with archive subdir on delete [nfs.csi.k8s.io]", func(ctx ginkgo.SpecContext) {
+		pods := []testsuites.PodDetails{
+			{
+				Cmd: "echo 'hello world' > /mnt/test-1/data && grep 'hello world' /mnt/test-1/data",
+				Volumes: []testsuites.VolumeDetails{
+					{
+						ClaimSize: "10Gi",
+						VolumeMount: testsuites.VolumeMountDetails{
+							NameGenerate:      "test-volume-",
+							MountPathGenerate: "/mnt/test-",
+						},
+					},
+				},
+			},
+		}
+		test := testsuites.DynamicallyProvisionedCmdVolumeTest{
+			CSIDriver:              testDriver,
+			Pods:                   pods,
+			StorageClassParameters: archiveSubDirStorageClassParameters,
 		}
 		test.Run(ctx, cs, ns)
 	})

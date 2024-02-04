@@ -244,6 +244,13 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 		if strings.EqualFold(nfsVol.onDelete, archive) {
 			archivedInternalVolumePath := filepath.Join(getInternalMountPath(cs.Driver.workingMountDir, nfsVol), "archived-"+nfsVol.subDir)
+			if strings.Contains(nfsVol.subDir, "/") {
+				parentDir := filepath.Dir(archivedInternalVolumePath)
+				klog.V(2).Infof("DeleteVolume: subdirectory(%s) contains '/', make sure the parent directory(%s) exists", nfsVol.subDir, parentDir)
+				if err = os.MkdirAll(parentDir, 0777); err != nil {
+					return nil, status.Errorf(codes.Internal, "create parent directory(%s) of %s failed with %v", parentDir, archivedInternalVolumePath, err.Error())
+				}
+			}
 
 			// archive subdirectory under base-dir
 			klog.V(2).Infof("archiving subdirectory %s --> %s", internalVolumePath, archivedInternalVolumePath)
