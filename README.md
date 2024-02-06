@@ -1,6 +1,7 @@
 # NFS CSI driver for Kubernetes
 ![build status](https://github.com/kubernetes-csi/csi-driver-nfs/actions/workflows/linux.yaml/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/kubernetes-csi/csi-driver-nfs/badge.svg?branch=master)](https://coveralls.io/github/kubernetes-csi/csi-driver-nfs?branch=master)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/csi-driver-nfs)](https://artifacthub.io/packages/search?repo=csi-driver-nfs)
 
 ### Overview
 
