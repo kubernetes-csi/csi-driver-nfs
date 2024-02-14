@@ -67,10 +67,6 @@ unit-test:
 sanity-test: nfs
 	./test/sanity/run-test.sh
 
-.PHONY: integration-test
-integration-test: nfs
-	./test/integration/run-test.sh
-
 .PHONY: local-build-push
 local-build-push: nfs
 	docker build -t $(LOCAL_USER)/nfsplugin:latest .
