@@ -564,7 +564,15 @@ go_version_for_kubernetes () (
     local version="$2"
     local go_version
 
-    # We use the minimal Go version specified for each K8S release (= minimum_go_version in hack/lib/golang.sh).
+    # Try to get the version for .go-version
+    go_version="$( cat "$path/.go-version" )"
+    if [ "$go_version" ]; then
+        echo "$go_version"
+        return
+    fi
+
+    # Fall back to hack/lib/golang.sh parsing.
+    # This is necessary in v1.26.0 and older Kubernetes releases that do not have .go-version.
     # More recent versions might also work, but we don't want to count on that.
     go_version="$(grep minimum_go_version= "$path/hack/lib/golang.sh" | sed -e 's/.*=go//')"
     if ! [ "$go_version" ]; then
