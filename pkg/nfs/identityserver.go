@@ -18,10 +18,10 @@ package nfs
 
 import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type IdentityServer struct {
@@ -48,7 +48,7 @@ func (ids *IdentityServer) GetPluginInfo(_ context.Context, _ *csi.GetPluginInfo
 // Currently the spec does not dictate what you should return either.
 // Hence, return an empty response
 func (ids *IdentityServer) Probe(_ context.Context, _ *csi.ProbeRequest) (*csi.ProbeResponse, error) {
-	return &csi.ProbeResponse{Ready: &wrappers.BoolValue{Value: true}}, nil
+	return &csi.ProbeResponse{Ready: &wrapperspb.BoolValue{Value: true}}, nil
 }
 
 func (ids *IdentityServer) GetPluginCapabilities(_ context.Context, _ *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
