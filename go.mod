@@ -12,9 +12,9 @@ require (
 	golang.org/x/net v0.22.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
-	k8s.io/api v0.28.7
+	k8s.io/api v0.28.8
 	k8s.io/apimachinery v0.28.8
-	k8s.io/client-go v0.28.7
+	k8s.io/client-go v0.28.8
 	k8s.io/klog/v2 v2.120.1
 	k8s.io/kubernetes v1.28.7
 	k8s.io/mount-utils v0.29.2
