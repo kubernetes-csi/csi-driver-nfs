@@ -44,7 +44,7 @@ spec:
 {{- end }}
       containers:
         - name: liveness-probe
-          image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
+          image: "{{ .Values.image.repourl}}{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
@@ -58,7 +58,7 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
         - name: node-driver-registrar
-          image: "{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
+          image: "{{ .Values.image.repourl}}{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
           livenessProbe:
             exec:
               command:
@@ -92,7 +92,7 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
             readOnlyRootFilesystem: true
-          image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
+          image: "{{ .Values.image.repourl}}{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
           args :
             - "--v={{ .Values.node.logLevel }}"
             - "--nodeid=$(NODE_ID)"

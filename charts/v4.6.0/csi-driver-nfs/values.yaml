@@ -1,27 +1,28 @@
 customLabels: {}
 image:
+    repourl: registry.k8s.io
     nfs:
-        repository: registry.k8s.io/sig-storage/nfsplugin
+        repository: "/sig-storage/nfsplugin"
         tag: v4.6.0
         pullPolicy: IfNotPresent
     csiProvisioner:
-        repository: registry.k8s.io/sig-storage/csi-provisioner
+        repository: "/sig-storage/csi-provisioner"
         tag: v4.0.0
         pullPolicy: IfNotPresent
     csiSnapshotter:
-        repository: registry.k8s.io/sig-storage/csi-snapshotter
+        repository: "/sig-storage/csi-snapshotter"
         tag: v6.3.3
         pullPolicy: IfNotPresent
     livenessProbe:
-        repository: registry.k8s.io/sig-storage/livenessprobe
+        repository: "/sig-storage/livenessprobe"
         tag: v2.12.0
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
-        repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
+        repository: "/sig-storage/csi-node-driver-registrar"
         tag: v2.10.0
         pullPolicy: IfNotPresent
     externalSnapshotter:
-        repository: registry.k8s.io/sig-storage/snapshot-controller
+        repository: "/sig-storage/snapshot-controller"
         tag: v6.3.3
         pullPolicy: IfNotPresent
 

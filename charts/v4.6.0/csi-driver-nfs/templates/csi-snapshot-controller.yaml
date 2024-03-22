@@ -56,7 +56,7 @@ spec:
 {{- end }}
       containers:
         - name: {{ .Values.externalSnapshotter.name }}
-          image: {{ .Values.image.externalSnapshotter.repository }}:{{ .Values.image.externalSnapshotter.tag }}
+          image: {{ .Values.image.repourl }}{{ .Values.image.externalSnapshotter.repository }}:{{ .Values.image.externalSnapshotter.tag }}
           args:
             - "--v=2"
             - "--leader-election=true"

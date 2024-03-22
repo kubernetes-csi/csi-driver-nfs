@@ -49,7 +49,7 @@ spec:
 {{- end }}
       containers:
         - name: csi-provisioner
-          image: "{{ .Values.image.csiProvisioner.repository }}:{{ .Values.image.csiProvisioner.tag }}"
+          image: "{{ .Values.image.repourl }}{{ .Values.image.csiProvisioner.repository }}:{{ .Values.image.csiProvisioner.tag }}"
           args:
             - "-v=2"
             - "--csi-address=$(ADDRESS)"
@@ -68,7 +68,7 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
         - name: csi-snapshotter
-          image: "{{ .Values.image.csiSnapshotter.repository }}:{{ .Values.image.csiSnapshotter.tag }}"
+          image: "{{ .Values.image.repourl }}{{ .Values.image.csiSnapshotter.repository }}:{{ .Values.image.csiSnapshotter.tag }}"
           args:
             - "--v=2"
             - "--csi-address=$(ADDRESS)"
@@ -84,7 +84,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: liveness-probe
-          image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
+          image: "{{ .Values.image.repourl }}{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
@@ -98,7 +98,7 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
         - name: nfs
-          image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
+          image: "{{ .Values.image.repourl }}{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
           securityContext:
             privileged: true
             capabilities:
