@@ -1,5 +1,6 @@
 customLabels: {}
 image:
+    baseRepo: registry.k8s.io
     nfs:
         repository: registry.k8s.io/sig-storage/nfsplugin
         tag: v4.6.0

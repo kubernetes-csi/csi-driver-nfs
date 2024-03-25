@@ -1,5 +1,6 @@
 customLabels: {}
 image:
+    baseRepo: registry.k8s.io
     nfs:
         repository: gcr.io/k8s-staging-sig-storage/nfsplugin
         tag: canary
