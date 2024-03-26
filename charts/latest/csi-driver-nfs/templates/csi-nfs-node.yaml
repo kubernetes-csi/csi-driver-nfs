@@ -44,7 +44,11 @@ spec:
 {{- end }}
       containers:
         - name: liveness-probe
+{{- if hasPrefix "/" .Values.image.livenessProbe.repository }}
+          image: "{{ .Values.image.baseRepo }}{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
+{{- else }}
           image: "{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
+{{- end }}
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
@@ -58,7 +62,11 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
         - name: node-driver-registrar
+{{- if hasPrefix "/" .Values.image.nodeDriverRegistrar.repository }}
+          image: "{{ .Values.image.baseRepo }}{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
+{{- else }}
           image: "{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
+{{- end }}
           livenessProbe:
             exec:
               command:
@@ -92,7 +100,11 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
             readOnlyRootFilesystem: true
+{{- if hasPrefix "/" .Values.image.nfs.repository }}
+          image: "{{ .Values.image.baseRepo }}{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
+{{- else }}
           image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
+{{- end }}
           args :
             - "--v={{ .Values.node.logLevel }}"
             - "--nodeid=$(NODE_ID)"
