@@ -69,6 +69,8 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.runOnControlPlane`                    | run controller on control plane node                                                          |`false`                                                           |
 | `controller.dnsPolicy`                            | dnsPolicy of controller driver, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`                              | `ClusterFirstWithHostNet`                                                             |
 | `controller.defaultOnDeletePolicy`                | default policy for deleting subdirectory when deleting a volume, available values: `delete`, `retain`, `archive`                              | `delete`                                                             |
+| `controller.livenessProbe.host ` | the health check host for the liveness probe | `localhost` |
+| `controller.livenessProbe.healthPort ` | the health check port for liveness probe | `29652` |
 | `controller.logLevel`                             | controller driver log level                                                          |`5`                                                           |
 | `controller.workingMountDir`                      | working directory for provisioner to mount nfs shares temporarily                  | `/tmp`                                                             |
 | `controller.affinity`                                 | controller pod affinity                               | `{}`                                                             |
@@ -88,6 +90,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `node.dnsPolicy`                                      | dnsPolicy of driver node daemonset, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`          |`ClusterFirstWithHostNet`
 | `node.maxUnavailable`                             | `maxUnavailable` value of driver node daemonset                            | `1`
 | `node.logLevel`                                   | node driver log level                                                          |`5`                                                           |
+| `node.livenessProbe.host ` | the health check host for the liveness probe | `localhost` |
 | `node.livenessProbe.healthPort `                  | the health check port for liveness probe                    |`29653`                                                           |
 | `node.affinity`                                      | node pod affinity                                     | {}                                                             |
 | `node.nodeSelector`                                   | node pod node selector                                | `{}`                                                             |

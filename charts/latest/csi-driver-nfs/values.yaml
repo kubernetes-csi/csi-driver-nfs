@@ -53,6 +53,7 @@ controller:
   runOnMaster: false
   runOnControlPlane: false
   livenessProbe:
+    host: localhost
     healthPort: 29652
   logLevel: 5
   workingMountDir: /tmp
@@ -103,6 +104,7 @@ node:
   maxUnavailable: 1
   logLevel: 5
   livenessProbe:
+    host: localhost
     healthPort: 29653
   affinity: {}
   nodeSelector: {}
