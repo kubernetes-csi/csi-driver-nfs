@@ -1,6 +1,7 @@
 # fsGroup Support
 
-[fsGroupPolicy](https://kubernetes-csi.github.io/docs/support-fsgroup.html) feature is Beta from Kubernetes 1.20, and disabled by default, follow below steps to enable this feature.
+[fsGroupPolicy](https://kubernetes-csi.github.io/docs/support-fsgroup.html) feature is Beta from Kubernetes 1.20 and GA from Kubernetes 1.23. 
+It is disabled by default up to version 3.1.0 of the chart and enabled by default from version 4.0.0 of the chart, follow below steps to enable this feature in older charts.
 
 ### Option#1: Enable fsGroupPolicy support in [driver helm installation](../../../charts)
 
