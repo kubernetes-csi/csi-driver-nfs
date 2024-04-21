@@ -150,3 +150,20 @@ externalSnapshotter:
 ##
 imagePullSecrets: []
 # - name: "image-pull-secret"
+
+## StorageClass resource example:
+storageClass:
+  create: false
+#   name: nfs-csi
+#   parameters:
+#     server: nfs-server.default.svc.cluster.local
+#     share: /
+#     subDir:
+#     mountPermissions: "0"
+#     csi.storage.k8s.io/provisioner-secret is only needed for providing mountOptions in DeleteVolume
+#     csi.storage.k8s.io/provisioner-secret-name: "mount-options"
+#     csi.storage.k8s.io/provisioner-secret-namespace: "default"
+#   reclaimPolicy: Delete
+#   volumeBindingMode: Immediate
+#   mountOptions:
+#     - nfsvers=4.1
