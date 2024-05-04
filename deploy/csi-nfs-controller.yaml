@@ -93,7 +93,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: nfs
-          image: registry.k8s.io/sig-storage/nfsplugin:v4.7.0
+          image: gcr.io/k8s-staging-sig-storage/nfsplugin:canary
           securityContext:
             privileged: true
             capabilities:
