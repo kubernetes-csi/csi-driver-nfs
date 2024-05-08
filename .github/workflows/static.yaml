@@ -13,7 +13,7 @@ jobs:
                 go-version: ^1.19
             - uses: actions/checkout@master
             - name: Run linter
-              uses: golangci/golangci-lint-action@v5
+              uses: golangci/golangci-lint-action@v6
               with:
                   version: v1.54
                   args: -E=gofmt,unused,ineffassign,revive,misspell,exportloopref,asciicheck,bodyclose,contextcheck --timeout=30m0s
