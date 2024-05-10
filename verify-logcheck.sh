@@ -33,5 +33,5 @@ trap 'rm -rf "${CSI_LIB_UTIL_TEMP}"' EXIT
 
 echo "Installing logcheck to temp dir: sigs.k8s.io/logtools/logcheck@v${LOGCHECK_VERSION}"
 GOBIN="${CSI_LIB_UTIL_TEMP}" go install "sigs.k8s.io/logtools/logcheck@v${LOGCHECK_VERSION}"
-echo "Verifing logcheck: ${CSI_LIB_UTIL_TEMP}/logcheck -check-contextual ${CSI_LIB_UTIL_ROOT}/..."
+echo "Verifying logcheck: ${CSI_LIB_UTIL_TEMP}/logcheck -check-contextual ${CSI_LIB_UTIL_ROOT}/..."
 "${CSI_LIB_UTIL_TEMP}/logcheck" -check-contextual -check-with-helpers "${CSI_LIB_UTIL_ROOT}/..."
