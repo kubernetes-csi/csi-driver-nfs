@@ -322,3 +322,10 @@ test-spelling:
 test-boilerplate:
 	@ echo; echo "### $@:"
 	@ ./release-tools/verify-boilerplate.sh "$(pwd)"
+
+# Test klog usage. This test is optional and must be explicitly added to `test` target in the main Makefile:
+# test: test-logcheck
+.PHONY: test-logcheck
+test-logcheck:
+	@ echo; echo "### $@:"
+	@ ./release-tools/verify-logcheck.sh
