@@ -252,8 +252,11 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 				}
 			}
 
-			// archive subdirectory under base-dir
+			// archive subdirectory under base-dir, remove stale archived copy if exists.
 			klog.V(2).Infof("archiving subdirectory %s --> %s", internalVolumePath, archivedInternalVolumePath)
+			if err = os.RemoveAll(archivedInternalVolumePath); err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to delete archived subdirectory %s: %v", archivedInternalVolumePath, err.Error())
+			}
 			if err = os.Rename(internalVolumePath, archivedInternalVolumePath); err != nil {
 				return nil, status.Errorf(codes.Internal, "archive subdirectory(%s, %s) failed with %v", internalVolumePath, archivedInternalVolumePath, err.Error())
 			}
