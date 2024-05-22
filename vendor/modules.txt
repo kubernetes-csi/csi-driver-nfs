@@ -1270,7 +1270,7 @@ k8s.io/kubernetes/test/utils
 k8s.io/kubernetes/test/utils/format
 k8s.io/kubernetes/test/utils/image
 k8s.io/kubernetes/test/utils/kubeconfig
-# k8s.io/mount-utils v0.29.4
+# k8s.io/mount-utils v0.29.5
 ## explicit; go 1.21
 k8s.io/mount-utils
 # k8s.io/pod-security-admission v0.0.0 => k8s.io/pod-security-admission v0.28.9
