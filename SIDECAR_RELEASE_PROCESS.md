@@ -84,7 +84,7 @@ naming convention `<hostpath-deployment-version>-on-<kubernetes-version>`.
     1. Compare the generated output to the new commits for the release to check if
        any notable change missed a release note.
     1. Reword release notes as needed, ideally in the original PRs so that the
-       release notes can be regnerated. Make sure to check notes for breaking
+       release notes can be regenerated. Make sure to check notes for breaking
        changes and deprecations.
     1. If release is a new major/minor version, create a new `CHANGELOG-<major>.<minor>.md`
        file.
