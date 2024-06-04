@@ -23,13 +23,17 @@
 # CSI_RELEASE_TOKEN: Github token needed for generating release notes
 # GITHUB_USER: Github username to create PRs with
 #
+# Required tools:
+# - gh
+# - release-notes (https://github.com/kubernetes/release/blob/master/cmd/release-notes/README.md)
+# 
 # Instructions:
-# 1. Login with "gh auth login"
-# 2. Copy this script to the kubernetes-csi directory (one directory above the
-# repos)
-# 3. Update the repos and versions in the $releases array
-# 4. Set environment variables
-# 5. Run script from the kubernetes-csi directory
+# 1. Install the required tools
+# 2. Login with "gh auth login"
+# 3. Copy this script to the kubernetes-csi directory (one directory above the repos)
+# 4. Update the repos and versions in the $releases array
+# 5. Set environment variables
+# 6. Run script from the kubernetes-csi directory
 #
 # Caveats:
 # - This script doesn't handle regenerating and updating existing PRs yet.
