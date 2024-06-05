@@ -86,7 +86,7 @@ configvar CSI_PROW_BUILD_PLATFORMS "linux amd64 amd64; linux ppc64le ppc64le -pp
 # which is disabled with GOFLAGS=-mod=vendor).
 configvar GOFLAGS_VENDOR "$( [ -d vendor ] && echo '-mod=vendor' )" "Go flags for using the vendor directory"
 
-configvar CSI_PROW_GO_VERSION_BUILD "1.21.5" "Go version for building the component" # depends on component's source code
+configvar CSI_PROW_GO_VERSION_BUILD "1.22.3" "Go version for building the component" # depends on component's source code
 configvar CSI_PROW_GO_VERSION_E2E "" "override Go version for building the Kubernetes E2E test suite" # normally doesn't need to be set, see install_e2e
 configvar CSI_PROW_GO_VERSION_SANITY "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building the csi-sanity test suite" # depends on CSI_PROW_SANITY settings below
 configvar CSI_PROW_GO_VERSION_KIND "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building 'kind'" # depends on CSI_PROW_KIND_VERSION below
@@ -564,7 +564,15 @@ go_version_for_kubernetes () (
     local version="$2"
     local go_version
 
-    # We use the minimal Go version specified for each K8S release (= minimum_go_version in hack/lib/golang.sh).
+    # Try to get the version for .go-version
+    go_version="$( cat "$path/.go-version" )"
+    if [ "$go_version" ]; then
+        echo "$go_version"
+        return
+    fi
+
+    # Fall back to hack/lib/golang.sh parsing.
+    # This is necessary in v1.26.0 and older Kubernetes releases that do not have .go-version.
     # More recent versions might also work, but we don't want to count on that.
     go_version="$(grep minimum_go_version= "$path/hack/lib/golang.sh" | sed -e 's/.*=go//')"
     if ! [ "$go_version" ]; then
