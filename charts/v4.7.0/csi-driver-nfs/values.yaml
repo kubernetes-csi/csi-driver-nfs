@@ -155,6 +155,8 @@ imagePullSecrets: []
 storageClass:
   create: false
 #   name: nfs-csi
+#   annotations:
+#     - storageclass.kubernetes.io/is-default-class: "true"
 #   parameters:
 #     server: nfs-server.default.svc.cluster.local
 #     share: /
