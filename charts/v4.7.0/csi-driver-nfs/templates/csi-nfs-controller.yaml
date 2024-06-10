@@ -120,7 +120,6 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-            readOnlyRootFilesystem: true
           imagePullPolicy: {{ .Values.image.nfs.pullPolicy }}
           args:
             - "--v={{ .Values.controller.logLevel }}"
