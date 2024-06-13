@@ -55,6 +55,10 @@ spec:
             requests:
               cpu: 10m
               memory: 20Mi
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
         - name: csi-snapshotter
           image: registry.k8s.io/sig-storage/csi-snapshotter:v6.3.3
           args:
@@ -76,6 +80,10 @@ spec:
             requests:
               cpu: 10m
               memory: 20Mi
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
         - name: liveness-probe
           image: registry.k8s.io/sig-storage/livenessprobe:v2.12.0
           args:
@@ -92,12 +100,18 @@ spec:
             requests:
               cpu: 10m
               memory: 20Mi
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
         - name: nfs
           image: gcr.io/k8s-staging-sig-storage/nfsplugin:canary
           securityContext:
             privileged: true
             capabilities:
               add: ["SYS_ADMIN"]
+              drop:
+                - ALL
             allowPrivilegeEscalation: true
           imagePullPolicy: IfNotPresent
           args:
