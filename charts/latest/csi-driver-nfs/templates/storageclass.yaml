@@ -5,6 +5,10 @@ kind: StorageClass
 metadata:
   name: {{ .Values.storageClass.name }}
 {{ include "nfs.labels" . | indent 2 }}
+  annotations:
+    {{- with .Values.storageClass.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 provisioner: nfs.csi.k8s.io
 {{- with .Values.storageClass.parameters }}
 parameters:
