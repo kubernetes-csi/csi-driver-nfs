@@ -71,6 +71,9 @@ spec:
           resources: {{- toYaml .Values.controller.resources.csiProvisioner | nindent 12 }}
           securityContext:
             readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
         - name: csi-snapshotter
 {{- if hasPrefix "/" .Values.image.csiSnapshotter.repository }}
           image: "{{ .Values.image.baseRepo }}{{ .Values.image.csiSnapshotter.repository }}:{{ .Values.image.csiSnapshotter.tag }}"
@@ -91,6 +94,10 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
         - name: liveness-probe
 {{- if hasPrefix "/" .Values.image.livenessProbe.repository }}
           image: "{{ .Values.image.baseRepo }}{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
@@ -109,6 +116,9 @@ spec:
           resources: {{- toYaml .Values.controller.resources.livenessProbe | nindent 12 }}
           securityContext:
             readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
         - name: nfs
 {{- if hasPrefix "/" .Values.image.nfs.repository }}
           image: "{{ .Values.image.baseRepo }}{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
@@ -119,6 +129,8 @@ spec:
             privileged: true
             capabilities:
               add: ["SYS_ADMIN"]
+              drop:
+              - ALL
             allowPrivilegeEscalation: true
           imagePullPolicy: {{ .Values.image.nfs.pullPolicy }}
           args:

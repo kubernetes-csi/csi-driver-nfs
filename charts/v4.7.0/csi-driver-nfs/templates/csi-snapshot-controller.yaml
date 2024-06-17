@@ -67,4 +67,8 @@ spec:
             - "--leader-election-namespace={{ .Release.Namespace }}"
           resources: {{- toYaml .Values.externalSnapshotter.resources | nindent 12 }}
           imagePullPolicy: {{ .Values.image.externalSnapshotter.pullPolicy }}
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
 {{- end -}}
