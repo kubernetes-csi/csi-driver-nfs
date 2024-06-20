@@ -45,6 +45,10 @@ spec:
             requests:
               cpu: 10m
               memory: 20Mi
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
         - name: node-driver-registrar
           image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.10.0
           args:
@@ -77,11 +81,17 @@ spec:
             requests:
               cpu: 10m
               memory: 20Mi
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
         - name: nfs
           securityContext:
             privileged: true
             capabilities:
               add: ["SYS_ADMIN"]
+              drop:
+                - ALL
             allowPrivilegeEscalation: true
           image: gcr.io/k8s-staging-sig-storage/nfsplugin:canary
           args:

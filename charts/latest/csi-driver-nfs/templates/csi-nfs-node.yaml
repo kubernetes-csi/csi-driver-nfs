@@ -61,6 +61,9 @@ spec:
           resources: {{- toYaml .Values.node.resources.livenessProbe | nindent 12 }}
           securityContext:
             readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
         - name: node-driver-registrar
 {{- if hasPrefix "/" .Values.image.nodeDriverRegistrar.repository }}
           image: "{{ .Values.image.baseRepo }}{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
@@ -93,11 +96,17 @@ spec:
             - name: registration-dir
               mountPath: /registration
           resources: {{- toYaml .Values.node.resources.nodeDriverRegistrar | nindent 12 }}
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
         - name: nfs
           securityContext:
             privileged: true
             capabilities:
               add: ["SYS_ADMIN"]
+              drop:
+              - ALL
             allowPrivilegeEscalation: true
             readOnlyRootFilesystem: true
 {{- if hasPrefix "/" .Values.image.nfs.repository }}
