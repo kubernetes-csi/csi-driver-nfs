@@ -31,10 +31,10 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
         {{- if .Values.controller.runOnMaster}}
-        node-role.kubernetes.io/master: ""
+        node-role.kubernetes.io/master: "true"
         {{- end}}
         {{- if .Values.controller.runOnControlPlane}}
-        node-role.kubernetes.io/control-plane: ""
+        node-role.kubernetes.io/control-plane: "true"
         {{- end}}
 {{- with .Values.controller.nodeSelector }}
 {{ toYaml . | indent 8 }}
