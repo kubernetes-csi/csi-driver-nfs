@@ -231,8 +231,11 @@ configvar CSI_PROW_E2E_VERSION "$(version_to_git "${CSI_PROW_KUBERNETES_VERSION}
 configvar CSI_PROW_E2E_REPO "https://github.com/kubernetes/kubernetes" "E2E repo"
 configvar CSI_PROW_E2E_IMPORT_PATH "k8s.io/kubernetes" "E2E package"
 
-# Local path for e2e tests. Set to "none" to disable.
-configvar CSI_PROW_SIDECAR_E2E_IMPORT_PATH "none" "CSI Sidecar E2E package"
+# Local path & package path for e2e tests. Set to "none" to disable.
+# When using versioned go modules, the import path is the module path whereas the path
+# should not contain the version and be the directory where the module is checked out.
+configvar CSI_PROW_SIDECAR_E2E_IMPORT_PATH "none" "CSI Sidecar E2E package (go import path)"
+configvar CSI_PROW_SIDECAR_E2E_PATH "${CSI_PROW_SIDECAR_E2E_IMPORT_PATH}" "CSI Sidecar E2E path (directory)"
 
 # csi-sanity testing from the csi-test repo can be run against the installed
 # CSI driver. For this to work, deploying the driver must expose the Unix domain
@@ -1035,7 +1038,7 @@ run_e2e () (
     trap move_junit EXIT
 
     if [ "${name}" == "local" ]; then
-        cd "${GOPATH}/src/${CSI_PROW_SIDECAR_E2E_IMPORT_PATH}" &&
+        cd "${GOPATH}/src/${CSI_PROW_SIDECAR_E2E_PATH}" &&
         run_with_loggers env KUBECONFIG="$KUBECONFIG" KUBE_TEST_REPO_LIST="$(if [ -e "${CSI_PROW_WORK}/e2e-repo-list" ]; then echo "${CSI_PROW_WORK}/e2e-repo-list"; fi)" ginkgo --timeout="${CSI_PROW_GINKGO_TIMEOUT}" -v "$@" "${CSI_PROW_WORK}/e2e-local.test" -- -report-dir "${ARTIFACTS}" -report-prefix local
     else
         cd "${GOPATH}/src/${CSI_PROW_E2E_IMPORT_PATH}" &&
