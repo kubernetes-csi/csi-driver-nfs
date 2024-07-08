@@ -18,6 +18,6 @@ reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
 volumeBindingMode: {{ .Values.storageClass.volumeBindingMode }}
 {{- with .Values.storageClass.mountOptions }}
 mountOptions:
-{{ toYaml . | indent 2 }}
+{{ toYaml . | nindent 2 }}
 {{- end }}
 {{- end }}
