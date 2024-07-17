@@ -60,6 +60,7 @@ spec:
             - "--leader-election"
             - "--leader-election-namespace={{ .Release.Namespace }}"
             - "--extra-create-metadata=true"
+            - "--feature-gates=HonorPVReclaimPolicy=false"
             - "--timeout=1200s"
           env:
             - name: ADDRESS
