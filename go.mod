@@ -17,7 +17,7 @@ require (
 	k8s.io/client-go v0.28.11
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kubernetes v1.28.11
-	k8s.io/mount-utils v0.29.6
+	k8s.io/mount-utils v0.29.7
 	k8s.io/pod-security-admission v0.0.0
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 	sigs.k8s.io/cloud-provider-azure v1.28.9
