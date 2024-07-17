@@ -19,8 +19,8 @@ outfile
 
 ## Create a snapshot on source PVC
 ```console
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/csi-driver-nfs/master/deploy/example/snapshot/snapshotclass-nfs.yaml
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/csi-driver-nfs/master/deploy/example/snapshot/snapshot-nfs-dynamic.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/snapshot/snapshotclass-nfs.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/snapshot/snapshot-nfs-dynamic.yaml
 ```
 - Check snapshot Status
 
@@ -61,8 +61,8 @@ Events:
 ## Create a new PVC based on snapshot
 
 ```console
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/csi-driver-nfs/master/deploy/example/snapshot/pvc-nfs-snapshot-restored.yaml
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/csi-driver-nfs/master/deploy/example/snapshot/nginx-pod-restored-snapshot.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/snapshot/pvc-nfs-snapshot-restored.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/snapshot/nginx-pod-restored-snapshot.yaml
 ```
 
  - Check data
