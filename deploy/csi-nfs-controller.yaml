@@ -140,6 +140,8 @@ spec:
               mountPropagation: "Bidirectional"
             - mountPath: /csi
               name: socket-dir
+            - name: tmp-dir
+              mountPath: /tmp
           resources:
             limits:
               memory: 200Mi
@@ -151,5 +153,7 @@ spec:
           hostPath:
             path: /var/lib/kubelet/pods
             type: Directory
+        - name: tmp-dir
+          emptyDir: {}
         - name: socket-dir
           emptyDir: {}
