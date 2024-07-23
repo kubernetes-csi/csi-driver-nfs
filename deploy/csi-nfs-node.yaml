@@ -118,8 +118,6 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-            - name: tmp-dir
-              mountPath: /tmp
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
@@ -134,8 +132,6 @@ spec:
           hostPath:
             path: /var/lib/kubelet/plugins/csi-nfsplugin
             type: DirectoryOrCreate
-        - name: tmp-dir
-          emptyDir: {}
         - name: pods-mount-dir
           hostPath:
             path: /var/lib/kubelet/pods
