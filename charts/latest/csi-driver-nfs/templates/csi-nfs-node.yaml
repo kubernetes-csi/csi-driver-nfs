@@ -108,7 +108,6 @@ spec:
               drop:
               - ALL
             allowPrivilegeEscalation: true
-            readOnlyRootFilesystem: true
 {{- if hasPrefix "/" .Values.image.nfs.repository }}
           image: "{{ .Values.image.baseRepo }}{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
 {{- else }}
@@ -140,8 +139,6 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-            - name: tmp-dir
-              mountPath: /tmp
             - name: pods-mount-dir
               mountPath: {{ .Values.kubeletDir }}/pods
               mountPropagation: "Bidirectional"
@@ -157,8 +154,6 @@ spec:
           hostPath:
             path: {{ .Values.kubeletDir }}/plugins/csi-nfsplugin
             type: DirectoryOrCreate
-        - name: tmp-dir
-          emptyDir: {}
         - name: pods-mount-dir
           hostPath:
             path: {{ .Values.kubeletDir }}/pods
