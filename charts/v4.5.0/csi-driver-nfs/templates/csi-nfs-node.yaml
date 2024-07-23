@@ -91,7 +91,6 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-            readOnlyRootFilesystem: true
           image: "{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
           args :
             - "--v={{ .Values.node.logLevel }}"
