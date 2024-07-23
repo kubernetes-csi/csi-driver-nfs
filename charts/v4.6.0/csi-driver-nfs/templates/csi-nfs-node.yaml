@@ -108,7 +108,6 @@ spec:
               drop:
               - ALL
             allowPrivilegeEscalation: true
-            readOnlyRootFilesystem: true
 {{- if hasPrefix "/" .Values.image.nfs.repository }}
           image: "{{ .Values.image.baseRepo }}{{ .Values.image.nfs.repository }}:{{ .Values.image.nfs.tag }}"
 {{- else }}
