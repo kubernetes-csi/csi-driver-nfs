@@ -6,10 +6,21 @@ There are multiple different NFS servers you can use for testing of
 the plugin, the major versions of the protocol v2, v3 and v4 should be supported
 by the current implementation. This page will show you how to set up a NFS Server deployment on a Kubernetes cluster.
 
-- To create a NFS provisioner on your Kubernetes cluster, run the following command.
+- (For linux/amd64) To create a NFS provisioner on your Kubernetes cluster, run the following command.
 
 ```bash
 kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/nfs-provisioner/nfs-server.yaml
+```
+
+- (For linux/arm) To create a NFS provisioner on your Kubernetes cluster, run the following command.
+
+```bash
+git clone https://github.com/sjiveson/nfs-server-alpine.git
+cd nfs-server-alpine
+docker built -t <your-name>/nfs-server-alpine:latest-arm .
+wget https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/nfs-provisioner/nfs-server.yaml
+sed -i 's/<your-name>/itsthenetwork/' nfs-server.yaml
+kubectl create -f nfs-server.yaml
 ```
 
 - During the deployment, a new service `nfs-server` will be created which exposes the NFS server endpoint `nfs-server.default.svc.cluster.local` and the share path `/`. You can specify `PersistentVolume` or `StorageClass` using these information.
