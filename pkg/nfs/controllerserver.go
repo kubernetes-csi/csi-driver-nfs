@@ -25,6 +25,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
@@ -235,6 +236,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 			return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
 		}
 		defer func() {
+			// make sure archiving is completed before unmounting
+			time.Sleep(time.Second * 2)
 			if err = cs.internalUnmount(ctx, nfsVol); err != nil {
 				klog.Warningf("failed to unmount nfs server: %v", err.Error())
 			}
