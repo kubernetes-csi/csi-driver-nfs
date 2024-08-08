@@ -37,7 +37,7 @@ import (
 const (
 	kubeconfigEnvVar  = "KUBECONFIG"
 	testWindowsEnvVar = "TEST_WINDOWS"
-	nfsServerAddress  = "nfs-server.default.svc.cluster.local"
+	nfsServerAddress  = "nfs-server.test-pods.svc.cluster.local"
 	nfsShare          = "/"
 )
 

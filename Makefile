@@ -130,6 +130,7 @@ endif
 
 .PHONY: install-nfs-server
 install-nfs-server:
+	kubectl create ns test-pods # for AWS based test-infra
 	kubectl apply -f ./deploy/example/nfs-provisioner/nfs-server.yaml
 	kubectl delete secret mount-options --ignore-not-found
 	kubectl create secret generic mount-options --from-literal mountOptions="nfsvers=4.1"
