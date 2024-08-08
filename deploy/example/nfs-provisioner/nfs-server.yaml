@@ -3,6 +3,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: nfs-server
+  namespace: kube-system
   labels:
     app: nfs-server
 spec:
@@ -21,6 +22,7 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: nfs-server
+  namespace: kube-system
 spec:
   replicas: 1
   selector:
