@@ -21,9 +21,9 @@ rollout_and_wait() {
 
     APPNAME=$(kubectl apply -f $1 | grep -E "^(:?daemonset|deployment|statefulset|pod)" | awk '{printf $1}')
     if [[ -n $(expr "${APPNAME}" : "\(daemonset\|deployment\|statefulset\|pod\)" || true) ]]; then
-        kubectl rollout status $APPNAME --watch --timeout=5m
+        kubectl rollout status $APPNAME --watch --timeout=5m -n default
     else
-        kubectl wait "${APPNAME}" --for condition=ready --timeout=5m
+        kubectl wait "${APPNAME}" --for condition=ready --timeout=5m -n default
     fi
 }
 

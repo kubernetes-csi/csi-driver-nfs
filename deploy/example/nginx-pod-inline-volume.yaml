@@ -3,6 +3,7 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: nginx-pod-inline-volume
+  namespace: default
 spec:
   nodeSelector:
     "kubernetes.io/os": linux

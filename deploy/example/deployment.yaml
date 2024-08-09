@@ -3,6 +3,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: pvc-deployment-nfs
+  namespace: default
 spec:
   accessModes:
     - ReadWriteMany  # In this example, multiple Pods consume the same PVC.
@@ -15,6 +16,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: deployment-nfs
+  namespace: default
 spec:
   replicas: 1
   selector:
