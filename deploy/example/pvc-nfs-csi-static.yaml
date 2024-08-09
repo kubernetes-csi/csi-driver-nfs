@@ -3,6 +3,7 @@ kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
   name: pvc-nfs-static
+  namespace: default
 spec:
   accessModes:
     - ReadWriteMany

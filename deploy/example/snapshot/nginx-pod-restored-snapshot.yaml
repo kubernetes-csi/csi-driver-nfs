@@ -3,6 +3,7 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: nginx-nfs-restored-snapshot
+  namespace: default
 spec:
   nodeSelector:
     "kubernetes.io/os": linux

@@ -3,6 +3,7 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: daemonset-nfs-ephemeral
+  namespace: default
 spec:
   selector:
     matchLabels:
