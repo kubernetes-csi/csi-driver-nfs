@@ -236,8 +236,6 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 			return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
 		}
 		defer func() {
-			// make sure archiving is completed before unmounting
-			time.Sleep(time.Second * 2)
 			if err = cs.internalUnmount(ctx, nfsVol); err != nil {
 				klog.Warningf("failed to unmount nfs server: %v", err.Error())
 			}
@@ -263,6 +261,11 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 			if err = os.Rename(internalVolumePath, archivedInternalVolumePath); err != nil {
 				return nil, status.Errorf(codes.Internal, "archive subdirectory(%s, %s) failed with %v", internalVolumePath, archivedInternalVolumePath, err.Error())
 			}
+			// make sure internalVolumePath does not exist with 1 minute timeout
+			if err = waitForPathNotExistWithTimeout(internalVolumePath, time.Minute); err != nil {
+				return nil, status.Errorf(codes.Internal, "DeleteVolume: internalVolumePath(%s) still exists after 1 minute", internalVolumePath)
+			}
+			klog.V(2).Infof("archived subdirectory %s --> %s", internalVolumePath, archivedInternalVolumePath)
 		} else {
 			// delete subdirectory under base-dir
 			klog.V(2).Infof("removing subdirectory at %v", internalVolumePath)
@@ -365,12 +368,12 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	srcPath := getInternalVolumePath(cs.Driver.workingMountDir, srcVol)
 	dstPath := filepath.Join(snapInternalVolPath, snapshot.archiveName())
-	klog.V(2).Infof("archiving %v -> %v", srcPath, dstPath)
+	klog.V(2).Infof("tar %v -> %v", srcPath, dstPath)
 	out, err := exec.Command("tar", "-C", srcPath, "-czvf", dstPath, ".").CombinedOutput()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create archive for snapshot: %v: %v", err, string(out))
 	}
-	klog.V(2).Infof("archived %s -> %s", srcPath, dstPath)
+	klog.V(2).Infof("tar %s -> %s complete", srcPath, dstPath)
 
 	var snapshotSize int64
 	fi, err := os.Stat(dstPath)
