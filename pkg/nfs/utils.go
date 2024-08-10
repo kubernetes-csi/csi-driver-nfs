@@ -21,6 +21,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
@@ -195,4 +196,22 @@ func setKeyValueInMap(m map[string]string, key, value string) {
 		}
 	}
 	m[key] = value
+}
+
+func waitForPathNotExistWithTimeout(path string, timeout time.Duration) error {
+	// Loop until the path no longer exists or the timeout is reached
+	timeoutTime := time.Now().Add(time.Duration(timeout) * time.Second)
+	for {
+		if _, err := os.Lstat(path); err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+
+		if time.Now().After(timeoutTime) {
+			return fmt.Errorf("time out waiting for path %s not exist", path)
+		}
+		time.Sleep(500 * time.Microsecond)
+	}
 }
