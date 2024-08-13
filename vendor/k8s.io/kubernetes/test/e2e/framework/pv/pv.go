@@ -93,6 +93,9 @@ type PersistentVolumeConfig struct {
 	// [Optional] Labels contains information used to organize and categorize
 	// objects
 	Labels labels.Set
+	// [Optional] Annotations contains information used to organize and categorize
+	// objects
+	Annotations map[string]string
 	// PVSource contains the details of the underlying volume and must be set
 	PVSource v1.PersistentVolumeSource
 	// [Optional] Prebind lets you specify a PVC to bind this PV to before
@@ -124,10 +127,11 @@ type PersistentVolumeClaimConfig struct {
 	// unspecified
 	ClaimSize string
 	// AccessModes defaults to RWO if unspecified
-	AccessModes      []v1.PersistentVolumeAccessMode
-	Annotations      map[string]string
-	Selector         *metav1.LabelSelector
-	StorageClassName *string
+	AccessModes               []v1.PersistentVolumeAccessMode
+	Annotations               map[string]string
+	Selector                  *metav1.LabelSelector
+	StorageClassName          *string
+	VolumeAttributesClassName *string
 	// VolumeMode defaults to nil if unspecified or specified as the empty
 	// string
 	VolumeMode *v1.PersistentVolumeMode
@@ -297,7 +301,7 @@ func DeletePVCandValidatePVGroup(ctx context.Context, c clientset.Interface, tim
 func createPV(ctx context.Context, c clientset.Interface, timeouts *framework.TimeoutContext, pv *v1.PersistentVolume) (*v1.PersistentVolume, error) {
 	var resultPV *v1.PersistentVolume
 	var lastCreateErr error
-	err := wait.PollImmediateWithContext(ctx, 29*time.Second, timeouts.PVCreate, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextTimeout(ctx, 29*time.Second, timeouts.PVCreate, true, func(ctx context.Context) (done bool, err error) {
 		resultPV, lastCreateErr = c.CoreV1().PersistentVolumes().Create(ctx, pv, metav1.CreateOptions{})
 		if lastCreateErr != nil {
 			// If we hit a quota problem, we are not done and should retry again.  This happens to be the quota failure string for GCP.
@@ -595,13 +599,18 @@ func MakePersistentVolume(pvConfig PersistentVolumeConfig) *v1.PersistentVolume 
 		}
 	}
 
+	annotations := map[string]string{
+		volumeGidAnnotationKey: "777",
+	}
+	for k, v := range pvConfig.Annotations {
+		annotations[k] = v
+	}
+
 	return &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: pvConfig.NamePrefix,
 			Labels:       pvConfig.Labels,
-			Annotations: map[string]string{
-				volumeGidAnnotationKey: "777",
-			},
+			Annotations:  annotations,
 		},
 		Spec: v1.PersistentVolumeSpec{
 			PersistentVolumeReclaimPolicy: pvConfig.ReclaimPolicy,
@@ -648,13 +657,14 @@ func MakePersistentVolumeClaim(cfg PersistentVolumeClaimConfig, ns string) *v1.P
 		Spec: v1.PersistentVolumeClaimSpec{
 			Selector:    cfg.Selector,
 			AccessModes: cfg.AccessModes,
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceStorage: resource.MustParse(cfg.ClaimSize),
 				},
 			},
-			StorageClassName: cfg.StorageClassName,
-			VolumeMode:       cfg.VolumeMode,
+			StorageClassName:          cfg.StorageClassName,
+			VolumeAttributesClassName: cfg.VolumeAttributesClassName,
+			VolumeMode:                cfg.VolumeMode,
 		},
 	}
 }
