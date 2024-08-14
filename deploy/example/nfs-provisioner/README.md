@@ -17,7 +17,7 @@ kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nf
 ```bash
 git clone https://github.com/sjiveson/nfs-server-alpine.git
 cd nfs-server-alpine
-docker built -t <your-name>/nfs-server-alpine:latest-arm .
+docker build -t <your-name>/nfs-server-alpine:latest-arm .
 wget https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/nfs-provisioner/nfs-server.yaml
 sed -i 's/<your-name>/itsthenetwork/' nfs-server.yaml
 kubectl create -f nfs-server.yaml
