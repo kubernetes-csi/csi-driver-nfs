@@ -33,7 +33,7 @@ var (
 	workingMountDir              = flag.String("working-mount-dir", "/tmp", "working directory for provisioner to mount nfs shares temporarily")
 	defaultOnDeletePolicy        = flag.String("default-ondelete-policy", "", "default policy for deleting subdirectory when deleting a volume")
 	volStatsCacheExpireInMinutes = flag.Int("vol-stats-cache-expire-in-minutes", 10, "The cache expire time in minutes for volume stats cache")
-	removeArchivedVolumePath     = flag.Bool("remove-archived-volume-path", true, "remove archived volume path in DeleteVolume")
+	removeArchivedVolumePath     = flag.Bool("remove-archived-volume-path", false, "remove archived volume path in DeleteVolume")
 )
 
 func main() {
