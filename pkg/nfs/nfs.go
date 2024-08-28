@@ -37,16 +37,18 @@ type DriverOptions struct {
 	WorkingMountDir              string
 	DefaultOnDeletePolicy        string
 	VolStatsCacheExpireInMinutes int
+	RemoveArchivedVolumePath     bool
 }
 
 type Driver struct {
-	name                  string
-	nodeID                string
-	version               string
-	endpoint              string
-	mountPermissions      uint64
-	workingMountDir       string
-	defaultOnDeletePolicy string
+	name                     string
+	nodeID                   string
+	version                  string
+	endpoint                 string
+	mountPermissions         uint64
+	workingMountDir          string
+	defaultOnDeletePolicy    string
+	removeArchivedVolumePath bool
 
 	//ids *identityServer
 	ns          *NodeServer
@@ -91,6 +93,7 @@ func NewDriver(options *DriverOptions) *Driver {
 		mountPermissions:             options.MountPermissions,
 		workingMountDir:              options.WorkingMountDir,
 		volStatsCacheExpireInMinutes: options.VolStatsCacheExpireInMinutes,
+		removeArchivedVolumePath:     options.RemoveArchivedVolumePath,
 	}
 
 	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
