@@ -59,6 +59,8 @@ type Driver struct {
 	// a timed cache storing volume stats <volumeID, volumeStats>
 	volStatsCache                azcache.Resource
 	volStatsCacheExpireInMinutes int
+	// a timed cache storing volume deletion records <volumeID, "">
+	volDeletionCache azcache.Resource
 }
 
 const (
@@ -117,6 +119,9 @@ func NewDriver(options *DriverOptions) *Driver {
 	var err error
 	getter := func(key string) (interface{}, error) { return nil, nil }
 	if n.volStatsCache, err = azcache.NewTimedCache(time.Duration(options.VolStatsCacheExpireInMinutes)*time.Minute, getter, false); err != nil {
+		klog.Fatalf("%v", err)
+	}
+	if n.volDeletionCache, err = azcache.NewTimedCache(time.Minute, getter, false); err != nil {
 		klog.Fatalf("%v", err)
 	}
 	return n

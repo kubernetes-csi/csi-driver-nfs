@@ -32,6 +32,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	azcache "sigs.k8s.io/cloud-provider-azure/pkg/cache"
 
 	"k8s.io/klog/v2"
 )
@@ -151,6 +152,11 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}
 
+	if acquired := cs.Driver.volumeLocks.TryAcquire(name); !acquired {
+		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, name)
+	}
+	defer cs.Driver.volumeLocks.Release(name)
+
 	nfsVol, err := newNFSVolume(name, reqCapacity, parameters, cs.Driver.defaultOnDeletePolicy)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -230,7 +236,21 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		nfsVol.onDelete = cs.Driver.defaultOnDeletePolicy
 	}
 
+	if acquired := cs.Driver.volumeLocks.TryAcquire(volumeID); !acquired {
+		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer cs.Driver.volumeLocks.Release(volumeID)
+
 	if !strings.EqualFold(nfsVol.onDelete, retain) {
+		// check whether volumeID is in the cache
+		cache, err := cs.Driver.volDeletionCache.Get(volumeID, azcache.CacheReadTypeDefault)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, err.Error())
+		}
+		if cache != nil {
+			klog.V(2).Infof("DeleteVolume: volume %s is already deleted", volumeID)
+			return &csi.DeleteVolumeResponse{}, nil
+		}
 		// mount nfs base share so we can delete the subdirectory
 		if err = cs.internalMount(ctx, nfsVol, nil, volCap); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
@@ -281,6 +301,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		klog.V(2).Infof("DeleteVolume: volume(%s) is set to retain, not deleting/archiving subdirectory", volumeID)
 	}
 
+	cs.Driver.volDeletionCache.Set(volumeID, "")
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
