@@ -1,6 +1,9 @@
 # Volume Snapshot Example
 
+This creates a snapshot of a volume using `tar`.
+
 - supported from v4.3.0
+- Make sure you have `externalSnapshotter.enabled=true` if you are using the Helm chart.
 
 ## Create source PVC and an example pod to write data 
 
