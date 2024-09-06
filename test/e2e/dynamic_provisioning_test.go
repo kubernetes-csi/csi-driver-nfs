@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 		testDriver driver.PVTestDriver
 	)
 
-	ginkgo.BeforeEach(func(ctx ginkgo.SpecContext) {
+	ginkgo.BeforeEach(func(_ ginkgo.SpecContext) {
 		checkPodsRestart := testCmd{
 			command:  "sh",
 			args:     []string{"test/utils/check_driver_pods_restart.sh"},

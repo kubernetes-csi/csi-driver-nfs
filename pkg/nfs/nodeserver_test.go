@@ -39,7 +39,7 @@ const (
 func TestNodePublishVolume(t *testing.T) {
 	ns, err := getTestNodeServer()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("%v", err.Error())
 	}
 
 	params := map[string]string{
@@ -208,7 +208,7 @@ func TestNodePublishVolume(t *testing.T) {
 func TestNodeUnpublishVolume(t *testing.T) {
 	ns, err := getTestNodeServer()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("%v", err.Error())
 	}
 
 	errorTarget := testutil.GetWorkDirPath("error_is_likely_target", t)
@@ -276,7 +276,7 @@ func TestNodeUnpublishVolume(t *testing.T) {
 func TestNodeGetInfo(t *testing.T) {
 	ns, err := getTestNodeServer()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("%v", err.Error())
 	}
 
 	// Test valid request
@@ -289,7 +289,7 @@ func TestNodeGetInfo(t *testing.T) {
 func TestNodeGetCapabilities(t *testing.T) {
 	ns, err := getTestNodeServer()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("%v", err.Error())
 	}
 
 	capType := &csi.NodeServiceCapability_Rpc{
@@ -358,7 +358,7 @@ func TestNodeGetVolumeStats(t *testing.T) {
 	_ = makeDir(fakePath)
 	ns, err := getTestNodeServer()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("%v", err.Error())
 	}
 
 	for _, test := range tests {
