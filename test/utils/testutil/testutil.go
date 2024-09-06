@@ -26,7 +26,7 @@ import (
 func GetWorkDirPath(dir string, t *testing.T) string {
 	path, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("failed to get working directory: %s", err)
+		t.Fatalf("failed to get working directory: %v", err)
 	}
 	return fmt.Sprintf("%s%c%s", path, os.PathSeparator, dir)
 }

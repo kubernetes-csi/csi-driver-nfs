@@ -54,7 +54,7 @@ func NewEmptyDriver(emptyField string) *Driver {
 		}
 	}
 	d.volumeLocks = NewVolumeLocks()
-	getter := func(key string) (interface{}, error) { return nil, nil }
+	getter := func(_ string) (interface{}, error) { return nil, nil }
 	d.volStatsCache, _ = azcache.NewTimedCache(time.Minute, getter, false)
 	return d
 }
@@ -109,7 +109,7 @@ func TestRun(t *testing.T) {
 	}{
 		{
 			name: "Successful run",
-			testFunc: func(t *testing.T) {
+			testFunc: func(_ *testing.T) {
 				d := NewEmptyDriver("")
 				d.endpoint = "tcp://127.0.0.1:0"
 				d.Run(true)
@@ -117,7 +117,7 @@ func TestRun(t *testing.T) {
 		},
 		{
 			name: "Successful run with node ID missing",
-			testFunc: func(t *testing.T) {
+			testFunc: func(_ *testing.T) {
 				d := NewEmptyDriver("")
 				d.endpoint = "tcp://127.0.0.1:0"
 				d.nodeID = ""
