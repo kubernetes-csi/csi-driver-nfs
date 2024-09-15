@@ -291,9 +291,15 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 			}
 			klog.V(2).Infof("archived subdirectory %s --> %s", internalVolumePath, archivedInternalVolumePath)
 		} else {
+			rootDir := getRootDir(nfsVol.subDir)
+			if rootDir != "" {
+				rootDir = filepath.Join(getInternalMountPath(cs.Driver.workingMountDir, nfsVol), rootDir)
+			} else {
+				rootDir = internalVolumePath
+			}
 			// delete subdirectory under base-dir
-			klog.V(2).Infof("removing subdirectory at %v", internalVolumePath)
-			if err = os.RemoveAll(internalVolumePath); err != nil {
+			klog.V(2).Infof("removing subdirectory at %v on internalVolumePath %s", rootDir, internalVolumePath)
+			if err = os.RemoveAll(rootDir); err != nil {
 				return nil, status.Errorf(codes.Internal, "delete subdirectory(%s) failed with %v", internalVolumePath, err)
 			}
 		}
