@@ -35,7 +35,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: csi-provisioner
-          image: registry.k8s.io/sig-storage/csi-provisioner:v5.0.2
+          image: registry.k8s.io/sig-storage/csi-provisioner:v5.1.0
           args:
             - "-v=2"
             - "--csi-address=$(ADDRESS)"
@@ -61,7 +61,7 @@ spec:
               drop:
                 - ALL
         - name: csi-snapshotter
-          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.0.1
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.1.0
           args:
             - "--v=2"
             - "--csi-address=$(ADDRESS)"
@@ -86,7 +86,7 @@ spec:
               drop:
                 - ALL
         - name: liveness-probe
-          image: registry.k8s.io/sig-storage/livenessprobe:v2.13.1
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.14.0
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
