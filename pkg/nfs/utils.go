@@ -215,3 +215,9 @@ func waitForPathNotExistWithTimeout(path string, timeout time.Duration) error {
 		time.Sleep(500 * time.Microsecond)
 	}
 }
+
+// getRootDir returns the root directory of the given directory
+func getRootDir(path string) string {
+	parts := strings.Split(path, "/")
+	return parts[0]
+}

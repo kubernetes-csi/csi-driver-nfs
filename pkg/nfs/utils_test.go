@@ -387,3 +387,44 @@ func TestWaitForPathNotExistWithTimeout(t *testing.T) {
 		}
 	}
 }
+
+func TestGetRootPath(t *testing.T) {
+	tests := []struct {
+		desc     string
+		dir      string
+		expected string
+	}{
+		{
+			desc:     "empty path",
+			dir:      "",
+			expected: "",
+		},
+		{
+			desc:     "root path",
+			dir:      "/",
+			expected: "",
+		},
+		{
+			desc:     "subdir path",
+			dir:      "/subdir",
+			expected: "",
+		},
+		{
+			desc:     "subdir path without leading slash",
+			dir:      "subdir",
+			expected: "subdir",
+		},
+		{
+			desc:     "multiple subdir path without leading slash",
+			dir:      "subdir/subdir2",
+			expected: "subdir",
+		},
+	}
+
+	for _, test := range tests {
+		result := getRootDir(test.dir)
+		if result != test.expected {
+			t.Errorf("Unexpected result: %s, expected: %s", result, test.expected)
+		}
+	}
+}

@@ -62,7 +62,7 @@ var (
 	subDirStorageClassParameters = map[string]string{
 		"server": nfsServerAddress,
 		"share":  nfsShare,
-		"subDir": "subDirectory-${pvc.metadata.namespace}",
+		"subDir": "${pvc.metadata.namespace}/${pvc.metadata.name}",
 		"csi.storage.k8s.io/provisioner-secret-name":      "mount-options",
 		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
 		"mountPermissions": "0755",
