@@ -62,9 +62,9 @@ IMAGE_NAME=$(REGISTRY_NAME)/$*
 
 ifdef V
 # Adding "-alsologtostderr" assumes that all test binaries contain glog. This is not guaranteed.
-TESTARGS = -v -args -alsologtostderr -v 5
+TESTARGS = -race -v -args -alsologtostderr -v 5
 else
-TESTARGS =
+TESTARGS = -race
 endif
 
 # Specific packages can be excluded from each of the tests below by setting the *_FILTER_CMD variables
