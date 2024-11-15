@@ -130,6 +130,13 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	}
 
 	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)
+	execFunc := func() error {
+		return ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
+	}
+	timeoutFunc := func() error { return fmt.Errorf("time out") }
+	if err := WaitUntilTimeout(90*time.Second, execFunc, timeoutFunc); err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("volume(%s) mount %q on %q failed with %v", volumeID, source, targetPath, err))
+	}
 	err = ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
 	if err != nil {
 		if os.IsPermission(err) {
