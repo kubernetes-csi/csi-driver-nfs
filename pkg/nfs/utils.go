@@ -221,3 +221,30 @@ func getRootDir(path string) string {
 	parts := strings.Split(path, "/")
 	return parts[0]
 }
+
+// ExecFunc returns a exec function's output and error
+type ExecFunc func() (err error)
+
+// TimeoutFunc returns output and error if an ExecFunc timeout
+type TimeoutFunc func() (err error)
+
+// WaitUntilTimeout waits for the exec function to complete or return timeout error
+func WaitUntilTimeout(timeout time.Duration, execFunc ExecFunc, timeoutFunc TimeoutFunc) error {
+	// Create a channel to receive the result of the exec function
+	done := make(chan bool)
+	var err error
+
+	// Start the exec function in a goroutine
+	go func() {
+		err = execFunc()
+		done <- true
+	}()
+
+	// Wait for the function to complete or time out
+	select {
+	case <-done:
+		return err
+	case <-time.After(timeout):
+		return timeoutFunc()
+	}
+}
