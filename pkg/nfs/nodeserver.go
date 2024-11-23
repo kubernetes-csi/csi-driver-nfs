@@ -38,6 +38,7 @@ import (
 type NodeServer struct {
 	Driver  *Driver
 	mounter mount.Interface
+	csi.UnimplementedNodeServer
 }
 
 // NodePublishVolume mount the volume
@@ -223,9 +224,9 @@ func (ns *NodeServer) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolu
 		return nil, status.Errorf(codes.Internal, "%v", err)
 	}
 	if cache != nil {
-		resp := cache.(csi.NodeGetVolumeStatsResponse)
+		resp := cache.(*csi.NodeGetVolumeStatsResponse)
 		klog.V(6).Infof("NodeGetVolumeStats: volume stats for volume %s path %s is cached", req.VolumeId, req.VolumePath)
-		return &resp, nil
+		return resp, nil
 	}
 
 	if _, err := os.Lstat(req.VolumePath); err != nil {
@@ -284,7 +285,7 @@ func (ns *NodeServer) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolu
 	}
 
 	// cache the volume stats per volume
-	ns.Driver.volStatsCache.Set(req.VolumeId, resp)
+	ns.Driver.volStatsCache.Set(req.VolumeId, &resp)
 	return &resp, err
 }
 

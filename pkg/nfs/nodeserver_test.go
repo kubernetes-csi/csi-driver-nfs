@@ -74,24 +74,24 @@ func TestNodePublishVolume(t *testing.T) {
 	tests := []struct {
 		desc          string
 		setup         func()
-		req           csi.NodePublishVolumeRequest
+		req           *csi.NodePublishVolumeRequest
 		skipOnWindows bool
 		expectedErr   error
 		cleanup       func()
 	}{
 		{
 			desc:        "[Error] Volume capabilities missing",
-			req:         csi.NodePublishVolumeRequest{},
+			req:         &csi.NodePublishVolumeRequest{},
 			expectedErr: status.Error(codes.InvalidArgument, "Volume capability missing in request"),
 		},
 		{
 			desc:        "[Error] Volume ID missing",
-			req:         csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap}},
+			req:         &csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap}},
 			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
 		},
 		{
 			desc: "[Error] Target path missing",
-			req: csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+			req: &csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId: "vol_1"},
 			expectedErr: status.Error(codes.InvalidArgument, "Target path not provided"),
 		},
@@ -100,7 +100,7 @@ func TestNodePublishVolume(t *testing.T) {
 			setup: func() {
 				ns.Driver.volumeLocks.TryAcquire(lockKey)
 			},
-			req: csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+			req: &csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:      "vol_1",
 				VolumeContext: params,
 				TargetPath:    targetTest},
@@ -111,7 +111,7 @@ func TestNodePublishVolume(t *testing.T) {
 		},
 		{
 			desc: "[Success] Stage target path missing",
-			req: csi.NodePublishVolumeRequest{
+			req: &csi.NodePublishVolumeRequest{
 				VolumeContext:    params,
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:         "vol_1",
@@ -120,7 +120,7 @@ func TestNodePublishVolume(t *testing.T) {
 		},
 		{
 			desc: "[Success] Valid request read only",
-			req: csi.NodePublishVolumeRequest{
+			req: &csi.NodePublishVolumeRequest{
 				VolumeContext:    params,
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:         "vol_1",
@@ -130,7 +130,7 @@ func TestNodePublishVolume(t *testing.T) {
 		},
 		{
 			desc: "[Success] Valid request already mounted",
-			req: csi.NodePublishVolumeRequest{
+			req: &csi.NodePublishVolumeRequest{
 				VolumeContext:    params,
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:         "vol_1",
@@ -140,7 +140,7 @@ func TestNodePublishVolume(t *testing.T) {
 		},
 		{
 			desc: "[Success] Valid request",
-			req: csi.NodePublishVolumeRequest{
+			req: &csi.NodePublishVolumeRequest{
 				VolumeContext:    params,
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:         "vol_1",
@@ -150,7 +150,7 @@ func TestNodePublishVolume(t *testing.T) {
 		},
 		{
 			desc: "[Success] Valid request with pv/pvc metadata",
-			req: csi.NodePublishVolumeRequest{
+			req: &csi.NodePublishVolumeRequest{
 				VolumeContext:    paramsWithMetadata,
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:         "vol_1",
@@ -160,7 +160,7 @@ func TestNodePublishVolume(t *testing.T) {
 		},
 		{
 			desc: "[Success] Valid request with 0 mountPermissions",
-			req: csi.NodePublishVolumeRequest{
+			req: &csi.NodePublishVolumeRequest{
 				VolumeContext:    paramsWithZeroPermissions,
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:         "vol_1",
@@ -170,7 +170,7 @@ func TestNodePublishVolume(t *testing.T) {
 		},
 		{
 			desc: "[Error] invalid mountPermissions",
-			req: csi.NodePublishVolumeRequest{
+			req: &csi.NodePublishVolumeRequest{
 				VolumeContext:    invalidParams,
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:         "vol_1",
@@ -188,7 +188,7 @@ func TestNodePublishVolume(t *testing.T) {
 		if tc.setup != nil {
 			tc.setup()
 		}
-		_, err := ns.NodePublishVolume(context.Background(), &tc.req)
+		_, err := ns.NodePublishVolume(context.Background(), tc.req)
 		if !reflect.DeepEqual(err, tc.expectedErr) {
 			t.Errorf("Desc:%v\nUnexpected error: %v\nExpected: %v", tc.desc, err, tc.expectedErr)
 		}
@@ -219,30 +219,30 @@ func TestNodeUnpublishVolume(t *testing.T) {
 	tests := []struct {
 		desc        string
 		setup       func()
-		req         csi.NodeUnpublishVolumeRequest
+		req         *csi.NodeUnpublishVolumeRequest
 		expectedErr error
 		cleanup     func()
 	}{
 		{
 			desc:        "[Error] Volume ID missing",
-			req:         csi.NodeUnpublishVolumeRequest{TargetPath: targetTest},
+			req:         &csi.NodeUnpublishVolumeRequest{TargetPath: targetTest},
 			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
 		},
 		{
 			desc:        "[Error] Target missing",
-			req:         csi.NodeUnpublishVolumeRequest{VolumeId: "vol_1"},
+			req:         &csi.NodeUnpublishVolumeRequest{VolumeId: "vol_1"},
 			expectedErr: status.Error(codes.InvalidArgument, "Target path missing in request"),
 		},
 		{
 			desc: "[Success] Volume not mounted",
-			req:  csi.NodeUnpublishVolumeRequest{TargetPath: targetFile, VolumeId: "vol_1"},
+			req:  &csi.NodeUnpublishVolumeRequest{TargetPath: targetFile, VolumeId: "vol_1"},
 		},
 		{
 			desc: "[Error] Volume operation in progress",
 			setup: func() {
 				ns.Driver.volumeLocks.TryAcquire(lockKey)
 			},
-			req:         csi.NodeUnpublishVolumeRequest{TargetPath: targetTest, VolumeId: "vol_1"},
+			req:         &csi.NodeUnpublishVolumeRequest{TargetPath: targetTest, VolumeId: "vol_1"},
 			expectedErr: status.Error(codes.Aborted, fmt.Sprintf(volumeOperationAlreadyExistsFmt, "vol_1")),
 			cleanup: func() {
 				ns.Driver.volumeLocks.Release(lockKey)
@@ -257,7 +257,7 @@ func TestNodeUnpublishVolume(t *testing.T) {
 		if tc.setup != nil {
 			tc.setup()
 		}
-		_, err := ns.NodeUnpublishVolume(context.Background(), &tc.req)
+		_, err := ns.NodeUnpublishVolume(context.Background(), tc.req)
 		if !reflect.DeepEqual(err, tc.expectedErr) {
 			if err == nil || tc.expectedErr == nil || !strings.Contains(err.Error(), tc.expectedErr.Error()) {
 				t.Errorf("Desc:%v\nUnexpected error: %v\nExpected: %v", tc.desc, err, tc.expectedErr)
@@ -329,27 +329,27 @@ func TestNodeGetVolumeStats(t *testing.T) {
 
 	tests := []struct {
 		desc        string
-		req         csi.NodeGetVolumeStatsRequest
+		req         *csi.NodeGetVolumeStatsRequest
 		expectedErr error
 	}{
 		{
 			desc:        "[Error] Volume ID missing",
-			req:         csi.NodeGetVolumeStatsRequest{VolumePath: targetTest},
+			req:         &csi.NodeGetVolumeStatsRequest{VolumePath: targetTest},
 			expectedErr: status.Error(codes.InvalidArgument, "NodeGetVolumeStats volume ID was empty"),
 		},
 		{
 			desc:        "[Error] VolumePath missing",
-			req:         csi.NodeGetVolumeStatsRequest{VolumeId: "vol_1"},
+			req:         &csi.NodeGetVolumeStatsRequest{VolumeId: "vol_1"},
 			expectedErr: status.Error(codes.InvalidArgument, "NodeGetVolumeStats volume path was empty"),
 		},
 		{
 			desc:        "[Error] Incorrect volume path",
-			req:         csi.NodeGetVolumeStatsRequest{VolumePath: nonexistedPath, VolumeId: "vol_1"},
+			req:         &csi.NodeGetVolumeStatsRequest{VolumePath: nonexistedPath, VolumeId: "vol_1"},
 			expectedErr: status.Errorf(codes.NotFound, "path /not/a/real/directory does not exist"),
 		},
 		{
 			desc:        "[Success] Standard success",
-			req:         csi.NodeGetVolumeStatsRequest{VolumePath: fakePath, VolumeId: "vol_1"},
+			req:         &csi.NodeGetVolumeStatsRequest{VolumePath: fakePath, VolumeId: "vol_1"},
 			expectedErr: nil,
 		},
 	}
@@ -362,7 +362,7 @@ func TestNodeGetVolumeStats(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		_, err := ns.NodeGetVolumeStats(context.Background(), &test.req)
+		_, err := ns.NodeGetVolumeStats(context.Background(), test.req)
 		if !reflect.DeepEqual(err, test.expectedErr) {
 			t.Errorf("desc: %v, expected error: %v, actual error: %v", test.desc, test.expectedErr, err)
 		}
