@@ -9,6 +9,14 @@ updates:
     - "release-note-none"
     - "ok-to-test"
   open-pull-requests-limit: 1
+  groups:
+    k8s:
+      applies-to: version-updates
+      patterns:
+      - "*"
+      update-types:
+      - "patch"
+      - "minor"
 - package-ecosystem: "github-actions"
   directory: "/"
   schedule:
@@ -18,3 +26,14 @@ updates:
     - "release-note-none"
     - "ok-to-test"
   open-pull-requests-limit: 1
+- package-ecosystem: "docker"
+  directory: "./"
+  schedule:
+    interval: "daily"
+    time: "01:00"
+    timezone: "Asia/Shanghai"
+  labels:
+    - "area/dependency"
+    - "release-note-none"
+    - "ok-to-test"
+    - "kind/cleanup"
