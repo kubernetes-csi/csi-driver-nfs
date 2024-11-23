@@ -40,6 +40,7 @@ import (
 // ControllerServer controller server setting
 type ControllerServer struct {
 	Driver *Driver
+	csi.UnimplementedControllerServer
 }
 
 // nfsVolume is an internal representation of a volume
@@ -344,6 +345,10 @@ func (cs *ControllerServer) ListVolumes(_ context.Context, _ *csi.ListVolumesReq
 }
 
 func (cs *ControllerServer) GetCapacity(_ context.Context, _ *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "")
+}
+
+func (d *Driver) ControllerModifyVolume(_ context.Context, _ *csi.ControllerModifyVolumeRequest) (*csi.ControllerModifyVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
