@@ -154,7 +154,6 @@ func TestNewControllerServiceCapability(t *testing.T) {
 	for _, test := range tests {
 		resp := NewControllerServiceCapability(test.cap)
 		assert.NotNil(t, resp)
-		assert.Equal(t, resp.XXX_sizecache, int32(0))
 	}
 }
 
@@ -178,7 +177,6 @@ func TestNewNodeServiceCapability(t *testing.T) {
 	for _, test := range tests {
 		resp := NewNodeServiceCapability(test.cap)
 		assert.NotNil(t, resp)
-		assert.Equal(t, resp.XXX_sizecache, int32(0))
 	}
 }
 
