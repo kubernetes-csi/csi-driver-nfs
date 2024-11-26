@@ -11,7 +11,7 @@ csi-nfs-controller-56bfddd689-sl4ll      5/5     Running   0          35s     10
 ```
  - get pod description and logs
 ```console
-$ kubectl describe csi-nfs-controller-56bfddd689-dh5tk -n kube-system > csi-nfs-controller-description.log
+$ kubectl describe pod csi-nfs-controller-56bfddd689-dh5tk -n kube-system > csi-nfs-controller-description.log
 $ kubectl logs csi-nfs-controller-56bfddd689-dh5tk -c nfs -n kube-system > csi-nfs-controller.log
 ```
 
