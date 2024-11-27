@@ -70,14 +70,6 @@ spec:
 {{- else }}
           image: "{{ .Values.image.nodeDriverRegistrar.repository }}:{{ .Values.image.nodeDriverRegistrar.tag }}"
 {{- end }}
-          livenessProbe:
-            exec:
-              command:
-                - /csi-node-driver-registrar
-                - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
-                - --mode=kubelet-registration-probe
-            initialDelaySeconds: 30
-            timeoutSeconds: 15
           args:
             - --v=2
             - --csi-address=/csi/csi.sock
