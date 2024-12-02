@@ -9,7 +9,7 @@ metadata:
     {{- with .Values.storageClass.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-provisioner: nfs.csi.k8s.io
+provisioner: {{ .Values.driver.name }}
 {{- with .Values.storageClass.parameters }}
 parameters:
 {{ toYaml . | indent 2 }}
