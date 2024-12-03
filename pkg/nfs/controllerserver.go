@@ -406,7 +406,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	dstPath := filepath.Join(snapInternalVolPath, snapshot.archiveName())
 
 	klog.V(2).Infof("tar %v -> %v", srcPath, dstPath)
-	err = tarPack(dstPath, srcPath, true)
+	err = TarPack(srcPath, dstPath, true)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create archive for snapshot: %v", err)
 	}
@@ -562,7 +562,7 @@ func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.Creat
 	dstPath := getInternalVolumePath(cs.Driver.workingMountDir, dstVol)
 	klog.V(2).Infof("copy volume from snapshot %v -> %v", snapPath, dstPath)
 
-	err = tarUnpack(snapPath, dstPath, true)
+	err = TarUnpack(snapPath, dstPath, true)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to copy volume for snapshot: %v", err)
 	}

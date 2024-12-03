@@ -8,32 +8,33 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
 
-func tarPack(dstFilePath, srcPath string, enableCompression bool) error {
+func TarPack(srcDirPath string, dstPath string, enableCompression bool) error {
 	// normalize all paths to be absolute and clean
-	dstFilePath, err := filepath.Abs(dstFilePath)
+	dstPath, err := filepath.Abs(dstPath)
 	if err != nil {
 		return fmt.Errorf("normalizing destination path: %w", err)
 	}
 
-	srcPath, err = filepath.Abs(srcPath)
+	srcDirPath, err = filepath.Abs(srcDirPath)
 	if err != nil {
 		return fmt.Errorf("normalizing source path: %w", err)
 	}
 
-	if strings.Index(dstFilePath, srcPath) == 0 {
-		return fmt.Errorf("destination file %s cannot be under source directory %s", dstFilePath, srcPath)
+	if strings.Index(path.Dir(dstPath), srcDirPath) == 0 {
+		return fmt.Errorf("destination file %s cannot be under source directory %s", dstPath, srcDirPath)
 	}
 
-	tarFile, err := os.Create(dstFilePath)
+	tarFile, err := os.Create(dstPath)
 	if err != nil {
 		return fmt.Errorf("creating destination file: %w", err)
 	}
 	defer func() {
-		err = errors.Join(err, closeAndWrapErr(tarFile, "closing destination file %s: %w", dstFilePath))
+		err = errors.Join(err, closeAndWrapErr(tarFile, "closing destination file %s: %w", dstPath))
 	}()
 
 	var tarDst io.Writer = tarFile
@@ -52,9 +53,9 @@ func tarPack(dstFilePath, srcPath string, enableCompression bool) error {
 
 	// recursively visit every file and write it
 	if err = filepath.Walk(
-		srcPath,
+		srcDirPath,
 		func(srcSubPath string, fileInfo fs.FileInfo, walkErr error) error {
-			return tarVisitFileToPack(tarWriter, srcPath, srcSubPath, fileInfo, walkErr)
+			return tarVisitFileToPack(tarWriter, srcDirPath, srcSubPath, fileInfo, walkErr)
 		},
 	); err != nil {
 		return fmt.Errorf("walking source directory: %w", err)
@@ -115,24 +116,24 @@ func tarVisitFileToPack(
 	return nil
 }
 
-func tarUnpack(archivePath, dstPath string, enableCompression bool) (err error) {
+func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 	// normalize all paths to be absolute and clean
-	archivePath, err = filepath.Abs(archivePath)
+	srcPath, err = filepath.Abs(srcPath)
 	if err != nil {
 		return fmt.Errorf("normalizing archive path: %w", err)
 	}
 
-	dstPath, err = filepath.Abs(dstPath)
+	dstDirPath, err = filepath.Abs(dstDirPath)
 	if err != nil {
 		return fmt.Errorf("normalizing archive destination path: %w", err)
 	}
 
-	tarFile, err := os.Open(archivePath)
+	tarFile, err := os.Open(srcPath)
 	if err != nil {
-		return fmt.Errorf("opening archive %s: %w", archivePath, err)
+		return fmt.Errorf("opening archive %s: %w", srcPath, err)
 	}
 	defer func() {
-		err = errors.Join(err, closeAndWrapErr(tarFile, "closing archive %s: %w", archivePath))
+		err = errors.Join(err, closeAndWrapErr(tarFile, "closing archive %s: %w", srcPath))
 	}()
 
 	var tarDst io.Reader = tarFile
@@ -146,7 +147,7 @@ func tarUnpack(archivePath, dstPath string, enableCompression bool) (err error) 
 			err = errors.Join(err, closeAndWrapErr(gzipReader, "closing gzip reader: %w"))
 		}()
 
-		tarDst = tar.NewReader(gzipReader)
+		tarDst = gzipReader
 	}
 
 	tarReader := tar.NewReader(tarDst)
@@ -158,12 +159,12 @@ func tarUnpack(archivePath, dstPath string, enableCompression bool) (err error) 
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("reading tar header of %s: %w", archivePath, err)
+			return fmt.Errorf("reading tar header of %s: %w", srcPath, err)
 		}
 
 		fileInfo := tarHeader.FileInfo()
 
-		filePath := filepath.Join(dstPath, tarHeader.Name)
+		filePath := filepath.Join(dstDirPath, tarHeader.Name)
 
 		fileDirPath := filePath
 		if !fileInfo.Mode().IsDir() {
