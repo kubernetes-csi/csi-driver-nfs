@@ -79,6 +79,9 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.resources.csiProvisioner.limits.memory`   | csi-provisioner memory limits                         | 100Mi                                                          |
 | `controller.resources.csiProvisioner.requests.cpu`    | csi-provisioner cpu requests limits                   | 10m                                                            |
 | `controller.resources.csiProvisioner.requests.memory` | csi-provisioner memory requests limits                | 20Mi                                                           |
+| `controller.resources.csiResizer.limits.memory`       | csi-resizer memory limits                             | 400Mi                                                          |
+| `controller.resources.csiResizer.requests.cpu`        | csi-resizer cpu requests                       | 10m                                                            |
+| `controller.resources.csiResizer.requests.memory`     | csi-resizer memory requests                    | 20Mi                                                           |
 | `controller.resources.livenessProbe.limits.memory`    | liveness-probe memory limits                          | 100Mi                                                          |
 | `controller.resources.livenessProbe.requests.cpu`     | liveness-probe cpu requests limits                    | 10m                                                            |
 | `controller.resources.livenessProbe.requests.memory`  | liveness-probe memory requests limits                 | 20Mi                                                           |

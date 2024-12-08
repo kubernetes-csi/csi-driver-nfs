@@ -16,6 +16,8 @@ DriverInfo:
     fsGroup: true
     pvcDataSource: true
     snapshotDataSource: true
+    controllerExpansion: true
+    nodeExpansion: true
 InlineVolumes:
 - Attributes:
     server: nfs-server.default.svc.cluster.local

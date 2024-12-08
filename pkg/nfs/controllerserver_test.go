@@ -372,6 +372,13 @@ func TestControllerGetCapabilities(t *testing.T) {
 							},
 						},
 					},
+					{
+						Type: &csi.ControllerServiceCapability_Rpc{
+							Rpc: &csi.ControllerServiceCapability_RPC{
+								Type: csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
+							},
+						},
+					},
 				},
 			},
 			expectedErr: nil,
@@ -1054,6 +1061,60 @@ func TestDeleteSnapshot(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestControllerExpandVolume(t *testing.T) {
+	testCases := []struct {
+		name     string
+		testFunc func(t *testing.T)
+	}{
+		{
+			name: "volume ID missing",
+			testFunc: func(t *testing.T) {
+				d := initTestController(t)
+				req := &csi.ControllerExpandVolumeRequest{}
+				_, err := d.ControllerExpandVolume(context.Background(), req)
+				expectedErr := status.Error(codes.InvalidArgument, "Volume ID missing in request")
+				if !reflect.DeepEqual(err, expectedErr) {
+					t.Errorf("actualErr: (%v), expectedErr: (%v)", err, expectedErr)
+				}
+			},
+		},
+		{
+			name: "Capacity Range missing",
+			testFunc: func(t *testing.T) {
+				d := initTestController(t)
+				req := &csi.ControllerExpandVolumeRequest{
+					VolumeId: "unit-test",
+				}
+				_, err := d.ControllerExpandVolume(context.Background(), req)
+				expectedErr := status.Error(codes.InvalidArgument, "Capacity Range missing in request")
+				if !reflect.DeepEqual(err, expectedErr) {
+					t.Errorf("actualErr: (%v), expectedErr: (%v)", err, expectedErr)
+				}
+			},
+		},
+		{
+			name: "Error = nil",
+			testFunc: func(t *testing.T) {
+				d := initTestController(t)
+				req := &csi.ControllerExpandVolumeRequest{
+					VolumeId: "unit-test",
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: 10000,
+					},
+				}
+				_, err := d.ControllerExpandVolume(context.Background(), req)
+				if !reflect.DeepEqual(err, nil) {
+					t.Errorf("actualErr: (%v), expectedErr: (%v)", err, nil)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, tc.testFunc)
 	}
 }
 
