@@ -63,6 +63,30 @@ spec:
             capabilities:
               drop:
                 - ALL
+        - name: csi-resizer
+          image: registry.k8s.io/sig-storage/csi-resizer:v1.12.0
+          args:
+            - "-csi-address=$(ADDRESS)"
+            - "-v=2"
+            - "-leader-election"
+            - "--leader-election-namespace=kube-system"
+            - '-handle-volume-inuse-error=false'
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              memory: 400Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
         - name: csi-snapshotter
           image: registry.k8s.io/sig-storage/csi-snapshotter:v8.1.0
           args:

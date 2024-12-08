@@ -75,6 +75,30 @@ spec:
             capabilities:
               drop:
               - ALL
+        - name: csi-resizer
+{{- if hasPrefix "/" .Values.image.csiResizer.repository }}
+          image: "{{ .Values.image.baseRepo }}{{ .Values.image.csiResizer.repository }}:{{ .Values.image.csiResizer.tag }}"
+{{- else }}
+          image: "{{ .Values.image.csiResizer.repository }}:{{ .Values.image.csiResizer.tag }}"
+{{- end }}
+          args:
+            - "-csi-address=$(ADDRESS)"
+            - "-v=2"
+            - "-leader-election"
+            - "--leader-election-namespace={{ .Release.Namespace }}"
+            - '-handle-volume-inuse-error=false'
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: {{ .Values.image.csiResizer.pullPolicy }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources: {{- toYaml .Values.controller.resources.csiResizer | nindent 12 }}
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
         - name: csi-snapshotter
 {{- if hasPrefix "/" .Values.image.csiSnapshotter.repository }}
           image: "{{ .Values.image.baseRepo }}{{ .Values.image.csiSnapshotter.repository }}:{{ .Values.image.csiSnapshotter.tag }}"

@@ -62,9 +62,10 @@ pip install yq --ignore-installed PyYAML
 
 # Extract images from csi-nfs-controller.yaml
 expected_csi_provisioner_image="$(cat ${PKG_ROOT}/deploy/csi-nfs-controller.yaml | yq -r .spec.template.spec.containers[0].image | head -n 1)"
-expected_csi_snapshotter_image="$(cat ${PKG_ROOT}/deploy/csi-nfs-controller.yaml | yq -r .spec.template.spec.containers[1].image | head -n 1)"
-expected_liveness_probe_image="$(cat ${PKG_ROOT}/deploy/csi-nfs-controller.yaml | yq -r .spec.template.spec.containers[2].image | head -n 1)"
-expected_nfs_image="$(cat ${PKG_ROOT}/deploy/csi-nfs-controller.yaml | yq -r .spec.template.spec.containers[3].image | head -n 1)"
+expected_csi_resizer_image="$(cat ${PKG_ROOT}/deploy/csi-nfs-controller.yaml | yq -r .spec.template.spec.containers[1].image | head -n 1)"
+expected_csi_snapshotter_image="$(cat ${PKG_ROOT}/deploy/csi-nfs-controller.yaml | yq -r .spec.template.spec.containers[2].image | head -n 1)"
+expected_liveness_probe_image="$(cat ${PKG_ROOT}/deploy/csi-nfs-controller.yaml | yq -r .spec.template.spec.containers[3].image | head -n 1)"
+expected_nfs_image="$(cat ${PKG_ROOT}/deploy/csi-nfs-controller.yaml | yq -r .spec.template.spec.containers[4].image | head -n 1)"
 
 csi_provisioner_image="$(get_image_from_helm_chart "csiProvisioner")"
 validate_image "${expected_csi_provisioner_image}" "${csi_provisioner_image}"

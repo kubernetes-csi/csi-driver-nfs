@@ -9,6 +9,10 @@ image:
         repository: registry.k8s.io/sig-storage/csi-provisioner
         tag: v5.1.0
         pullPolicy: IfNotPresent
+    csiResizer:
+        repository: registry.k8s.io/sig-storage/csi-resizer
+        tag: v1.12.0
+        pullPolicy: IfNotPresent
     csiSnapshotter:
         repository: registry.k8s.io/sig-storage/csi-snapshotter
         tag: v8.1.0
@@ -76,6 +80,12 @@ controller:
       effect: "NoSchedule"
   resources:
     csiProvisioner:
+      limits:
+        memory: 400Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    csiResizer:
       limits:
         memory: 400Mi
       requests:
