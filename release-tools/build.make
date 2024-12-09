@@ -45,9 +45,10 @@ REV=$(shell git describe --long --tags --match='v*' --dirty 2>/dev/null || git r
 # Determined dynamically.
 IMAGE_TAGS=
 
-# A "canary" image gets built if the current commit is the head of the remote "master" branch.
+# A "canary" image gets built if the current commit is the head of the remote "master" or "main" branch.
 # That branch does not exist when building some other branch in TravisCI.
 IMAGE_TAGS+=$(shell if [ "$$(git rev-list -n1 HEAD)" = "$$(git rev-list -n1 origin/master 2>/dev/null)" ]; then echo "canary"; fi)
+IMAGE_TAGS+=$(shell if [ "$$(git rev-list -n1 HEAD)" = "$$(git rev-list -n1 origin/main 2>/dev/null)" ]; then echo "canary"; fi)
 
 # A "X.Y.Z-canary" image gets built if the current commit is the head of a "origin/release-X.Y.Z" branch.
 # The actual suffix does not matter, only the "release-" prefix is checked.
@@ -143,7 +144,7 @@ DOCKER_BUILDX_CREATE_ARGS ?=
 # Windows binaries can be built before adding a Dockerfile for it.
 #
 # BUILD_PLATFORMS determines which individual images are included in the multiarch image.
-# PULL_BASE_REF must be set to 'master', 'release-x.y', or a tag name, and determines
+# PULL_BASE_REF must be set to 'master', 'main', 'release-x.y', or a tag name, and determines
 # the tag for the resulting multiarch image.
 $(CMDS:%=push-multiarch-%): push-multiarch-%: check-pull-base-ref build-%
 	set -ex; \
@@ -191,7 +192,7 @@ $(CMDS:%=push-multiarch-%): push-multiarch-%: check-pull-base-ref build-%
 		done; \
 		docker manifest push -p $(IMAGE_NAME):$$tag; \
 	}; \
-	if [ $(PULL_BASE_REF) = "master" ]; then \
+	if [ $(PULL_BASE_REF) = "master" ] || [ $(PULL_BASE_REF) = "main" ]; then \
 			: "creating or overwriting canary image"; \
 			pushMultiArch canary; \
 	elif echo $(PULL_BASE_REF) | grep -q -e 'release-*' ; then \
@@ -209,7 +210,7 @@ $(CMDS:%=push-multiarch-%): push-multiarch-%: check-pull-base-ref build-%
 .PHONY: check-pull-base-ref
 check-pull-base-ref:
 	if ! [ "$(PULL_BASE_REF)" ]; then \
-		echo >&2 "ERROR: PULL_BASE_REF must be set to 'master', 'release-x.y', or a tag name."; \
+		echo >&2 "ERROR: PULL_BASE_REF must be set to 'master', 'main', 'release-x.y', or a tag name."; \
 		exit 1; \
 	fi
 
