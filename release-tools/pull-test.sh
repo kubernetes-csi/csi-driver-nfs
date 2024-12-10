@@ -20,6 +20,11 @@
 
 set -ex
 
+# Prow checks out repos with --filter=blob:none. This breaks
+# "git subtree pull" unless we enable fetching missing file content.
+GIT_NO_LAZY_FETCH=0
+export GIT_NO_LAZY_FETCH
+
 # It must be called inside the updated csi-release-tools repo.
 CSI_RELEASE_TOOLS_DIR="$(pwd)"
 
