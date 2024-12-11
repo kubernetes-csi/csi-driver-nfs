@@ -16,6 +16,7 @@ parameters:
 {{- end }}
 reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
 volumeBindingMode: {{ .Values.storageClass.volumeBindingMode }}
+allowVolumeExpansion: true
 {{- with .Values.storageClass.mountOptions }}
 mountOptions:
 {{ toYaml . | nindent 2 }}
