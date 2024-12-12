@@ -24,18 +24,29 @@ spec:
       hostNetwork: true  # controller also needs to mount nfs to create dir
       dnsPolicy: {{ .Values.controller.dnsPolicy }}
       serviceAccountName: {{ .Values.serviceAccount.controller }}
-{{- with .Values.controller.affinity }}
+    # runOnControlPlane=true or runOnMaster=true only takes effect if affinity is not set
+    {{- if contains (tpl "{{ .Values.controller.affinity }}" .) "nodeSelectorTerms" }}
+      {{- with .Values.controller.affinity }}
       affinity:
-{{ toYaml . | indent 8 }}
-{{- end }}
+      {{ toYaml . | indent 8 }}
+      {{- end }}
+    {{- else if or .Values.controller.runOnControlPlane .Values.controller.runOnMaster}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                {{- if .Values.controller.runOnControlPlane}}
+                - key: node-role.kubernetes.io/control-plane
+                  operator: Exists
+                {{- end}}
+                {{- if .Values.controller.runOnMaster}}
+                - key: node-role.kubernetes.io/master
+                  operator: Exists
+                {{- end}}
+    {{- end }}
       nodeSelector:
         kubernetes.io/os: linux
-        {{- if .Values.controller.runOnMaster}}
-        node-role.kubernetes.io/master: ""
-        {{- end}}
-        {{- if .Values.controller.runOnControlPlane}}
-        node-role.kubernetes.io/control-plane: ""
-        {{- end}}
 {{- with .Values.controller.nodeSelector }}
 {{ toYaml . | indent 8 }}
 {{- end }}
