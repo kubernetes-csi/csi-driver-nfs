@@ -15,7 +15,7 @@ image:
         pullPolicy: IfNotPresent
     csiSnapshotter:
         repository: registry.k8s.io/sig-storage/csi-snapshotter
-        tag: v8.1.0
+        tag: v8.2.0
         pullPolicy: IfNotPresent
     livenessProbe:
         repository: registry.k8s.io/sig-storage/livenessprobe
@@ -27,7 +27,7 @@ image:
         pullPolicy: IfNotPresent
     externalSnapshotter:
         repository: registry.k8s.io/sig-storage/snapshot-controller
-        tag: v8.1.0
+        tag: v8.2.0
         pullPolicy: IfNotPresent
 
 serviceAccount:
