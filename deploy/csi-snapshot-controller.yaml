@@ -52,7 +52,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: snapshot-controller
-          image: registry.k8s.io/sig-storage/snapshot-controller:v8.1.0
+          image: registry.k8s.io/sig-storage/snapshot-controller:v8.2.0
           args:
             - "--v=2"
             - "--leader-election=true"
