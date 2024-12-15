@@ -56,6 +56,7 @@ controller:
   strategyType: Recreate
   runOnMaster: false
   runOnControlPlane: false
+  enableSnapshotter: true
   livenessProbe:
     healthPort: 29652
   logLevel: 5
