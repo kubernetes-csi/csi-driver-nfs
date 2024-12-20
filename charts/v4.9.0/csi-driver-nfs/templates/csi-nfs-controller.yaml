@@ -86,6 +86,7 @@ spec:
             capabilities:
               drop:
               - ALL
+{{- if .Values.externalSnapshotter.enabled }}
         - name: csi-snapshotter
 {{- if hasPrefix "/" .Values.image.csiSnapshotter.repository }}
           image: "{{ .Values.image.baseRepo }}{{ .Values.image.csiSnapshotter.repository }}:{{ .Values.image.csiSnapshotter.tag }}"
@@ -110,6 +111,7 @@ spec:
             capabilities:
               drop:
               - ALL
+{{- end }}
         - name: liveness-probe
 {{- if hasPrefix "/" .Values.image.livenessProbe.repository }}
           image: "{{ .Values.image.baseRepo }}{{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}"
