@@ -26,7 +26,7 @@ steps:
   # The image must contain bash and curl. Ideally it should also contain
   # the desired version of Go (currently defined in release-tools/prow.sh),
   # but that just speeds up the build and is not required.
-  - name: 'gcr.io/k8s-testimages/gcb-docker-gcloud:v20230623-56e06d7c18'
+  - name: 'gcr.io/k8s-testimages/gcb-docker-gcloud:v20240718-5ef92b5c36'
     entrypoint: ./.cloudbuild.sh
     env:
     - GIT_TAG=${_GIT_TAG}
