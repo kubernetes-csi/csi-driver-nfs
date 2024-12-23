@@ -243,7 +243,7 @@ configvar CSI_PROW_SIDECAR_E2E_PATH "${CSI_PROW_SIDECAR_E2E_IMPORT_PATH}" "CSI S
 # of the cluster. The alternative would have been to (cross-)compile csi-sanity
 # and install it inside the cluster, which is not necessarily easier.
 configvar CSI_PROW_SANITY_REPO https://github.com/kubernetes-csi/csi-test "csi-test repo"
-configvar CSI_PROW_SANITY_VERSION v5.2.0 "csi-test version"
+configvar CSI_PROW_SANITY_VERSION v5.3.1 "csi-test version"
 configvar CSI_PROW_SANITY_PACKAGE_PATH github.com/kubernetes-csi/csi-test "csi-test package"
 configvar CSI_PROW_SANITY_SERVICE "hostpath-service" "Kubernetes TCP service name that exposes csi.sock"
 configvar CSI_PROW_SANITY_POD "csi-hostpathplugin-0" "Kubernetes pod with CSI driver"
@@ -441,7 +441,8 @@ run_with_go () {
     else
         version=local
     fi
-    GOTOOLCHAIN=$version run "$@"
+    # Set GOMODCACHE to make sure Kubernetes does not need to download again.
+    GOTOOLCHAIN=$version GOMODCACHE="$(go env GOMODCACHE)" run "$@"
 }
 
 # Ensure that we have the desired version of kind.
