@@ -57,6 +57,7 @@ controller:
   runOnMaster: false
   runOnControlPlane: false
   enableSnapshotter: true
+  useTarCommandInSnapshot: false
   livenessProbe:
     healthPort: 29652
   logLevel: 5

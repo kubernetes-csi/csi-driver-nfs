@@ -34,6 +34,7 @@ var (
 	defaultOnDeletePolicy        = flag.String("default-ondelete-policy", "", "default policy for deleting subdirectory when deleting a volume")
 	volStatsCacheExpireInMinutes = flag.Int("vol-stats-cache-expire-in-minutes", 10, "The cache expire time in minutes for volume stats cache")
 	removeArchivedVolumePath     = flag.Bool("remove-archived-volume-path", false, "remove archived volume path in DeleteVolume")
+	useTarCommandInSnapshot      = flag.Bool("use-tar-command-in-snapshot", false, "use tar command to pack and unpack snapshot data")
 )
 
 func main() {
@@ -58,6 +59,7 @@ func handle() {
 		DefaultOnDeletePolicy:        *defaultOnDeletePolicy,
 		VolStatsCacheExpireInMinutes: *volStatsCacheExpireInMinutes,
 		RemoveArchivedVolumePath:     *removeArchivedVolumePath,
+		UseTarCommandInSnapshot:      *useTarCommandInSnapshot,
 	}
 	d := nfs.NewDriver(&driverOptions)
 	d.Run(false)
