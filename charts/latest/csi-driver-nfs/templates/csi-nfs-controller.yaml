@@ -181,6 +181,7 @@ spec:
             - "--mount-permissions={{ .Values.driver.mountPermissions }}"
             - "--working-mount-dir={{ .Values.controller.workingMountDir }}"
             - "--default-ondelete-policy={{ .Values.controller.defaultOnDeletePolicy }}"
+            - "--use-tar-command-in-snapshot={{ .Values.controller.useTarCommandInSnapshot }}"
           env:
             - name: NODE_ID
               valueFrom:

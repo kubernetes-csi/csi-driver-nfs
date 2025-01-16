@@ -406,9 +406,14 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	dstPath := filepath.Join(snapInternalVolPath, snapshot.archiveName())
 
 	klog.V(2).Infof("tar %v -> %v", srcPath, dstPath)
-	err = TarPack(srcPath, dstPath, true)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create archive for snapshot: %v", err)
+	if cs.Driver.useTarCommandInSnapshot {
+		if out, err := exec.Command("tar", "-C", srcPath, "-czvf", dstPath, ".").CombinedOutput(); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to create archive for snapshot: %v: %v", err, string(out))
+		}
+	} else {
+		if err := TarPack(srcPath, dstPath, true); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to create archive for snapshot: %v", err)
+		}
 	}
 	klog.V(2).Infof("tar %s -> %s complete", srcPath, dstPath)
 
@@ -573,9 +578,14 @@ func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.Creat
 	dstPath := getInternalVolumePath(cs.Driver.workingMountDir, dstVol)
 	klog.V(2).Infof("copy volume from snapshot %v -> %v", snapPath, dstPath)
 
-	err = TarUnpack(snapPath, dstPath, true)
-	if err != nil {
-		return status.Errorf(codes.Internal, "failed to copy volume for snapshot: %v", err)
+	if cs.Driver.useTarCommandInSnapshot {
+		if out, err := exec.Command("tar", "-xzvf", snapPath, "-C", dstPath).CombinedOutput(); err != nil {
+			return status.Errorf(codes.Internal, "failed to copy volume for snapshot: %v: %v", err, string(out))
+		}
+	} else {
+		if err := TarUnpack(snapPath, dstPath, true); err != nil {
+			return status.Errorf(codes.Internal, "failed to copy volume for snapshot: %v", err)
+		}
 	}
 	klog.V(2).Infof("volume copied from snapshot %v -> %v", snapPath, dstPath)
 	return nil
