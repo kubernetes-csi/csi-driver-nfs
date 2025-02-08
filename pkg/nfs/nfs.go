@@ -99,6 +99,7 @@ func NewDriver(options *DriverOptions) *Driver {
 		volStatsCacheExpireInMinutes: options.VolStatsCacheExpireInMinutes,
 		removeArchivedVolumePath:     options.RemoveArchivedVolumePath,
 		useTarCommandInSnapshot:      options.UseTarCommandInSnapshot,
+		defaultOnDeletePolicy:        options.DefaultOnDeletePolicy,
 	}
 
 	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
