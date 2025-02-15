@@ -158,7 +158,7 @@ type ValidatingAdmissionPolicyList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	// List of ValidatingAdmissionPolicy.
-	Items []ValidatingAdmissionPolicy `json:"items,omitempty" protobuf:"bytes,2,rep,name=items"`
+	Items []ValidatingAdmissionPolicy `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 // ValidatingAdmissionPolicySpec is the specification of the desired behavior of the AdmissionPolicy.
@@ -242,7 +242,7 @@ type ValidatingAdmissionPolicySpec struct {
 	// +listType=map
 	// +listMapKey=name
 	// +optional
-	Variables []Variable `json:"variables" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=variables"`
+	Variables []Variable `json:"variables,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=variables"`
 }
 
 // ParamKind is a tuple of Group Kind and Version.
@@ -419,7 +419,7 @@ type ValidatingAdmissionPolicyBindingList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	// List of PolicyBinding.
-	Items []ValidatingAdmissionPolicyBinding `json:"items,omitempty" protobuf:"bytes,2,rep,name=items"`
+	Items []ValidatingAdmissionPolicyBinding `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 // ValidatingAdmissionPolicyBindingSpec is the specification of the ValidatingAdmissionPolicyBinding.
