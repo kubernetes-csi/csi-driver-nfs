@@ -823,7 +823,7 @@ func (config *RCConfig) start(ctx context.Context) error {
 			*config.CreatedPods = startupStatus.Created
 		}
 		if !config.Silent {
-			config.RCConfigLog(startupStatus.String(config.Name))
+			config.RCConfigLog("%s", startupStatus.String(config.Name))
 		}
 
 		if config.PodStatusFile != nil {
@@ -847,8 +847,8 @@ func (config *RCConfig) start(ctx context.Context) error {
 		if podDeletionsCount > config.MaxAllowedPodDeletions {
 			// Number of pods which disappeared is over threshold
 			err := fmt.Errorf("%d pods disappeared for %s: %v", podDeletionsCount, config.Name, strings.Join(deletedPods, ", "))
-			config.RCConfigLog(err.Error())
-			config.RCConfigLog(diff.String(sets.NewString()))
+			config.RCConfigLog("%s", err.Error())
+			config.RCConfigLog("%s", diff.String(sets.NewString()))
 			return err
 		}
 
@@ -1502,7 +1502,7 @@ func makeUnboundPersistentVolumeClaim(storageClass string) *v1.PersistentVolumeC
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes:      []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany},
 			StorageClassName: &storageClass,
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceName(v1.ResourceStorage): resource.MustParse("1Gi"),
 				},
