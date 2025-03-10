@@ -39,10 +39,11 @@ const (
 	delete                          = "delete"
 	retain                          = "retain"
 	archive                         = "archive"
+	deleteRootSubDir                = "deleteRootSubDir"
 	volumeOperationAlreadyExistsFmt = "An operation with the given Volume ID %s already exists"
 )
 
-var supportedOnDeleteValues = []string{"", delete, retain, archive}
+var supportedOnDeleteValues = []string{"", delete, retain, archive, deleteRootSubDir}
 
 func validateOnDeleteValue(onDelete string) error {
 	for _, v := range supportedOnDeleteValues {

@@ -335,6 +335,11 @@ func TestValidateOnDeleteValue(t *testing.T) {
 			expected: nil,
 		},
 		{
+			desc:     "Delete value",
+			onDelete: "DeleteRootSubDir",
+			expected: nil,
+		},
+		{
 			desc:     "Archive value",
 			onDelete: "Archive",
 			expected: nil,
