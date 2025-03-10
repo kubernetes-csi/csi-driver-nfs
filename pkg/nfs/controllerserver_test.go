@@ -38,19 +38,20 @@ import (
 )
 
 const (
-	testServer                   = "test-server"
-	testBaseDir                  = "test-base-dir"
-	testBaseDirNested            = "test/base/dir"
-	testCSIVolume                = "volume-name"
-	testVolumeID                 = "test-server/test-base-dir/volume-name"
-	newTestVolumeID              = "test-server#test-base-dir#volume-name##"
-	newTestVolumeWithVolumeID    = "test-server#test-base-dir#volume-name#volume-name#"
-	testVolumeIDNested           = "test-server/test/base/dir/volume-name"
-	newTestVolumeIDNested        = "test-server#test/base/dir#volume-name#"
-	newTestVolumeIDUUID          = "test-server#test-base-dir#volume-name#uuid"
-	newTestVolumeOnDeleteRetain  = "test-server#test-base-dir#volume-name#uuid#retain"
-	newTestVolumeOnDeleteDelete  = "test-server#test-base-dir#volume-name#uuid#delete"
-	newTestVolumeOnDeleteArchive = "test-server#test-base-dir#volume-name##archive"
+	testServer                            = "test-server"
+	testBaseDir                           = "test-base-dir"
+	testBaseDirNested                     = "test/base/dir"
+	testCSIVolume                         = "volume-name"
+	testVolumeID                          = "test-server/test-base-dir/volume-name"
+	newTestVolumeID                       = "test-server#test-base-dir#volume-name##"
+	newTestVolumeWithVolumeID             = "test-server#test-base-dir#volume-name#volume-name#"
+	testVolumeIDNested                    = "test-server/test/base/dir/volume-name"
+	newTestVolumeIDNested                 = "test-server#test/base/dir#volume-name#"
+	newTestVolumeIDUUID                   = "test-server#test-base-dir#volume-name#uuid"
+	newTestVolumeOnDeleteRetain           = "test-server#test-base-dir#volume-name#uuid#retain"
+	newTestVolumeOnDeleteDelete           = "test-server#test-base-dir#volume-name#uuid#delete"
+	newTestVolumeOnDeleteDeleteRootSubDir = "test-server#test-base-dir#volume-name#uuid#deleterootsubdir"
+	newTestVolumeOnDeleteArchive          = "test-server#test-base-dir#volume-name##archive"
 )
 
 func initTestController(_ *testing.T) *ControllerServer {
@@ -507,6 +508,19 @@ func TestNfsVolFromId(t *testing.T) {
 				subDir:   testCSIVolume,
 				uuid:     "uuid",
 				onDelete: "delete",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid request nested ondelete deleterootsubdir",
+			volumeID: newTestVolumeOnDeleteDeleteRootSubDir,
+			resp: &nfsVolume{
+				id:       newTestVolumeOnDeleteDeleteRootSubDir,
+				server:   testServer,
+				baseDir:  testBaseDir,
+				subDir:   testCSIVolume,
+				uuid:     "uuid",
+				onDelete: "deleterootsubdir",
 			},
 			expectErr: false,
 		},
