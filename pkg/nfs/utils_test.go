@@ -429,6 +429,67 @@ func TestGetRootPath(t *testing.T) {
 	}
 }
 
+func TestRemoveEmptyDirs(t *testing.T) {
+	parentDir, _ := os.Getwd()
+	emptyDirOneLevel, _ := getWorkDirPath("emptyDir1")
+	emptyDirTwoLevels, _ := getWorkDirPath("emptyDir2/emptyDir2")
+	emptyDirThreeLevels, _ := getWorkDirPath("emptyDir3/emptyDir2/emptyDir3")
+
+	tests := []struct {
+		desc      string
+		parentDir string
+		dir       string
+		expected  error
+	}{
+		{
+			desc:      "empty path",
+			parentDir: parentDir,
+			expected:  nil,
+		},
+		{
+			desc:      "empty dir with one level",
+			parentDir: parentDir,
+			dir:       emptyDirOneLevel,
+			expected:  nil,
+		},
+		{
+			desc:      "dir is not a subdirectory of parentDir",
+			parentDir: "/dir1",
+			dir:       "/dir2",
+			expected:  fmt.Errorf("dir /dir2 is not a subdirectory of parentDir /dir1"),
+		},
+		{
+			desc:      "empty dir with two levels",
+			parentDir: parentDir,
+			dir:       emptyDirTwoLevels,
+			expected:  nil,
+		},
+		{
+			desc:      "empty dir with three levels",
+			parentDir: parentDir,
+			dir:       emptyDirThreeLevels,
+			expected:  nil,
+		},
+	}
+
+	for _, test := range tests {
+		if strings.Contains(test.dir, "emptyDir") {
+			_ = makeDir(test.dir)
+			defer os.RemoveAll(test.dir)
+		}
+		err := removeEmptyDirs(test.parentDir, test.dir)
+		if !reflect.DeepEqual(err, test.expected) {
+			t.Errorf("test[%s]: unexpected output: %v, expected result: %v", test.desc, err, test.expected)
+		}
+		if strings.Contains(test.dir, "emptyDir") {
+			// directory should be removed
+			if _, err := os.Stat(emptyDirOneLevel); !os.IsNotExist(err) {
+				t.Errorf("test[%s]: directory %s should be removed", test.desc, emptyDirOneLevel)
+			}
+		}
+	}
+}
+
 func TestWaitUntilTimeout(t *testing.T) {
 	tests := []struct {
 		desc        string
