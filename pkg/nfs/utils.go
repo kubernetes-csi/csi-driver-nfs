@@ -217,12 +217,6 @@ func waitForPathNotExistWithTimeout(path string, timeout time.Duration) error {
 	}
 }
 
-// getRootDir returns the root directory of the given directory
-func getRootDir(path string) string {
-	parts := strings.Split(path, "/")
-	return parts[0]
-}
-
 // removeEmptyDirs removes empty directories in the given directory dir until the parent directory parentDir
 // It will remove all empty directories in the path from the given directory to the parent directory
 // It will not remove the parent directory parentDir
