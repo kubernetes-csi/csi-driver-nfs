@@ -19,6 +19,7 @@ package nfs
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -216,10 +217,50 @@ func waitForPathNotExistWithTimeout(path string, timeout time.Duration) error {
 	}
 }
 
-// getRootDir returns the root directory of the given directory
-func getRootDir(path string) string {
-	parts := strings.Split(path, "/")
-	return parts[0]
+// removeEmptyDirs removes empty directories in the given directory dir until the parent directory parentDir
+// It will remove all empty directories in the path from the given directory to the parent directory
+// It will not remove the parent directory parentDir
+func removeEmptyDirs(parentDir, dir string) error {
+	if parentDir == "" || dir == "" {
+		return nil
+	}
+
+	absParentDir, err := filepath.Abs(parentDir)
+	if err != nil {
+		return err
+	}
+
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return err
+	}
+
+	if !strings.HasPrefix(absDir, absParentDir) {
+		return fmt.Errorf("dir %s is not a subdirectory of parentDir %s", dir, parentDir)
+	}
+
+	var depth int
+	for absDir != absParentDir {
+		entries, err := os.ReadDir(absDir)
+		if err != nil {
+			return err
+		}
+		if len(entries) == 0 {
+			klog.V(2).Infof("Removing empty directory %s", absDir)
+			if err := os.Remove(absDir); err != nil {
+				return err
+			}
+		} else {
+			klog.V(2).Infof("Directory %s is not empty", absDir)
+			break
+		}
+		if depth++; depth > 10 {
+			return fmt.Errorf("depth of directory %s is too deep", dir)
+		}
+		absDir = filepath.Dir(absDir)
+	}
+
+	return nil
 }
 
 // ExecFunc returns a exec function's output and error
