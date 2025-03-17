@@ -109,8 +109,6 @@ var _ = ginkgo.BeforeSuite(func() {
 		kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
 		os.Setenv(kubeconfigEnvVar, kubeconfig)
 	}
-	handleFlags()
-	framework.AfterReadingAllFlags(&framework.TestContext)
 
 	options := nfs.DriverOptions{
 		NodeID:     nodeID,
@@ -213,6 +211,12 @@ func execTestCmd(cmds []testCmd) {
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		log.Println(cmd.endLog)
 	}
+}
+
+func TestMain(m *testing.M) {
+	handleFlags()
+	framework.AfterReadingAllFlags(&framework.TestContext)
+	os.Exit(m.Run())
 }
 
 func TestE2E(t *testing.T) {
