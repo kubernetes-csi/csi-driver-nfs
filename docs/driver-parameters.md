@@ -28,6 +28,14 @@ volumeAttributes.server | NFS Server address | domain name `nfs-server.default.s
 volumeAttributes.share | NFS share path | `/` |  Yes  |
 volumeAttributes.mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount |  | No |
 
+### `VolumeSnapshotClass`
+
+Name | Meaning | Available Value | Mandatory | Default value
+--- | --- | --- | --- | ---
+mountOptions | mount options separated by comma, e.g. `"nfsvers=4.1,sec=sys"` |  | No | ""
+server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
+share | NFS share path | `/` | Yes |
+
 ### Tips
 #### `subDir` parameter supports following pv/pvc metadata conversion
 > if `subDir` value contains following strings, it would be converted into corresponding pv/pvc name or namespace

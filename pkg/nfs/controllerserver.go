@@ -376,7 +376,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Errorf(codes.NotFound, "failed to create nfsSnapshot: %v", err)
 	}
 	snapVol := volumeFromSnapshot(snapshot)
-	if err = cs.internalMount(ctx, snapVol, nil, nil); err != nil {
+	if err = cs.internalMount(ctx, snapVol, req.GetParameters(), nil); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount snapshot nfs server: %v", err)
 	}
 	defer func() {
@@ -392,7 +392,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, err
 	}
 
-	if err = cs.internalMount(ctx, srcVol, nil, nil); err != nil {
+	if err = cs.internalMount(ctx, srcVol, req.GetParameters(), nil); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount src nfs server: %v", err)
 	}
 	defer func() {
@@ -652,6 +652,8 @@ func newNFSSnapshot(name string, params map[string]string, vol *nfsVolume) (*nfs
 			server = v
 		case paramShare:
 			baseDir = v
+		case mountOptionsField:
+			// no op
 		default:
 			return nil, status.Errorf(codes.InvalidArgument, "invalid parameter %q in snapshot storage class", k)
 		}
