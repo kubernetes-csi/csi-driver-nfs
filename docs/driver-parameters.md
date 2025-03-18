@@ -32,9 +32,9 @@ volumeAttributes.mountPermissions | mounted folder permissions. The default is `
 
 Name | Meaning | Available Value | Mandatory | Default value
 --- | --- | --- | --- | ---
-mountOptions | mount options separated by comma, e.g. `"nfsvers=4.1,sec=sys"` |  | No | ""
-server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
-share | NFS share path | `/` | Yes |
+server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` |  No | use server from source volume by default
+share | NFS share path | `/` | No | use share from source volume by default
+mountOptions | mount options separated by comma during snapshot creation, e.g. `"nfsvers=4.1,sec=sys"` |  | No | ""
 
 ### Tips
 #### `subDir` parameter supports following pv/pvc metadata conversion
