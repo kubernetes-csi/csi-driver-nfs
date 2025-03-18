@@ -933,6 +933,7 @@ func TestCreateSnapshot(t *testing.T) {
 			req: &csi.CreateSnapshotRequest{
 				SourceVolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-name",
 				Name:           "snapshot-name",
+				Parameters:     map[string]string{"mountOptions": "nfsvers=4.1,sec=sys"},
 			},
 			expResp: &csi.CreateSnapshotResponse{
 				Snapshot: &csi.Snapshot{
@@ -951,6 +952,15 @@ func TestCreateSnapshot(t *testing.T) {
 			req: &csi.CreateSnapshotRequest{
 				SourceVolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-name",
 				Name:           "snapshot-name",
+			},
+			expectErr: true,
+		},
+		{
+			desc: "create snapshot with non supported parameters",
+			req: &csi.CreateSnapshotRequest{
+				SourceVolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-name",
+				Name:           "snapshot-name",
+				Parameters:     map[string]string{"unknown": "value"},
 			},
 			expectErr: true,
 		},
