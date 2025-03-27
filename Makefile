@@ -42,7 +42,7 @@ REGISTRY_NAME ?= $(shell echo $(REGISTRY) | sed "s/.azurecr.io//g")
 IMAGE_TAG = $(REGISTRY)/$(IMAGENAME):$(IMAGE_VERSION)
 IMAGE_TAG_LATEST = $(REGISTRY)/$(IMAGENAME):latest
 
-E2E_HELM_OPTIONS ?= --set image.nfs.repository=$(REGISTRY)/$(IMAGENAME) --set image.nfs.tag=$(IMAGE_VERSION) --set image.nfs.pullPolicy=Always --set feature.enableInlineVolume=true --set externalSnapshotter.enabled=true
+E2E_HELM_OPTIONS ?= --set image.nfs.repository=upstream.azurecr.io/oss/v2/kubernetes-csi/csi-driver-nfs --set image.nfs.tag=v4.9.0-2 --set image.nfs.pullPolicy=Always --set feature.enableInlineVolume=true --set externalSnapshotter.enabled=true --set controller.runOnControlPlane=true
 E2E_HELM_OPTIONS += ${EXTRA_HELM_OPTIONS}
 
 # Output type of docker buildx build
@@ -140,7 +140,6 @@ install-helm:
 
 .PHONY: e2e-bootstrap
 e2e-bootstrap: install-helm
-	OUTPUT_TYPE=registry $(MAKE) container push
 	helm install csi-driver-nfs ./charts/latest/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
 		${E2E_HELM_OPTIONS} \
 		--set controller.logLevel=8 \
