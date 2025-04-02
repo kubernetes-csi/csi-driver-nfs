@@ -67,21 +67,21 @@ func NewControllerServer(d *Driver) *ControllerServer {
 	}
 }
 
-func NewControllerServiceCapability(cap csi.ControllerServiceCapability_RPC_Type) *csi.ControllerServiceCapability {
+func NewControllerServiceCapability(c csi.ControllerServiceCapability_RPC_Type) *csi.ControllerServiceCapability {
 	return &csi.ControllerServiceCapability{
 		Type: &csi.ControllerServiceCapability_Rpc{
 			Rpc: &csi.ControllerServiceCapability_RPC{
-				Type: cap,
+				Type: c,
 			},
 		},
 	}
 }
 
-func NewNodeServiceCapability(cap csi.NodeServiceCapability_RPC_Type) *csi.NodeServiceCapability {
+func NewNodeServiceCapability(c csi.NodeServiceCapability_RPC_Type) *csi.NodeServiceCapability {
 	return &csi.NodeServiceCapability{
 		Type: &csi.NodeServiceCapability_Rpc{
 			Rpc: &csi.NodeServiceCapability_RPC{
-				Type: cap,
+				Type: c,
 			},
 		},
 	}
