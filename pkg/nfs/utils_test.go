@@ -65,7 +65,6 @@ func TestParseEndpoint(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		test := test //pin
 		t.Run(test.desc, func(t *testing.T) {
 			proto, addr, err := ParseEndpoint(test.endpoint)
 

@@ -800,7 +800,7 @@ func getNfsVolFromID(id string) (*nfsVolume, error) {
 		// try with separator "/"
 		volRegex := regexp.MustCompile("^([^/]+)/(.*)/([^/]+)$")
 		tokens := volRegex.FindStringSubmatch(id)
-		if tokens == nil || len(tokens) < 4 {
+		if len(tokens) < 4 {
 			return nil, fmt.Errorf("could not split %s into server, baseDir and subDir with separator(%s)", id, "/")
 		}
 		server = tokens[1]

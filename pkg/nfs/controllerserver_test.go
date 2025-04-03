@@ -218,7 +218,6 @@ func TestCreateVolume(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		test := test //pin
 		t.Run(test.name, func(t *testing.T) {
 			// Setup
 			cs := initTestController(t)
@@ -300,7 +299,6 @@ func TestDeleteVolume(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		test := test //pin
 		if runtime.GOOS == "windows" && !test.testOnWindows {
 			continue
 		}
@@ -386,7 +384,6 @@ func TestControllerGetCapabilities(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		test := test //pin
 		t.Run(test.desc, func(t *testing.T) {
 			// Setup
 			cs := initTestController(t)
@@ -526,7 +523,6 @@ func TestNfsVolFromId(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		test := test //pin
 		t.Run(test.name, func(t *testing.T) {
 			resp, err := getNfsVolFromID(test.volumeID)
 
