@@ -43,7 +43,7 @@ spec:
             - "-v=2"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election"
-            - "--leader-election-namespace=kube-system"
+            - "--leader-election-namespace=$(POD_NAMESPACE)"
             - "--extra-create-metadata=true"
             - "--feature-gates=HonorPVReclaimPolicy=true"
             - "--timeout=1200s"
@@ -51,6 +51,10 @@ spec:
           env:
             - name: ADDRESS
               value: /csi/csi.sock
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           volumeMounts:
             - mountPath: /csi
               name: socket-dir
@@ -70,11 +74,15 @@ spec:
             - "-csi-address=$(ADDRESS)"
             - "-v=2"
             - "-leader-election"
-            - "--leader-election-namespace=kube-system"
+            - "--leader-election-namespace=$(POD_NAMESPACE)"
             - '-handle-volume-inuse-error=false'
           env:
             - name: ADDRESS
               value: /csi/csi.sock
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -93,13 +101,17 @@ spec:
           args:
             - "--v=2"
             - "--csi-address=$(ADDRESS)"
-            - "--leader-election-namespace=kube-system"
+            - "--leader-election-namespace=$(POD_NAMESPACE)"
             - "--leader-election"
             - "--timeout=1200s"
             - "--retry-interval-max=30m"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: socket-dir
