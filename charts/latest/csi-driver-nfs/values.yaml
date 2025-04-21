@@ -11,7 +11,7 @@ image:
         pullPolicy: IfNotPresent
     csiResizer:
         repository: registry.k8s.io/sig-storage/csi-resizer
-        tag: v1.13.1
+        tag: v1.13.2
         pullPolicy: IfNotPresent
     csiSnapshotter:
         repository: registry.k8s.io/sig-storage/csi-snapshotter
