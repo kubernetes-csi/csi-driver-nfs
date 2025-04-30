@@ -74,9 +74,9 @@ def end_of_life_grouped_versions(versions):
     """
     supported_versions = []
     # Prepare dates for later calculation
-    now          = datetime.datetime.now()
-    one_year     = now.replace(year=now.year-1)
-    three_months = now.replace(month=now.month-3)
+    now          = datetime.date.today()
+    one_year     = now - relativedelta(years=1)
+    three_months = now - relativedelta(months=3)
 
     # get the newer versions on top
     sorted_versions_list = sorted(versions.items(), key=lambda x: x[0], reverse=True)
@@ -89,10 +89,10 @@ def end_of_life_grouped_versions(versions):
         first_release = v[1][-1]
         last_release  = v[1][0]
         # if the release is less than a year old we support the latest patch version
-        if first_release[1] > one_year:
+        if first_release[1] >= one_year:
             supported_versions.append(last_release)
         # if the main release is older than a year and has a recent patch, this is supported
-        elif last_release[1] > three_months:
+        elif last_release[1] >= three_months:
             supported_versions.append(last_release)
     return supported_versions
 
@@ -125,7 +125,7 @@ def get_versions_from_releases(repo):
             continue
         major, minor, patch = parsed_version
 
-        published = datetime.datetime.strptime(parts[3], '%Y-%m-%dT%H:%M:%SZ')
+        published = datetime.datetime.strptime(parts[3], '%Y-%m-%dT%H:%M:%SZ').date()
         versions[(major, minor)].append((version, published))
     return(versions)
 
