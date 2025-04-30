@@ -75,8 +75,8 @@ def end_of_life_grouped_versions(versions):
     supported_versions = []
     # Prepare dates for later calculation
     now          = datetime.datetime.now()
-    one_year     = datetime.timedelta(days=365)
-    three_months = datetime.timedelta(days=90)
+    one_year     = now.replace(year=now.year-1)
+    three_months = now.replace(month=now.month-3)
 
     # get the newer versions on top
     sorted_versions_list = sorted(versions.items(), key=lambda x: x[0], reverse=True)
@@ -89,10 +89,10 @@ def end_of_life_grouped_versions(versions):
         first_release = v[1][-1]
         last_release  = v[1][0]
         # if the release is less than a year old we support the latest patch version
-        if now - first_release[1] < one_year:
+        if first_release[1] > one_year:
             supported_versions.append(last_release)
-        # if the main release is older than a year and has a recent path, this is supported
-        elif now - last_release[1] < three_months:
+        # if the main release is older than a year and has a recent patch, this is supported
+        elif last_release[1] > three_months:
             supported_versions.append(last_release)
     return supported_versions
 
@@ -109,7 +109,7 @@ def get_release_docker_image(repo, version):
 def get_versions_from_releases(repo):
     """
     Using `gh` cli get the github releases page details then
-    create a list of grouped version on major.minor 
+    create a list of grouped version on major.minor
     and for each give all major.minor.patch with release dates
     """
     # Run the `gh release` command to get the release list
