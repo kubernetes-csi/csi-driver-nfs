@@ -23,6 +23,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"go.uber.org/goleak"
 )
 
 var (
@@ -449,6 +451,7 @@ func TestRemoveEmptyDirs(t *testing.T) {
 }
 
 func TestWaitUntilTimeout(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	tests := []struct {
 		desc        string
 		timeout     time.Duration
@@ -494,8 +497,11 @@ func TestWaitUntilTimeout(t *testing.T) {
 
 	for _, test := range tests {
 		err := WaitUntilTimeout(test.timeout, test.execFunc, test.timeoutFunc)
-		if err != nil && (err.Error() != test.expectedErr.Error()) {
-			t.Errorf("unexpected error: %v, expected error: %v", err, test.expectedErr)
+		if err != nil {
+			time.Sleep(2 * time.Second)
+			if err.Error() != test.expectedErr.Error() {
+				t.Errorf("unexpected error: %v, expected error: %v", err, test.expectedErr)
+			}
 		}
 	}
 }
