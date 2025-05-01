@@ -272,7 +272,7 @@ type TimeoutFunc func() (err error)
 // WaitUntilTimeout waits for the exec function to complete or return timeout error
 func WaitUntilTimeout(timeout time.Duration, execFunc ExecFunc, timeoutFunc TimeoutFunc) error {
 	// Create a channel to receive the result of the exec function
-	done := make(chan bool)
+	done := make(chan bool, 1)
 	var err error
 
 	// Start the exec function in a goroutine
