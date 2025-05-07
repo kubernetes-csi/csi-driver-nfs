@@ -77,7 +77,7 @@ metadata:
 driver: nfs.csi.k8s.io
 deletionPolicy: Delete
 parameters:
-  # csi.storage.k8s.io/provisioner-secret is only needed for providing mountOptions in DeleteSnapshot
-  csi.storage.k8s.io/provisioner-secret-name: "mount-options"
-  csi.storage.k8s.io/provisioner-secret-namespace: "default"
+  # csi.storage.k8s.io/snapshotter-secret is only needed for providing mountOptions in DeleteSnapshot
+  csi.storage.k8s.io/snapshotter-secret-name: "mount-options"
+  csi.storage.k8s.io/snapshotter-secret-namespace: "default"
 ```
