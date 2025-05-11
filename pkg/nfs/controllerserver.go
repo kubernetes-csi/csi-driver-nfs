@@ -163,7 +163,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	var volCap *csi.VolumeCapability
+	volCap := getVolumeCapabilityFromSecret(name, req.GetSecrets())
 	if len(req.GetVolumeCapabilities()) > 0 {
 		volCap = req.GetVolumeCapabilities()[0]
 	}
@@ -220,19 +220,6 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	var volCap *csi.VolumeCapability
-	mountOptions := getMountOptions(req.GetSecrets())
-	if mountOptions != "" {
-		klog.V(2).Infof("DeleteVolume: found mountOptions(%s) for volume(%s)", mountOptions, volumeID)
-		volCap = &csi.VolumeCapability{
-			AccessType: &csi.VolumeCapability_Mount{
-				Mount: &csi.VolumeCapability_MountVolume{
-					MountFlags: []string{mountOptions},
-				},
-			},
-		}
-	}
-
 	if nfsVol.onDelete == "" {
 		nfsVol.onDelete = cs.Driver.defaultOnDeletePolicy
 	}
@@ -253,6 +240,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 		// mount nfs base share so we can delete the subdirectory
+		volCap := getVolumeCapabilityFromSecret(volumeID, req.GetSecrets())
 		if err = cs.internalMount(ctx, nfsVol, nil, volCap); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err)
 		}
@@ -376,7 +364,8 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Errorf(codes.NotFound, "failed to create nfsSnapshot: %v", err)
 	}
 	snapVol := volumeFromSnapshot(snapshot)
-	if err = cs.internalMount(ctx, snapVol, req.GetParameters(), nil); err != nil {
+	volCap := getVolumeCapabilityFromSecret(req.GetSourceVolumeId(), req.GetSecrets())
+	if err = cs.internalMount(ctx, snapVol, req.GetParameters(), volCap); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount snapshot nfs server: %v", err)
 	}
 	defer func() {
@@ -392,7 +381,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, err
 	}
 
-	if err = cs.internalMount(ctx, srcVol, req.GetParameters(), nil); err != nil {
+	if err = cs.internalMount(ctx, srcVol, req.GetParameters(), volCap); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount src nfs server: %v", err)
 	}
 	defer func() {
@@ -445,18 +434,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		return &csi.DeleteSnapshotResponse{}, nil
 	}
 
-	var volCap *csi.VolumeCapability
-	mountOptions := getMountOptions(req.GetSecrets())
-	if mountOptions != "" {
-		klog.V(2).Infof("DeleteSnapshot: found mountOptions(%s) for snapshot(%s)", mountOptions, req.GetSnapshotId())
-		volCap = &csi.VolumeCapability{
-			AccessType: &csi.VolumeCapability_Mount{
-				Mount: &csi.VolumeCapability_MountVolume{
-					MountFlags: []string{mountOptions},
-				},
-			},
-		}
-	}
+	volCap := getVolumeCapabilityFromSecret(req.SnapshotId, req.GetSecrets())
 	vol := volumeFromSnapshot(snap)
 	if err = cs.internalMount(ctx, vol, nil, volCap); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount nfs server for snapshot deletion: %v", err)
