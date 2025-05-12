@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"go.uber.org/goleak"
 )
 
@@ -503,5 +504,53 @@ func TestWaitUntilTimeout(t *testing.T) {
 				t.Errorf("unexpected error: %v, expected error: %v", err, test.expectedErr)
 			}
 		}
+	}
+}
+func TestGetVolumeCapabilityFromSecret(t *testing.T) {
+	tests := []struct {
+		desc     string
+		volumeID string
+		secret   map[string]string
+		expected *csi.VolumeCapability
+	}{
+		{
+			desc:     "secret contains mountOptions",
+			volumeID: "vol-123",
+			secret:   map[string]string{"mountOptions": "nfsvers=3"},
+			expected: &csi.VolumeCapability{
+				AccessType: &csi.VolumeCapability_Mount{
+					Mount: &csi.VolumeCapability_MountVolume{
+						MountFlags: []string{"nfsvers=3"},
+					},
+				},
+			},
+		},
+		{
+			desc:     "secret does not contain mountOptions",
+			volumeID: "vol-456",
+			secret:   map[string]string{"otherKey": "otherValue"},
+			expected: nil,
+		},
+		{
+			desc:     "empty secret",
+			volumeID: "vol-789",
+			secret:   map[string]string{},
+			expected: nil,
+		},
+		{
+			desc:     "nil secret",
+			volumeID: "vol-000",
+			secret:   nil,
+			expected: nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			result := getVolumeCapabilityFromSecret(test.volumeID, test.secret)
+			if !reflect.DeepEqual(result, test.expected) {
+				t.Errorf("test[%s]: unexpected result: %v, expected: %v", test.desc, result, test.expected)
+			}
+		})
 	}
 }
