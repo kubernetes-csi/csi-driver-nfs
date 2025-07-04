@@ -11,11 +11,11 @@ image:
         pullPolicy: IfNotPresent
     csiResizer:
         repository: registry.k8s.io/sig-storage/csi-resizer
-        tag: v1.13.2
+        tag: v1.14.0
         pullPolicy: IfNotPresent
     csiSnapshotter:
         repository: registry.k8s.io/sig-storage/csi-snapshotter
-        tag: v8.2.1
+        tag: v8.3.0
         pullPolicy: IfNotPresent
     livenessProbe:
         repository: registry.k8s.io/sig-storage/livenessprobe
@@ -27,7 +27,7 @@ image:
         pullPolicy: IfNotPresent
     externalSnapshotter:
         repository: registry.k8s.io/sig-storage/snapshot-controller
-        tag: v8.2.1
+        tag: v8.3.0
         pullPolicy: IfNotPresent
 
 serviceAccount:
