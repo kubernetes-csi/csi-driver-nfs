@@ -5,7 +5,7 @@ go 1.24
 require (
 	github.com/container-storage-interface/spec v1.11.0
 	github.com/kubernetes-csi/csi-lib-utils v0.9.0
-	github.com/onsi/ginkgo/v2 v2.23.4
+	github.com/onsi/ginkgo/v2 v2.24.0
 	github.com/onsi/gomega v1.38.0
 	github.com/pborman/uuid v1.2.1
 	github.com/stretchr/testify v1.10.0
@@ -28,6 +28,7 @@ require (
 require go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 
 require (
+	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
@@ -114,7 +115,7 @@ require (
 	golang.org/x/term v0.34.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.35.0 // indirect
+	golang.org/x/tools v0.36.0 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250528174236-200df99c418a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a // indirect
