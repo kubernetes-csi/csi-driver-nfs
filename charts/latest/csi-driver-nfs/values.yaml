@@ -19,11 +19,11 @@ image:
         pullPolicy: IfNotPresent
     livenessProbe:
         repository: registry.k8s.io/sig-storage/livenessprobe
-        tag: v2.16.0
+        tag: v2.17.0
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
         repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-        tag: v2.14.0
+        tag: v2.15.0
         pullPolicy: IfNotPresent
     externalSnapshotter:
         repository: registry.k8s.io/sig-storage/snapshot-controller

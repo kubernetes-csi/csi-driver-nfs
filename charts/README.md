@@ -56,10 +56,10 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | `v5.3.0`                                                            |
 | `image.csiProvisioner.pullPolicy`                 | csi-provisioner image pull policy                          | `IfNotPresent`                                                      |
 | `image.livenessProbe.repository`                  | liveness-probe docker image                                | `registry.k8s.io/sig-storage/livenessprobe`                              |
-| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | `v2.16.0`                                                            |
+| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | `v2.17.0`                                                            |
 | `image.livenessProbe.pullPolicy`                  | liveness-probe image pull policy                           | `IfNotPresent`                                                      |
 | `image.nodeDriverRegistrar.repository`            | csi-node-driver-registrar docker image                     | `registry.k8s.io/sig-storage/csi-node-driver-registrar`                  |
-| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | `v2.14.0`                                                            |
+| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | `v2.15.0`                                                            |
 | `image.nodeDriverRegistrar.pullPolicy`            | csi-node-driver-registrar image pull policy                | `IfNotPresent`                                                      |
 | `imagePullSecrets`                                | Specify docker-registry secret names as an array           | [] (does not add image pull secrets to deployed pods)                                                           |
 | `serviceAccount.create`                           | whether create service account of csi-nfs-controller       | `true`                                                              |
