@@ -30,7 +30,7 @@ spec:
         - operator: "Exists"
       containers:
         - name: liveness-probe
-          image: registry.k8s.io/sig-storage/livenessprobe:v2.16.0
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.17.0
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
@@ -50,7 +50,7 @@ spec:
               drop:
                 - ALL
         - name: node-driver-registrar
-          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.14.0
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.15.0
           args:
             - --v=2
             - --csi-address=/csi/csi.sock
