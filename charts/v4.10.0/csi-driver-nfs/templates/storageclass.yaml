@@ -41,7 +41,11 @@ parameters:
 {{- end }}
 reclaimPolicy: {{ .reclaimPolicy | default "Delete" }}
 volumeBindingMode: {{ .volumeBindingMode | default "Immediate" }}
-allowVolumeExpansion: {{ .allowVolumeExpansion | default true }}
+{{- if hasKey . "allowVolumeExpansion" }}
+allowVolumeExpansion: {{ .allowVolumeExpansion }}
+{{- else }}
+allowVolumeExpansion: true
+{{- end }}
 {{- with .mountOptions }}
 mountOptions:
 {{ toYaml . | nindent 2 }}
