@@ -137,6 +137,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		case paramShare:
 		case paramSubDir:
 		case paramOnDelete:
+		case paramVolumePrefix:
 		case pvcNamespaceKey:
 		case pvcNameKey:
 		case pvNameKey:
@@ -660,7 +661,7 @@ func newNFSSnapshot(name string, params map[string]string, vol *nfsVolume) (*nfs
 
 // newNFSVolume Convert VolumeCreate parameters to an nfsVolume
 func newNFSVolume(name string, size int64, params map[string]string, defaultOnDeletePolicy string) (*nfsVolume, error) {
-	var server, baseDir, subDir, onDelete string
+	var server, baseDir, subDir, onDelete, volumePrefix string
 	subDirReplaceMap := map[string]string{}
 
 	// validate parameters (case-insensitive)
@@ -674,6 +675,8 @@ func newNFSVolume(name string, size int64, params map[string]string, defaultOnDe
 			subDir = v
 		case paramOnDelete:
 			onDelete = v
+		case paramVolumePrefix:
+			volumePrefix = v
 		case pvcNamespaceKey:
 			subDirReplaceMap[pvcNamespaceMetadata] = v
 		case pvcNameKey:
@@ -712,6 +715,9 @@ func newNFSVolume(name string, size int64, params map[string]string, defaultOnDe
 	}
 
 	vol.id = getVolumeIDFromNfsVol(vol)
+	if volumePrefix != "" {
+		vol.id = volumePrefix + vol.id
+	}
 	return vol, nil
 }
 
