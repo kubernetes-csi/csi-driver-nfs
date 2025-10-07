@@ -115,7 +115,39 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `externalSnapshotter.resources.limits.memory`         | snapshot-controller memory limits                          | 300Mi                                                          |
 | `externalSnapshotter.resources.requests.cpu`          | snapshot-controller cpu requests limits                    | 10m                                                            |
 | `externalSnapshotter.resources.requests.memory`       | snapshot-controller memory requests limits                 | 20Mi                                                           |
-| `storageClass.create` | create storageclass| `false` |  |
+| `storageClass.create` | create a single storageclass| `false` |  |
+| `storageClasses` | create multiple storageclasses (if specified, `storageClass.create` is still respected)| `[]` |  |
+
+### Create multiple storage classes
+
+You can create multiple storage classes with different configurations using the `storageClasses` parameter:
+
+```yaml
+storageClasses:
+  - name: nfs-delete
+    annotations:
+      storageclass.kubernetes.io/is-default-class: "true"
+    parameters:
+      server: nfs-server.default.svc.cluster.local
+      share: /
+    reclaimPolicy: Delete
+    volumeBindingMode: Immediate
+    mountOptions:
+      - nfsvers=4.1
+  - name: nfs-retain
+    parameters:
+      server: nfs-server.default.svc.cluster.local
+      share: /data
+    reclaimPolicy: Retain
+    volumeBindingMode: Immediate
+    mountOptions:
+      - nfsvers=4.1
+```
+
+Install with custom values:
+```console
+helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system -f custom-values.yaml
+```
 
 ## troubleshooting
  - Add `--wait -v=5 --debug` in `helm install` command to get detailed error
