@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/container-storage-interface/spec v1.11.0
 	github.com/kubernetes-csi/csi-lib-utils v0.9.0
-	github.com/onsi/ginkgo/v2 v2.26.0
+	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
 	github.com/pborman/uuid v1.2.1
 	github.com/stretchr/testify v1.11.1
@@ -35,7 +35,6 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
