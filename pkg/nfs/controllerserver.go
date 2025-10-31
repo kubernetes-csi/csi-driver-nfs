@@ -140,6 +140,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		case pvcNamespaceKey:
 		case pvcNameKey:
 		case pvNameKey:
+		case paramKrbPrincipal:
+		case paramKrbPasswordSecret:
 			// no op
 		case mountPermissionsField:
 			if v != "" {

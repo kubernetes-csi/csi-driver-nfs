@@ -68,6 +68,7 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	}
 
 	var server, baseDir, subDir string
+	var krbPwd, krbPrinc string
 	subDirReplaceMap := map[string]string{}
 
 	mountPermissions := ns.Driver.mountPermissions
@@ -79,6 +80,12 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 			baseDir = v
 		case paramSubDir:
 			subDir = v
+		case paramKrbPrincipal:
+			krbPrinc = v
+		case paramKrbPasswordSecret:
+			if v != "" {
+				krbPwd = req.GetSecrets()[v]
+			}
 		case pvcNamespaceKey:
 			subDirReplaceMap[pvcNamespaceMetadata] = v
 		case pvcNameKey:
