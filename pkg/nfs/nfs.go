@@ -73,17 +73,21 @@ const (
 	// The base directory must be a direct child of the root directory.
 	// The root directory is omitted from the string, for example:
 	//     "base" instead of "/base"
-	paramShare            = "share"
-	paramSubDir           = "subdir"
-	paramOnDelete         = "ondelete"
-	mountOptionsField     = "mountoptions"
-	mountPermissionsField = "mountpermissions"
-	pvcNameKey            = "csi.storage.k8s.io/pvc/name"
-	pvcNamespaceKey       = "csi.storage.k8s.io/pvc/namespace"
-	pvNameKey             = "csi.storage.k8s.io/pv/name"
-	pvcNameMetadata       = "${pvc.metadata.name}"
-	pvcNamespaceMetadata  = "${pvc.metadata.namespace}"
-	pvNameMetadata        = "${pv.metadata.name}"
+	paramShare  = "share"
+	paramSubDir = "subdir"
+	// Kerberos principal to use when mounting with `-o sec=krb5*`
+	paramKrbPrincipal = "authprincipal"
+	// name of a secret containing the Kerberos password to use when authenticating
+	paramKrbPasswordSecret = "authpasswordsecret"
+	paramOnDelete          = "ondelete"
+	mountOptionsField      = "mountoptions"
+	mountPermissionsField  = "mountpermissions"
+	pvcNameKey             = "csi.storage.k8s.io/pvc/name"
+	pvcNamespaceKey        = "csi.storage.k8s.io/pvc/namespace"
+	pvNameKey              = "csi.storage.k8s.io/pv/name"
+	pvcNameMetadata        = "${pvc.metadata.name}"
+	pvcNamespaceMetadata   = "${pvc.metadata.namespace}"
+	pvNameMetadata         = "${pv.metadata.name}"
 )
 
 func NewDriver(options *DriverOptions) *Driver {
