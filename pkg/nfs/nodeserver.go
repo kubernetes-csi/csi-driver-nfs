@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
@@ -159,6 +160,34 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)
 	execFunc := func() error {
+		if krbPrinc != "" && krbPwd != "" {
+			klog.V(3).Infof("Setting up kerberos auth with principal '%s' and password '%s'", krbPrinc, krbPwd)
+			_, err := os.Stat("/etc/krb5.keytab")
+			// initialize keytab if it doesn't exist
+			if err != nil && os.IsNotExist(err) {
+				cmd := exec.CommandContext(ctx, "ktutil")
+				cmd.Stdin = bytes.NewBufferString(fmt.Sprintf("addent -p %s -password -k 1 -f\n%s\nwkt /etc/krb5.keytab", krbPrinc, krbPwd))
+				if err := cmd.Run(); err != nil {
+					return err
+				}
+			}
+			// obtain kerberos TGT
+			cmd := exec.CommandContext(ctx, "kinit", krbPrinc)
+			cmd.Stdin = bytes.NewBufferString(krbPwd + "\n")
+			if err := cmd.Run(); err != nil {
+				return err
+			}
+			// initialize credentials from keytab
+			cmd = exec.CommandContext(ctx, "kinit", "-k", krbPrinc)
+			stderr, err := cmd.StderrPipe()
+			if err != nil {
+				return err
+			}
+			if err := cmd.Run(); err != nil {
+				klog.Errorf("%+v", err)
+				return err
+			}
+		}
 		return ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
 	}
 	timeoutFunc := func() error {
