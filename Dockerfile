@@ -36,6 +36,7 @@ if [ "$1" = "true" ]; then
 	shift 1
 	service rpcbind start
 	service nfs-common start
+	sleep 5
 fi
 
 /nfsplugin $@
