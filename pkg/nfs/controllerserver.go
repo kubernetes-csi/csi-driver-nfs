@@ -142,6 +142,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		case pvNameKey:
 		case paramKrbPrincipal:
 		case paramKrbPasswordSecret:
+		case paramKrbConf:
 			// no op
 		case mountPermissionsField:
 			if v != "" {
@@ -506,7 +507,7 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 		VolumeContext:    volContext,
 		VolumeCapability: volCap,
 		VolumeId:         vol.id,
-		Secrets: secrets,
+		Secrets:          secrets,
 	})
 	return err
 }

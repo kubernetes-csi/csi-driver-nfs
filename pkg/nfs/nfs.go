@@ -79,6 +79,9 @@ const (
 	paramKrbPrincipal = "authprincipal"
 	// name of a secret containing the Kerberos password to use when authenticating
 	paramKrbPasswordSecret = "authpasswordsecret"
+	// name of a secret containing the contents of a krb5.conf file with
+	// realm and/or KDC information
+	paramKrbConf          = "authkrbconf"
 	paramOnDelete          = "ondelete"
 	mountOptionsField      = "mountoptions"
 	mountPermissionsField  = "mountpermissions"

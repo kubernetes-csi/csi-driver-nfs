@@ -70,7 +70,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	var server, baseDir, subDir string
-	var krbPwd, krbPrinc string
+	var krbPwd, krbPrinc, krbConf string
 	subDirReplaceMap := map[string]string{}
 
 	mountPermissions := ns.Driver.mountPermissions
@@ -87,6 +87,10 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		case paramKrbPasswordSecret:
 			if v != "" {
 				krbPwd = req.GetSecrets()[v]
+			}
+		case paramKrbConf:
+			if v != "" {
+				krbConf = req.GetSecrets()[v]
 			}
 		case pvcNamespaceKey:
 			subDirReplaceMap[pvcNamespaceMetadata] = v
@@ -138,7 +142,10 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if !notMnt {
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
-
+	
+	if krbConf != "" {
+		os.WriteFile("/etc/krb5.conf", []byte(krbConf), 0775)
+	}
 	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)
 	execFunc := func() error {
 		if krbPrinc != "" && krbPwd != "" {
