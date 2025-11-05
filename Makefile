@@ -133,7 +133,7 @@ install-nfs-server:
 	kubectl apply -f ./deploy/example/nfs-provisioner/nfs-server.yaml
 	kubectl apply -f ./deploy/example/nfs-provisioner/nfs-krb-server.yaml
 	kubectl delete secret mount-options -n default --ignore-not-found
-	kubectl create secret generic mount-options --from-literal mountOptions="nfsvers=4.1" --from-literal krb-pwd='password!' -n default
+	kubectl create secret generic mount-options --from-literal mountOptions="nfsvers=4.1" --from-literal krb-pwd='password!' --from-file=krb5.conf=./test/krb5.conf -n default
 
 .PHONY: install-helm
 install-helm:

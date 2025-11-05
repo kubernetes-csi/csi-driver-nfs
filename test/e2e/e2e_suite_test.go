@@ -98,6 +98,7 @@ var (
 		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
 		"csi.storage.k8s.io/provisioner-secret-name":      "mount-options",
 		"mountPermissions":   "0755",
+		"authKrbConf":        "krb5.conf",
 		"authPasswordSecret": "krb-pwd",
 		"authPrincipal":      "nfs/nfs-krb-server.default.svc.cluster.local@NFS-KRB-SERVER.DEFAULT.SVC.CLUSTER.LOCAL",
 	}
