@@ -167,7 +167,6 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			}
 			// initialize credentials from keytab
 			cmd = exec.CommandContext(ctx, "kinit", "-k", krbPrinc)
-			stderr, err := cmd.StderrPipe()
 			if err != nil {
 				return err
 			}
