@@ -161,7 +161,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			return &csi.NodePublishVolumeResponse{}, nil
 		}
 	}
-	
+
 	if krbConf != "" {
 		os.WriteFile("/etc/krb5.conf", []byte(krbConf), 0775)
 	}

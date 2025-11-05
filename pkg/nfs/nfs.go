@@ -82,15 +82,15 @@ const (
 	// name of a secret containing the contents of a krb5.conf file with
 	// realm and/or KDC information
 	paramKrbConf          = "authkrbconf"
-	paramOnDelete          = "ondelete"
-	mountOptionsField      = "mountoptions"
-	mountPermissionsField  = "mountpermissions"
-	pvcNameKey             = "csi.storage.k8s.io/pvc/name"
-	pvcNamespaceKey        = "csi.storage.k8s.io/pvc/namespace"
-	pvNameKey              = "csi.storage.k8s.io/pv/name"
-	pvcNameMetadata        = "${pvc.metadata.name}"
-	pvcNamespaceMetadata   = "${pvc.metadata.namespace}"
-	pvNameMetadata         = "${pv.metadata.name}"
+	paramOnDelete         = "ondelete"
+	mountOptionsField     = "mountoptions"
+	mountPermissionsField = "mountpermissions"
+	pvcNameKey            = "csi.storage.k8s.io/pvc/name"
+	pvcNamespaceKey       = "csi.storage.k8s.io/pvc/namespace"
+	pvNameKey             = "csi.storage.k8s.io/pv/name"
+	pvcNameMetadata       = "${pvc.metadata.name}"
+	pvcNamespaceMetadata  = "${pvc.metadata.namespace}"
+	pvNameMetadata        = "${pv.metadata.name}"
 )
 
 func NewDriver(options *DriverOptions) *Driver {
