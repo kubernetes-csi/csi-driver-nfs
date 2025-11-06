@@ -144,7 +144,9 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	if krbConf != "" {
-		os.WriteFile("/etc/krb5.conf", []byte(krbConf), 0775)
+		if err = os.WriteFile("/etc/krb5.conf", []byte(krbConf), 0775); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)
 	execFunc := func() error {
