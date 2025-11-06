@@ -55,8 +55,8 @@ spec:
             - name: NFS_KRB_PWD
               valueFrom:
                 secretKeyRef:
-                  name: krb-pwd
-                  key: value
+                  name: mount-options 
+                  key: krb-pwd
           volumeMounts:
             - mountPath: /srv/shared
               name: nfs-vol
