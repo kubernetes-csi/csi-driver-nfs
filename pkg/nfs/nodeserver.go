@@ -170,7 +170,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 				return err
 			}
 			// initialize credentials from keytab
-			cmd = exec.CommandContext(ctx, "kinit", "-k", krbPrinc)	
+			cmd = exec.CommandContext(ctx, "kinit", "-k", krbPrinc)
 			if err := cmd.Run(); err != nil {
 				klog.Errorf("error running 'kinit -k': %+v", err)
 				return err
