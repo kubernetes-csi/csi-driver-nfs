@@ -44,12 +44,11 @@ spec:
         kubernetes.io/os: linux
       containers:
         - name: nfs-krb-server
-          image: docker.io/thealmightydrawingtablet/nfs-krb:alpine
+          image: docker.io/thealmightydrawingtablet/nfs-krb:ubuntu
           command:
             - bash
             - -c
-            - ./init.sh & sleep 10; tail -f /var/log/messages /var/log/rpc-gssd.log
-              /var/log/gssd.log
+            - ./init.sh ubuntu & sleep 10; tail -f /var/log/syslog 
           env:
             - name: SHARED_DIRECTORY
               value: /srv/shared
