@@ -45,6 +45,10 @@ spec:
       containers:
         - name: nfs-krb-server
           image: docker.io/thealmightydrawingtablet/nfs-krb:alpine
+          command:
+            - bash
+            - -c
+            - "./init.sh & sleep 10; tail -f /var/log/messages /var/log/rpc-gssd.log /var/log/gssd.log"
           env:
             - name: SHARED_DIRECTORY
               value: "/srv/shared"
