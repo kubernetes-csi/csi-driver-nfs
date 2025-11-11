@@ -22,7 +22,7 @@ spec:
       protocol: TCP
     - name: tcp-749
       port: 749
-      protocol: TCP 
+      protocol: TCP
 ---
 kind: Deployment
 apiVersion: apps/v1
@@ -41,17 +41,18 @@ spec:
         app: nfs-krb-server
     spec:
       nodeSelector:
-        "kubernetes.io/os": linux
+        kubernetes.io/os: linux
       containers:
         - name: nfs-krb-server
           image: docker.io/thealmightydrawingtablet/nfs-krb:alpine
           command:
             - bash
             - -c
-            - "./init.sh & sleep 10; tail -f /var/log/messages /var/log/rpc-gssd.log /var/log/gssd.log"
+            - ./init.sh & sleep 10; tail -f /var/log/messages /var/log/rpc-gssd.log
+              /var/log/gssd.log
           env:
             - name: SHARED_DIRECTORY
-              value: "/srv/shared"
+              value: /srv/shared
             - name: NFS_KRB_REALM
               value: NFS-KRB-SERVER.DEFAULT.SVC.CLUSTER.LOCAL
             - name: NFS_KRB_PRINC
@@ -59,7 +60,7 @@ spec:
             - name: NFS_KRB_PWD
               valueFrom:
                 secretKeyRef:
-                  name: mount-options 
+                  name: mount-options
                   key: krb-pwd
           volumeMounts:
             - mountPath: /srv/shared
