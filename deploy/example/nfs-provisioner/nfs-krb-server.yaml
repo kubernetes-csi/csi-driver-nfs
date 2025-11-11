@@ -17,6 +17,9 @@ spec:
     - name: udp-111
       port: 111
       protocol: UDP
+    - name: tcp-111
+      port: 111
+      protocol: TCP
     - name: tcp-88
       port: 88
       protocol: TCP
@@ -44,11 +47,12 @@ spec:
         kubernetes.io/os: linux
       containers:
         - name: nfs-krb-server
-          image: docker.io/thealmightydrawingtablet/nfs-krb:ubuntu
+          image: docker.io/thealmightydrawingtablet/nfs-krb:alpine
+          imagePullPolicy: Always
           command:
             - bash
             - -c
-            - ./init.sh ubuntu & sleep 10; tail -f /var/log/syslog 
+            - ./init.sh & sleep 10; ls /var/log; tail -f /var/log/messages /var/log/rpc-gssd.log
           env:
             - name: SHARED_DIRECTORY
               value: /srv/shared
