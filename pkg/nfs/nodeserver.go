@@ -172,8 +172,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			// initialize credentials from keytab
 			cmd = exec.CommandContext(ctx, "kinit", "-k", krbPrinc)
 			if err := cmd.Run(); err != nil {
-				klog.Errorf("error running 'kinit -k': %+v", err)
-				return err
+				klog.Warningf("error running 'kinit -k', but soldiering on: %+v", err)
 			}
 		}
 		return ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
