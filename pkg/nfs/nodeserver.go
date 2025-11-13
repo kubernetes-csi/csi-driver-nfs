@@ -17,8 +17,10 @@ limitations under the License.
 package nfs
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -42,7 +44,7 @@ type NodeServer struct {
 }
 
 // NodePublishVolume mount the volume
-func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	volCap := req.GetVolumeCapability()
 	if volCap == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume capability missing in request")
@@ -68,6 +70,7 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	}
 
 	var server, baseDir, subDir string
+	var krbPwd, krbPrinc, krbConf string
 	subDirReplaceMap := map[string]string{}
 
 	mountPermissions := ns.Driver.mountPermissions
@@ -79,6 +82,16 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 			baseDir = v
 		case paramSubDir:
 			subDir = v
+		case paramKrbPrincipal:
+			krbPrinc = v
+		case paramKrbPasswordSecret:
+			if v != "" {
+				krbPwd = req.GetSecrets()[v]
+			}
+		case paramKrbConf:
+			if v != "" {
+				krbConf = req.GetSecrets()[v]
+			}
 		case pvcNamespaceKey:
 			subDirReplaceMap[pvcNamespaceMetadata] = v
 		case pvcNameKey:
@@ -130,8 +143,38 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
+	if krbConf != "" {
+		if err = os.WriteFile("/etc/krb5.conf", []byte(krbConf), 0775); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
 	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)
 	execFunc := func() error {
+		if krbPrinc != "" && krbPwd != "" {
+			klog.V(3).Infof("Setting up kerberos auth with principal '%s' and password '%s'", krbPrinc, krbPwd)
+			_, err := os.Stat("/etc/krb5.keytab")
+			// initialize keytab if it doesn't exist
+			if err != nil && os.IsNotExist(err) {
+				cmd := exec.CommandContext(ctx, "ktutil")
+				cmd.Stdin = bytes.NewBufferString(fmt.Sprintf("addent -p %s -password -k 1 -f\n%s\nwkt /etc/krb5.keytab", krbPrinc, krbPwd))
+				if err := cmd.Run(); err != nil {
+					klog.Errorf("error running 'ktutil': %+v", err)
+					return err
+				}
+			}
+			// obtain kerberos TGT
+			cmd := exec.CommandContext(ctx, "kinit", krbPrinc)
+			cmd.Stdin = bytes.NewBufferString(krbPwd + "\n")
+			if err := cmd.Run(); err != nil {
+				klog.Errorf("error running 'kinit': %+v", err)
+				return err
+			}
+			// initialize credentials from keytab
+			cmd = exec.CommandContext(ctx, "kinit", "-k", krbPrinc)
+			if err := cmd.Run(); err != nil {
+				klog.Warningf("error running 'kinit -k', but soldiering on: %+v", err)
+			}
+		}
 		return ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
 	}
 	timeoutFunc := func() error { return fmt.Errorf("time out") }

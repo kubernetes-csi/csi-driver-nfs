@@ -52,6 +52,29 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 	})
 
 	testDriver = driver.InitNFSDriver()
+	ginkgo.It("should create a volume with kerberos auth", func(ctx ginkgo.SpecContext) {
+		pods := []testsuites.PodDetails{
+			{
+				Cmd: "echo 'hello world' > /mnt/test-1/data && grep 'hello world' /mnt/test-1/data",
+				Volumes: []testsuites.VolumeDetails{
+					{
+						ClaimSize: "1Gi",
+						VolumeMount: testsuites.VolumeMountDetails{
+							NameGenerate:      "test-volume-",
+							MountPathGenerate: "/mnt/test-",
+						},
+						MountOptions: []string{"sec=krb5", "noresvport", "nfsvers=4"},
+					},
+				},
+			},
+		}
+		test := testsuites.DynamicallyProvisionedVolumeWithKerberosAuth{
+			Pods:                   pods,
+			StorageClassParameters: krbStorageClassParameters,
+			Driver:                 testDriver,
+		}
+		test.Run(ctx, cs, ns)
+	})
 	ginkgo.It("should create a volume on demand with mount options", func(ctx ginkgo.SpecContext) {
 		pods := []testsuites.PodDetails{
 			{

@@ -73,8 +73,15 @@ const (
 	// The base directory must be a direct child of the root directory.
 	// The root directory is omitted from the string, for example:
 	//     "base" instead of "/base"
-	paramShare            = "share"
-	paramSubDir           = "subdir"
+	paramShare  = "share"
+	paramSubDir = "subdir"
+	// Kerberos principal to use when mounting with `-o sec=krb5*`
+	paramKrbPrincipal = "authprincipal"
+	// name of a secret containing the Kerberos password to use when authenticating
+	paramKrbPasswordSecret = "authpasswordsecret"
+	// name of a secret containing the contents of a krb5.conf file with
+	// realm and/or KDC information
+	paramKrbConf          = "authkrbconf"
 	paramOnDelete         = "ondelete"
 	mountOptionsField     = "mountoptions"
 	mountPermissionsField = "mountpermissions"

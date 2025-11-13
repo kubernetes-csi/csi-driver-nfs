@@ -35,13 +35,13 @@ spec:
         app: nfs-server
     spec:
       nodeSelector:
-        "kubernetes.io/os": linux
+        kubernetes.io/os: linux
       containers:
         - name: nfs-server
           image: itsthenetwork/nfs-server-alpine:latest
           env:
             - name: SHARED_DIRECTORY
-              value: "/exports"
+              value: /exports
           volumeMounts:
             - mountPath: /exports
               name: nfs-vol

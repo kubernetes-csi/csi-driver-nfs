@@ -9,11 +9,9 @@ metadata:
 spec:
   capacity:
     storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
+  accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Delete
-  mountOptions:
-    - nfsvers=4.1
+  mountOptions: [nfsvers=4.1]
   csi:
     driver: nfs.csi.k8s.io
     # volumeHandle format: {nfs-server-address}#{sub-dir-name}#{share-name}
@@ -29,13 +27,12 @@ metadata:
   name: pvc-nginx
   namespace: default
 spec:
-  accessModes:
-    - ReadWriteOnce
+  accessModes: [ReadWriteOnce]
   resources:
     requests:
       storage: 10Gi
   volumeName: pv-nginx
-  storageClassName: ""
+  storageClassName: ''
 ---
 apiVersion: v1
 kind: Pod
