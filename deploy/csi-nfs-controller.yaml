@@ -157,6 +157,7 @@ spec:
             allowPrivilegeEscalation: true
           imagePullPolicy: IfNotPresent
           args:
+            - "true"
             - "-v=5"
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
