@@ -10,7 +10,6 @@ require (
 	github.com/pborman/uuid v1.2.1
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/goleak v1.3.0
-	golang.org/x/net v0.47.0
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 	k8s.io/api v0.31.12
@@ -39,6 +38,7 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	golang.org/x/net v0.47.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 )
 

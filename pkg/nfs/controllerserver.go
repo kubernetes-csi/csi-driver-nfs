@@ -17,6 +17,7 @@ limitations under the License.
 package nfs
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -28,7 +29,6 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
