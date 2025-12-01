@@ -36,6 +36,16 @@ server | NFS Server address | domain name `nfs-server.default.svc.cluster.local`
 share | NFS share path | `/` | No | use share from source volume by default
 mountOptions | mount options separated by comma during snapshot creation, e.g. `"nfsvers=4.1,sec=sys"` |  | No | ""
 
+### Driver Deployment Parameters
+
+The following parameters can be set when deploying the driver:
+
+Name | Meaning | Available Value | Mandatory | Default value
+--- | --- | --- | --- | ---
+`--enable-snapshot-compression` | enable compression when creating volume snapshots | `true`, `false` | No | `true`
+
+> **Note:** When `--enable-snapshot-compression=false`, snapshots are stored without gzip compression (using `.tar` format instead of `.tar.gz`). This can significantly speed up snapshot creation and restoration for volumes containing already-compressed data. The driver automatically detects the archive format when restoring from a snapshot, ensuring backward compatibility with existing compressed snapshots.
+
 ### Tips
 #### `subDir` parameter supports following pv/pvc metadata conversion
 > if `subDir` value contains following strings, it would be converted into corresponding pv/pvc name or namespace

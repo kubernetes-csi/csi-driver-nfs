@@ -39,18 +39,20 @@ type DriverOptions struct {
 	VolStatsCacheExpireInMinutes int
 	RemoveArchivedVolumePath     bool
 	UseTarCommandInSnapshot      bool
+	EnableSnapshotCompression    bool
 }
 
 type Driver struct {
-	name                     string
-	nodeID                   string
-	version                  string
-	endpoint                 string
-	mountPermissions         uint64
-	workingMountDir          string
-	defaultOnDeletePolicy    string
-	removeArchivedVolumePath bool
-	useTarCommandInSnapshot  bool
+	name                      string
+	nodeID                    string
+	version                   string
+	endpoint                  string
+	mountPermissions          uint64
+	workingMountDir           string
+	defaultOnDeletePolicy     string
+	removeArchivedVolumePath  bool
+	useTarCommandInSnapshot   bool
+	enableSnapshotCompression bool
 
 	//ids *identityServer
 	ns          *NodeServer
@@ -99,6 +101,7 @@ func NewDriver(options *DriverOptions) *Driver {
 		volStatsCacheExpireInMinutes: options.VolStatsCacheExpireInMinutes,
 		removeArchivedVolumePath:     options.RemoveArchivedVolumePath,
 		useTarCommandInSnapshot:      options.UseTarCommandInSnapshot,
+		enableSnapshotCompression:    options.EnableSnapshotCompression,
 		defaultOnDeletePolicy:        options.DefaultOnDeletePolicy,
 	}
 
