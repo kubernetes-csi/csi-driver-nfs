@@ -22,7 +22,13 @@ function get_image_from_helm_chart() {
   local -r image_name="${1}"
   image_repository="$(cat ${PKG_ROOT}/charts/latest/csi-driver-nfs/values.yaml | yq -r .image.${image_name}.repository)"
   image_tag="$(cat ${PKG_ROOT}/charts/latest/csi-driver-nfs/values.yaml | yq -r .image.${image_name}.tag)"
-  echo "${image_repository}:${image_tag}"
+  # If repository starts with /, prepend baseRepo
+  if [[ "${image_repository}" == /* ]]; then
+    base_repo="$(cat ${PKG_ROOT}/charts/latest/csi-driver-nfs/values.yaml | yq -r .image.baseRepo)"
+    echo "${base_repo}${image_repository}:${image_tag}"
+  else
+    echo "${image_repository}:${image_tag}"
+  fi
 }
 
 function validate_image() {
