@@ -16,7 +16,7 @@ spec:
     - nfsvers=4.1
   csi:
     driver: nfs.csi.k8s.io
-    # volumeHandle format: {nfs-server-address}#{sub-dir-name}#{share-name}
+    # volumeHandle format: {nfs-server-address}#{share-name}#{sub-dir-name}
     # make sure this value is unique for every share in the cluster
     volumeHandle: nfs-server.default.svc.cluster.local/share##
     volumeAttributes:
