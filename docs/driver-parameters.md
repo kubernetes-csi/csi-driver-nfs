@@ -14,7 +14,7 @@ onDelete | when volume is deleted, keep the directory if it's `retain` | `delete
 
  - VolumeID(`volumeHandle`) is the identifier of the volume handled by the driver, format of VolumeID:
 ```
-{nfs-server-address}#{sub-dir-name}#{share-name}
+{nfs-server-address}#{share-name}#{sub-dir-name}
 ```
 > example: `nfs-server.default.svc.cluster.local/share#subdir#`
 
@@ -23,7 +23,7 @@ onDelete | when volume is deleted, keep the directory if it's `retain` | `delete
 
 Name | Meaning | Example Value | Mandatory | Default value
 --- | --- | --- | --- | ---
-volumeHandle | Specify a value the driver can use to uniquely identify the share in the cluster. | A recommended way to produce a unique value is to combine the nfs-server address, sub directory name and share name: `{nfs-server-address}#{sub-dir-name}#{share-name}`. | Yes |
+volumeHandle | Specify a value the driver can use to uniquely identify the share in the cluster. | A recommended way to produce a unique value is to combine the nfs-server address, sub directory name and share name: `{nfs-server-address}#{share-name}#{sub-dir-name}`. | Yes |
 volumeAttributes.server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 volumeAttributes.share | NFS share path | `/` |  Yes  |
 volumeAttributes.mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount |  | No |
