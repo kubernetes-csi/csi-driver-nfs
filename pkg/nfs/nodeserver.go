@@ -384,6 +384,8 @@ func (ns *NodeServer) NodeStageVolume(_ context.Context, req *csi.NodeStageVolum
 	mountOptions := volCap.GetMount().GetMountFlags()
 
 	var server, baseDir, subDir string
+	subDirReplaceMap := map[string]string{}
+
 	for k, v := range req.GetVolumeContext() {
 		switch strings.ToLower(k) {
 		case paramServer:
@@ -392,6 +394,12 @@ func (ns *NodeServer) NodeStageVolume(_ context.Context, req *csi.NodeStageVolum
 			baseDir = v
 		case paramSubDir:
 			subDir = v
+		case pvcNamespaceKey:
+			subDirReplaceMap[pvcNamespaceMetadata] = v
+		case pvcNameKey:
+			subDirReplaceMap[pvcNameMetadata] = v
+		case pvNameKey:
+			subDirReplaceMap[pvNameMetadata] = v
 		case mountOptionsField:
 			if v != "" {
 				mountOptions = append(mountOptions, v)
@@ -408,6 +416,9 @@ func (ns *NodeServer) NodeStageVolume(_ context.Context, req *csi.NodeStageVolum
 	server = getServerFromSource(server)
 	source := fmt.Sprintf("%s:%s", server, baseDir)
 	if subDir != "" {
+		// replace pv/pvc name namespace metadata in subDir
+		subDir = replaceWithMap(subDir, subDirReplaceMap)
+
 		source = strings.TrimRight(source, "/")
 		source = fmt.Sprintf("%s/%s", source, subDir)
 	}
