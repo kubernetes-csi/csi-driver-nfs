@@ -372,3 +372,159 @@ func TestNodeGetVolumeStats(t *testing.T) {
 	err = os.RemoveAll(fakePath)
 	assert.NoError(t, err)
 }
+
+func TestNodeStageVolume(t *testing.T) {
+	ns, err := getTestNodeServer()
+	if err != nil {
+		t.Fatalf("%v", err.Error())
+	}
+
+	params := map[string]string{
+		"server": "server",
+		"share":  "share",
+	}
+
+	volumeCap := csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER}
+	stagingTargetPath := testutil.GetWorkDirPath("staging_target_test", t)
+	lockKey := fmt.Sprintf("%s-%s", "vol_1", stagingTargetPath)
+
+	tests := []struct {
+		desc        string
+		setup       func()
+		req         *csi.NodeStageVolumeRequest
+		expectedErr error
+		cleanup     func()
+	}{
+		{
+			desc:        "[Error] Volume capabilities missing",
+			req:         &csi.NodeStageVolumeRequest{},
+			expectedErr: status.Error(codes.InvalidArgument, "Volume capability missing in request"),
+		},
+		{
+			desc:        "[Error] Volume ID missing",
+			req:         &csi.NodeStageVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap}},
+			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
+		},
+		{
+			desc: "[Error] Staging target path missing",
+			req: &csi.NodeStageVolumeRequest{
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+			},
+			expectedErr: status.Error(codes.InvalidArgument, "Staging target path not provided"),
+		},
+		{
+			desc: "[Error] Volume operation in progress",
+			setup: func() {
+				ns.Driver.volumeLocks.TryAcquire(lockKey)
+			},
+			req: &csi.NodeStageVolumeRequest{
+				VolumeCapability:  &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:          "vol_1",
+				VolumeContext:     params,
+				StagingTargetPath: stagingTargetPath,
+			},
+			expectedErr: status.Error(codes.Aborted, fmt.Sprintf(volumeOperationAlreadyExistsFmt, "vol_1")),
+			cleanup: func() {
+				ns.Driver.volumeLocks.Release(lockKey)
+			},
+		},
+		{
+			desc: "[Success] Valid request",
+			req: &csi.NodeStageVolumeRequest{
+				VolumeContext:     params,
+				VolumeCapability:  &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:          "vol_1",
+				StagingTargetPath: stagingTargetPath,
+			},
+			expectedErr: nil,
+		},
+	}
+
+	// setup
+	_ = makeDir(stagingTargetPath)
+
+	for _, tc := range tests {
+		if tc.setup != nil {
+			tc.setup()
+		}
+		_, err := ns.NodeStageVolume(context.Background(), tc.req)
+		if !reflect.DeepEqual(err, tc.expectedErr) {
+			t.Errorf("Desc:%v\nUnexpected error: %v\nExpected: %v", tc.desc, err, tc.expectedErr)
+		}
+		if tc.cleanup != nil {
+			tc.cleanup()
+		}
+	}
+
+	// Clean up
+	err = os.RemoveAll(stagingTargetPath)
+	assert.NoError(t, err)
+}
+
+func TestNodeUnstageVolume(t *testing.T) {
+	ns, err := getTestNodeServer()
+	if err != nil {
+		t.Fatalf("%v", err.Error())
+	}
+
+	stagingTargetPath := testutil.GetWorkDirPath("staging_target_test", t)
+	lockKey := fmt.Sprintf("%s-%s", "vol_1", stagingTargetPath)
+
+	tests := []struct {
+		desc        string
+		setup       func()
+		req         *csi.NodeUnstageVolumeRequest
+		expectedErr error
+		cleanup     func()
+	}{
+		{
+			desc:        "[Error] Volume ID missing",
+			req:         &csi.NodeUnstageVolumeRequest{StagingTargetPath: stagingTargetPath},
+			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
+		},
+		{
+			desc:        "[Error] Staging target path missing",
+			req:         &csi.NodeUnstageVolumeRequest{VolumeId: "vol_1"},
+			expectedErr: status.Error(codes.InvalidArgument, "Staging target path missing in request"),
+		},
+		{
+			desc: "[Error] Volume operation in progress",
+			setup: func() {
+				ns.Driver.volumeLocks.TryAcquire(lockKey)
+			},
+			req:         &csi.NodeUnstageVolumeRequest{StagingTargetPath: stagingTargetPath, VolumeId: "vol_1"},
+			expectedErr: status.Error(codes.Aborted, fmt.Sprintf(volumeOperationAlreadyExistsFmt, "vol_1")),
+			cleanup: func() {
+				ns.Driver.volumeLocks.Release(lockKey)
+			},
+		},
+		{
+			desc:        "[Success] Valid request",
+			req:         &csi.NodeUnstageVolumeRequest{StagingTargetPath: stagingTargetPath, VolumeId: "vol_1"},
+			expectedErr: nil,
+		},
+	}
+
+	// Setup
+	_ = makeDir(stagingTargetPath)
+
+	for _, tc := range tests {
+		if tc.setup != nil {
+			tc.setup()
+		}
+		_, err := ns.NodeUnstageVolume(context.Background(), tc.req)
+		if !reflect.DeepEqual(err, tc.expectedErr) {
+			if err == nil || tc.expectedErr == nil || !strings.Contains(err.Error(), tc.expectedErr.Error()) {
+				t.Errorf("Desc:%v\nUnexpected error: %v\nExpected: %v", tc.desc, err, tc.expectedErr)
+			}
+		}
+		if tc.cleanup != nil {
+			tc.cleanup()
+		}
+	}
+
+	// Clean up
+	err = os.RemoveAll(stagingTargetPath)
+	assert.NoError(t, err)
+}
