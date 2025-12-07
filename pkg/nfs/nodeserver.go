@@ -150,7 +150,12 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 			klog.V(2).Infof("NodePublishVolume: remounting targetPath(%s) with security options(%v)", targetPath, securityOpts)
 			if err := ns.mounter.Mount("", targetPath, "", securityOpts); err != nil {
 				// Attempt to cleanup the bind mount on failure
-				mount.CleanupMountPoint(targetPath, ns.mounter, false)
+				forceUnmounter, ok := ns.mounter.(mount.MounterForceUnmounter)
+				if ok {
+					mount.CleanupMountWithForce(targetPath, forceUnmounter, false, 30*time.Second)
+				} else {
+					mount.CleanupMountPoint(targetPath, ns.mounter, false)
+				}
 				if os.IsPermission(err) {
 					return nil, status.Error(codes.PermissionDenied, err.Error())
 				}
