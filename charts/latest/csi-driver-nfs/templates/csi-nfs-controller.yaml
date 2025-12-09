@@ -182,6 +182,7 @@ spec:
             - "--working-mount-dir={{ .Values.controller.workingMountDir }}"
             - "--default-ondelete-policy={{ .Values.controller.defaultOnDeletePolicy }}"
             - "--use-tar-command-in-snapshot={{ .Values.controller.useTarCommandInSnapshot }}"
+            - "--enable-snapshot-compression={{ .Values.controller.enableSnapshotCompression }}"
           env:
             - name: NODE_ID
               valueFrom:
