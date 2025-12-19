@@ -7,7 +7,7 @@ image:
         pullPolicy: IfNotPresent
     csiProvisioner:
         repository: /sig-storage/csi-provisioner
-        tag: v6.0.0
+        tag: v6.1.0
         pullPolicy: IfNotPresent
     csiResizer:
         repository: /sig-storage/csi-resizer
