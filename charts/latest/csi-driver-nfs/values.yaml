@@ -58,6 +58,7 @@ controller:
   runOnControlPlane: false
   enableSnapshotter: true
   useTarCommandInSnapshot: false
+  enableSnapshotCompression: true
   livenessProbe:
     healthPort: 29652
   logLevel: 5

@@ -35,6 +35,7 @@ var (
 	volStatsCacheExpireInMinutes = flag.Int("vol-stats-cache-expire-in-minutes", 10, "The cache expire time in minutes for volume stats cache")
 	removeArchivedVolumePath     = flag.Bool("remove-archived-volume-path", false, "remove archived volume path in DeleteVolume")
 	useTarCommandInSnapshot      = flag.Bool("use-tar-command-in-snapshot", false, "use tar command to pack and unpack snapshot data")
+	enableSnapshotCompression    = flag.Bool("enable-snapshot-compression", true, "enable compression when creating volume snapshots")
 )
 
 func main() {
@@ -60,6 +61,7 @@ func handle() {
 		VolStatsCacheExpireInMinutes: *volStatsCacheExpireInMinutes,
 		RemoveArchivedVolumePath:     *removeArchivedVolumePath,
 		UseTarCommandInSnapshot:      *useTarCommandInSnapshot,
+		EnableSnapshotCompression:    *enableSnapshotCompression,
 	}
 	d := nfs.NewDriver(&driverOptions)
 	d.Run(false)
