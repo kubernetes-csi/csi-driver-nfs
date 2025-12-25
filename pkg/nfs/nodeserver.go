@@ -34,6 +34,8 @@ import (
 	azcache "sigs.k8s.io/cloud-provider-azure/pkg/cache"
 )
 
+const mountTimeoutInSec = 110
+
 // NodeServer driver
 type NodeServer struct {
 	Driver  *Driver
@@ -134,8 +136,10 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	execFunc := func() error {
 		return ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
 	}
-	timeoutFunc := func() error { return fmt.Errorf("time out") }
-	if err := WaitUntilTimeout(90*time.Second, execFunc, timeoutFunc); err != nil {
+	timeoutFunc := func() error {
+		return fmt.Errorf("mount volume %s to %s timeout after %ds", source, targetPath, mountTimeoutInSec)
+	}
+	if err := WaitUntilTimeout(mountTimeoutInSec*time.Second, execFunc, timeoutFunc); err != nil {
 		if os.IsPermission(err) {
 			return nil, status.Error(codes.PermissionDenied, err.Error())
 		}
