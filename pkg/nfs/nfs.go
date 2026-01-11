@@ -24,8 +24,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/klog/v2"
 	mount "k8s.io/mount-utils"
-
-	azcache "sigs.k8s.io/cloud-provider-azure/pkg/cache"
 )
 
 // DriverOptions defines driver parameters specified in driver deployment
@@ -59,10 +57,10 @@ type Driver struct {
 	volumeLocks *VolumeLocks
 
 	// a timed cache storing volume stats <volumeID, volumeStats>
-	volStatsCache                azcache.Resource
+	volStatsCache                Resource
 	volStatsCacheExpireInMinutes int
 	// a timed cache storing volume deletion records <volumeID, "">
-	volDeletionCache azcache.Resource
+	volDeletionCache Resource
 }
 
 const (
@@ -123,10 +121,10 @@ func NewDriver(options *DriverOptions) *Driver {
 
 	var err error
 	getter := func(_ string) (interface{}, error) { return nil, nil }
-	if n.volStatsCache, err = azcache.NewTimedCache(time.Duration(options.VolStatsCacheExpireInMinutes)*time.Minute, getter, false); err != nil {
+	if n.volStatsCache, err = NewTimedCache(time.Duration(options.VolStatsCacheExpireInMinutes)*time.Minute, getter, false); err != nil {
 		klog.Fatalf("%v", err)
 	}
-	if n.volDeletionCache, err = azcache.NewTimedCache(time.Minute, getter, false); err != nil {
+	if n.volDeletionCache, err = NewTimedCache(time.Minute, getter, false); err != nil {
 		klog.Fatalf("%v", err)
 	}
 	return n

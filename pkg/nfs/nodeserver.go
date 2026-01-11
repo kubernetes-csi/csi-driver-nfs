@@ -30,8 +30,6 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/volume"
 	mount "k8s.io/mount-utils"
-
-	azcache "sigs.k8s.io/cloud-provider-azure/pkg/cache"
 )
 
 const mountTimeoutInSec = 110
@@ -219,7 +217,7 @@ func (ns *NodeServer) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolu
 	}
 
 	// check if the volume stats is cached
-	cache, err := ns.Driver.volStatsCache.Get(req.VolumeId, azcache.CacheReadTypeDefault)
+	cache, err := ns.Driver.volStatsCache.Get(req.VolumeId, CacheReadTypeDefault)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%v", err)
 	}

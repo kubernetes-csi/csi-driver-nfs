@@ -32,7 +32,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	azcache "sigs.k8s.io/cloud-provider-azure/pkg/cache"
 
 	"k8s.io/klog/v2"
 )
@@ -231,7 +230,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	if !strings.EqualFold(nfsVol.onDelete, retain) {
 		// check whether volumeID is in the cache
-		cache, err := cs.Driver.volDeletionCache.Get(volumeID, azcache.CacheReadTypeDefault)
+		cache, err := cs.Driver.volDeletionCache.Get(volumeID, CacheReadTypeDefault)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "%v", err)
 		}
