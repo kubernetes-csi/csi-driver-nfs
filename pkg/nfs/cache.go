@@ -32,6 +32,8 @@ const (
 	// if cache entry expired, then it will refetch the data using getter
 	// save the entry in cache and then return
 	CacheReadTypeDefault CacheReadType = iota
+	// Note: The original Azure cache had CacheReadTypeUnsafe and CacheReadTypeForceRefresh,
+	// but these are not used in the NFS CSI driver codebase, so they are not implemented here.
 )
 
 // GetFunc defines a getter function for timedCache.
@@ -54,6 +56,9 @@ func cacheKeyFunc(obj interface{}) (string, error) {
 }
 
 // Resource operations
+// Note: This interface only includes the methods actually used by the NFS CSI driver.
+// The original Azure cache had additional methods (GetWithDeepCopy, Delete, Update, 
+// GetStore, Lock, Unlock) that are not used in this codebase and thus not implemented.
 type Resource interface {
 	Get(key string, crt CacheReadType) (interface{}, error)
 	Set(key string, data interface{})
