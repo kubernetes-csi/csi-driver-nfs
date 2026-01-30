@@ -21,7 +21,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-LOGCHECK_VERSION=${1:-0.8.2}
+LOGCHECK_VERSION=${1:-0.10.0}
 
 # This will canonicalize the path
 CSI_LIB_UTIL_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd -P)
