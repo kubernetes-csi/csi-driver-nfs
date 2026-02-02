@@ -56,8 +56,9 @@ const (
 func initTestController(_ *testing.T) *ControllerServer {
 	mounter := &mount.FakeMounter{MountPoints: []mount.MountPoint{}}
 	driver := NewDriver(&DriverOptions{
-		WorkingMountDir:  "/tmp",
-		MountPermissions: 0777,
+		WorkingMountDir:           "/tmp",
+		MountPermissions:          0777,
+		EnableSnapshotCompression: true,
 	})
 	driver.ns = NewNodeServer(driver, mounter)
 	cs := NewControllerServer(driver)
@@ -1158,4 +1159,151 @@ func matchCreateSnapshotResponse(e, r *csi.CreateSnapshotResponse) error {
 		return nil
 	}
 	return fmt.Errorf("mismatch CreateSnapshotResponse in fields: %v", strings.Join(errs, ", "))
+}
+
+func initTestControllerWithOptions(opts *DriverOptions) *ControllerServer {
+	mounter := &mount.FakeMounter{MountPoints: []mount.MountPoint{}}
+	if opts.WorkingMountDir == "" {
+		opts.WorkingMountDir = "/tmp"
+	}
+	driver := NewDriver(opts)
+	driver.ns = NewNodeServer(driver, mounter)
+	cs := NewControllerServer(driver)
+	return cs
+}
+
+func TestCreateSnapshotWithoutCompression(t *testing.T) {
+	// Test creating a snapshot without compression
+	cs := initTestControllerWithOptions(&DriverOptions{
+		WorkingMountDir:           "/tmp",
+		MountPermissions:          0777,
+		EnableSnapshotCompression: false,
+	})
+
+	// Setup: create source directory
+	srcPath := "/tmp/src-pv-name-no-compress/subdir"
+	if err := os.MkdirAll(srcPath, 0777); err != nil {
+		t.Fatalf("failed to create source directory: %v", err)
+	}
+	defer func() { _ = os.RemoveAll("/tmp/src-pv-name-no-compress") }()
+
+	req := &csi.CreateSnapshotRequest{
+		SourceVolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-name-no-compress",
+		Name:           "snapshot-name-no-compress",
+	}
+
+	resp, err := cs.CreateSnapshot(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("CreateSnapshot failed: %v", err)
+	}
+
+	if resp == nil || resp.Snapshot == nil {
+		t.Fatalf("CreateSnapshot returned nil response")
+	}
+
+	// Check that the snapshot was created with .tar extension (not .tar.gz)
+	snapPath := "/tmp/snapshot-name-no-compress/snapshot-name-no-compress/src-pv-name-no-compress.tar"
+	if _, err := os.Stat(snapPath); os.IsNotExist(err) {
+		t.Errorf("expected uncompressed snapshot archive at %s, but it does not exist", snapPath)
+	}
+
+	// Cleanup
+	_ = os.RemoveAll("/tmp/snapshot-name-no-compress")
+}
+
+func TestCopyVolumeFromUncompressedSnapshot(t *testing.T) {
+	// Create an uncompressed snapshot archive and test restoration
+	srcPath := "/tmp/uncompressed-snapshot-test/uncompressed-snapshot-test"
+	if err := os.MkdirAll(srcPath, 0777); err != nil {
+		t.Fatalf("failed to create snapshot directory: %v", err)
+	}
+	defer func() { _ = os.RemoveAll("/tmp/uncompressed-snapshot-test") }()
+
+	// Create an uncompressed tar archive
+	archivePath := filepath.Join(srcPath, "src-vol.tar")
+	file, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatalf("failed to create tar archive: %v", err)
+	}
+	defer file.Close()
+
+	tarWriter := tar.NewWriter(file)
+	body := "test content for uncompressed snapshot"
+	hdr := &tar.Header{
+		Name: "test.txt",
+		Mode: 0644,
+		Size: int64(len(body)),
+	}
+	if err := tarWriter.WriteHeader(hdr); err != nil {
+		t.Fatalf("failed to write tar header: %v", err)
+	}
+	if _, err := tarWriter.Write([]byte(body)); err != nil {
+		t.Fatalf("failed to write tar content: %v", err)
+	}
+	if err := tarWriter.Close(); err != nil {
+		t.Fatalf("failed to close tar writer: %v", err)
+	}
+	file.Close()
+
+	// Test copying from uncompressed snapshot
+	cs := initTestController(t)
+
+	req := &csi.CreateVolumeRequest{
+		Name: "restored-volume",
+		VolumeContentSource: &csi.VolumeContentSource{
+			Type: &csi.VolumeContentSource_Snapshot{
+				Snapshot: &csi.VolumeContentSource_SnapshotSource{
+					SnapshotId: "nfs-server.default.svc.cluster.local#share#uncompressed-snapshot-test#uncompressed-snapshot-test#src-vol",
+				},
+			},
+		},
+	}
+
+	dstVol := &nfsVolume{
+		id:      "nfs-server.default.svc.cluster.local#share#subdir#dst-pv-name-restored",
+		server:  "//nfs-server.default.svc.cluster.local",
+		baseDir: "share",
+		subDir:  "subdir",
+		uuid:    "dst-pv-name-restored",
+	}
+
+	// Create destination directory
+	dstPath := filepath.Join("/tmp", dstVol.uuid, dstVol.subDir)
+	if err := os.MkdirAll(dstPath, 0777); err != nil {
+		t.Fatalf("failed to create destination directory: %v", err)
+	}
+	defer func() { _ = os.RemoveAll("/tmp/dst-pv-name-restored") }()
+
+	err = cs.copyFromSnapshot(context.TODO(), req, dstVol)
+	if err != nil {
+		t.Fatalf("copyFromSnapshot failed for uncompressed archive: %v", err)
+	}
+
+	// Verify file was restored
+	restoredFile := filepath.Join(dstPath, "test.txt")
+	content, err := os.ReadFile(restoredFile)
+	if err != nil {
+		t.Fatalf("failed to read restored file: %v", err)
+	}
+	if string(content) != body {
+		t.Errorf("restored content mismatch: got %q, expected %q", string(content), body)
+	}
+}
+
+func TestArchiveNameWithCompression(t *testing.T) {
+	snap := nfsSnapshot{
+		src: "test-volume",
+	}
+
+	// Test with compression enabled
+	nameWithCompression := snap.archiveName(true)
+	if nameWithCompression != "test-volume.tar.gz" {
+		t.Errorf("expected 'test-volume.tar.gz', got %q", nameWithCompression)
+	}
+
+	// Test with compression disabled
+	nameWithoutCompression := snap.archiveName(false)
+	if nameWithoutCompression != "test-volume.tar" {
+		t.Errorf("expected 'test-volume.tar', got %q", nameWithoutCompression)
+	}
 }
