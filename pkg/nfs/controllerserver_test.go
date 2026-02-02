@@ -1161,7 +1161,7 @@ func matchCreateSnapshotResponse(e, r *csi.CreateSnapshotResponse) error {
 	return fmt.Errorf("mismatch CreateSnapshotResponse in fields: %v", strings.Join(errs, ", "))
 }
 
-func initTestControllerWithOptions(t *testing.T, opts *DriverOptions) *ControllerServer {
+func initTestControllerWithOptions(opts *DriverOptions) *ControllerServer {
 	mounter := &mount.FakeMounter{MountPoints: []mount.MountPoint{}}
 	if opts.WorkingMountDir == "" {
 		opts.WorkingMountDir = "/tmp"
@@ -1174,7 +1174,7 @@ func initTestControllerWithOptions(t *testing.T, opts *DriverOptions) *Controlle
 
 func TestCreateSnapshotWithoutCompression(t *testing.T) {
 	// Test creating a snapshot without compression
-	cs := initTestControllerWithOptions(t, &DriverOptions{
+	cs := initTestControllerWithOptions(&DriverOptions{
 		WorkingMountDir:           "/tmp",
 		MountPermissions:          0777,
 		EnableSnapshotCompression: false,
