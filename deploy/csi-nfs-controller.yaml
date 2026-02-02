@@ -147,7 +147,7 @@ spec:
               drop:
                 - ALL
         - name: nfs
-          image: registry.k8s.io/sig-storage/nfsplugin:v4.13.0
+          image: gcr.io/k8s-staging-sig-storage/nfsplugin:canary
           securityContext:
             privileged: true
             capabilities:
