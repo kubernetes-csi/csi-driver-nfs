@@ -57,7 +57,7 @@ func cacheKeyFunc(obj interface{}) (string, error) {
 
 // Resource operations
 // Note: This interface only includes the methods actually used by the NFS CSI driver.
-// The original Azure cache had additional methods (GetWithDeepCopy, Delete, Update, 
+// The original Azure cache had additional methods (GetWithDeepCopy, Delete, Update,
 // GetStore, Lock, Unlock) that are not used in this codebase and thus not implemented.
 type Resource interface {
 	Get(key string, crt CacheReadType) (interface{}, error)
@@ -128,7 +128,7 @@ func (t *TimedCache) getInternal(key string) (*CacheEntry, error) {
 }
 
 // Get returns the requested item by key.
-func (t *TimedCache) Get(key string, crt CacheReadType) (interface{}, error) {
+func (t *TimedCache) Get(key string, _ CacheReadType) (interface{}, error) {
 	entry, err := t.getInternal(key)
 	if err != nil {
 		return nil, err
