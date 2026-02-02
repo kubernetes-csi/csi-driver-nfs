@@ -20,7 +20,6 @@ require (
 	k8s.io/mount-utils v0.32.0
 	k8s.io/pod-security-admission v0.0.0
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
-	sigs.k8s.io/cloud-provider-azure v1.28.9
 	sigs.k8s.io/yaml v1.6.0
 )
 

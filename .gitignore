@@ -70,3 +70,4 @@ cscope.*
 /bazel-*
 *.pyc
 profile.cov
+nfsplugin

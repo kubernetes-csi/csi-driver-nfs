@@ -1730,10 +1730,6 @@ sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client/metrics
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/common/metrics
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/proto/client
-# sigs.k8s.io/cloud-provider-azure v1.28.9
-## explicit; go 1.20
-sigs.k8s.io/cloud-provider-azure/pkg/cache
-sigs.k8s.io/cloud-provider-azure/pkg/util/deepcopy
 # sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3
 ## explicit; go 1.21
 sigs.k8s.io/json
