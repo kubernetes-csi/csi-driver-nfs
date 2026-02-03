@@ -66,6 +66,19 @@ func TestNodePublishVolume(t *testing.T) {
 		mountPermissionsField: "07ab",
 	}
 
+	paramsWithSubDir := map[string]string{
+		"server":              "server",
+		"share":               "share",
+		paramSubDir:           "subdir",
+		mountPermissionsField: "0755",
+	}
+
+	paramsWithoutSubDir := map[string]string{
+		"server":              "server",
+		"share":               "share",
+		mountPermissionsField: "0755",
+	}
+
 	volumeCap := csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER}
 	alreadyMountedTarget := testutil.GetWorkDirPath("false_is_likely_exist_target", t)
 	targetTest := testutil.GetWorkDirPath("target_test", t)
@@ -177,6 +190,26 @@ func TestNodePublishVolume(t *testing.T) {
 				TargetPath:       targetTest,
 				Readonly:         true},
 			expectedErr: status.Error(codes.InvalidArgument, "invalid mountPermissions 07ab"),
+		},
+		{
+			desc: "[Success] Valid request with subDir and mountPermissions",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    paramsWithSubDir,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest,
+				Readonly:         true},
+			expectedErr: nil,
+		},
+		{
+			desc: "[Success] Valid request without subDir but with mountPermissions (chmod skipped)",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    paramsWithoutSubDir,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest,
+				Readonly:         true},
+			expectedErr: nil,
 		},
 	}
 

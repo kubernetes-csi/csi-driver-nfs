@@ -147,12 +147,19 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if mountPermissions > 0 {
+	// Only apply chmod when subDir is present (i.e., mounting server:/baseDir/subDir).
+	// When subDir is empty (mounting just server:/baseDir), the chmod will be handled
+	// by CreateVolume after the subdirectory is created within the mount.
+	if mountPermissions > 0 && subDir != "" {
 		if err := chmodIfPermissionMismatch(targetPath, os.FileMode(mountPermissions)); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	} else {
-		klog.V(2).Infof("skip chmod on targetPath(%s) since mountPermissions is set as 0", targetPath)
+		if mountPermissions == 0 {
+			klog.V(2).Infof("skip chmod on targetPath(%s) since mountPermissions is set as 0", targetPath)
+		} else {
+			klog.V(2).Infof("skip chmod on targetPath(%s) since subDir is empty, chmod will be applied to subdirectory by CreateVolume", targetPath)
+		}
 	}
 	klog.V(2).Infof("volume(%s) mount %s on %s succeeded", volumeID, source, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
