@@ -52,7 +52,7 @@ spec:
           args:
             - --csi-address=/csi/csi.sock
             - --probe-timeout=3s
-            - --http-endpoint=localhost:{{ .Values.node.livenessProbe.healthPort }}
+            - --http-endpoint=127.0.0.1:{{ .Values.node.livenessProbe.healthPort }}
             - --v=2
           imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
           volumeMounts:
@@ -75,7 +75,7 @@ spec:
             - --csi-address=/csi/csi.sock
             - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
 {{- if .Values.nodeDriverRegistrar.livenessProbe.enabled }}
-            - --http-endpoint=localhost:{{ .Values.nodeDriverRegistrar.healthPort }}
+            - --http-endpoint=127.0.0.1:{{ .Values.nodeDriverRegistrar.healthPort }}
 {{- end }}
           env:
             - name: DRIVER_REG_SOCK_PATH
@@ -97,7 +97,6 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              host: localhost
               path: /healthz
               port: healthz
             initialDelaySeconds: {{ .Values.nodeDriverRegistrar.livenessProbe.initialDelaySeconds }}
@@ -139,7 +138,6 @@ spec:
           livenessProbe:
             failureThreshold: 5
             httpGet:
-              host: localhost
               path: /healthz
               port: {{ .Values.node.livenessProbe.healthPort }}
             initialDelaySeconds: 30
