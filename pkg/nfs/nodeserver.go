@@ -116,7 +116,7 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	}
 
 	if err := validatePath(source); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid volume source %s: %v", source, err)
+		return nil, status.Errorf(codes.InvalidArgument, "invalid volume source %q: %v", source, err)
 	}
 
 	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)

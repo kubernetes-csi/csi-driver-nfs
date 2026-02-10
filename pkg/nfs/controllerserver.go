@@ -835,13 +835,6 @@ func getNfsVolFromID(id string) (*nfsVolume, error) {
 	}, nil
 }
 
-func validatePath(path string) error {
-	if strings.Contains(path, "..") {
-		return fmt.Errorf("path contains directory traversal sequence")
-	}
-	return nil
-}
-
 // Given a CSI snapshot ID, return a nfsSnapshot
 // sample snapshot ID:
 //
