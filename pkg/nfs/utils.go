@@ -307,3 +307,12 @@ func getVolumeCapabilityFromSecret(volumeID string, secret map[string]string) *c
 	}
 	return nil
 }
+
+func validatePath(path string) error {
+	for _, segment := range strings.Split(path, "/") {
+		if segment == ".." {
+			return fmt.Errorf("path contains directory traversal sequence")
+		}
+	}
+	return nil
+}

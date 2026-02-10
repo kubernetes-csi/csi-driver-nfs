@@ -554,3 +554,76 @@ func TestGetVolumeCapabilityFromSecret(t *testing.T) {
 		})
 	}
 }
+
+func TestValidatePath(t *testing.T) {
+	tests := []struct {
+		desc     string
+		path     string
+		expected error
+	}{
+		{
+			desc:     "valid path",
+			path:     "/home/user/data",
+			expected: nil,
+		},
+		{
+			desc:     "valid relative path",
+			path:     "user/data/file.txt",
+			expected: nil,
+		},
+		{
+			desc:     "empty path",
+			path:     "",
+			expected: nil,
+		},
+		{
+			desc:     "root path",
+			path:     "/",
+			expected: nil,
+		},
+		{
+			desc:     "path with single dot",
+			path:     "/home/./user",
+			expected: nil,
+		},
+		{
+			desc:     "path with directory traversal at start",
+			path:     "../etc/passwd",
+			expected: fmt.Errorf("path contains directory traversal sequence"),
+		},
+		{
+			desc:     "path with directory traversal in middle",
+			path:     "/home/../etc/passwd",
+			expected: fmt.Errorf("path contains directory traversal sequence"),
+		},
+		{
+			desc:     "path with directory traversal at end",
+			path:     "/home/user/..",
+			expected: fmt.Errorf("path contains directory traversal sequence"),
+		},
+		{
+			desc:     "path with multiple directory traversals",
+			path:     "/home/../../etc/passwd",
+			expected: fmt.Errorf("path contains directory traversal sequence"),
+		},
+		{
+			desc:     "path with only directory traversal",
+			path:     "..",
+			expected: fmt.Errorf("path contains directory traversal sequence"),
+		},
+		{
+			desc:     "path with triple dots (valid)",
+			path:     "/home/.../data",
+			expected: nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			result := validatePath(test.path)
+			if !reflect.DeepEqual(result, test.expected) {
+				t.Errorf("test[%s]: unexpected output: %v, expected result: %v", test.desc, result, test.expected)
+			}
+		})
+	}
+}
