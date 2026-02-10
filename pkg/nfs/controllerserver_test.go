@@ -1307,3 +1307,218 @@ func TestArchiveNameWithCompression(t *testing.T) {
 		t.Errorf("expected 'test-volume.tar', got %q", nameWithoutCompression)
 	}
 }
+
+func TestGetNfsVolFromID(t *testing.T) {
+	cases := []struct {
+		name      string
+		volumeID  string
+		expected  *nfsVolume
+		expectErr bool
+	}{
+		{
+			name:      "empty volume ID",
+			volumeID:  "",
+			expected:  nil,
+			expectErr: true,
+		},
+		{
+			name:      "only server",
+			volumeID:  "test-server",
+			expected:  nil,
+			expectErr: true,
+		},
+		{
+			name:      "missing subDir with slash separator",
+			volumeID:  "test-server/test-base-dir",
+			expected:  nil,
+			expectErr: true,
+		},
+		{
+			name:      "missing subDir with hash separator",
+			volumeID:  "test-server#test-base-dir",
+			expected:  nil,
+			expectErr: true,
+		},
+		{
+			name:      "invalid subDir with directory traversal using slash separator",
+			volumeID:  "test-server/test-base-dir/../passwd",
+			expected:  nil,
+			expectErr: true,
+		},
+		{
+			name:     "valid subDir with directory using slash separator",
+			volumeID: "test-server/test-base-dir/foo..bar/passwd",
+			expected: &nfsVolume{
+				id:      "test-server/test-base-dir/foo..bar/passwd",
+				server:  "test-server",
+				baseDir: "test-base-dir/foo..bar",
+				subDir:  "passwd",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid old format with slash separator",
+			volumeID: "test-server/test-base-dir/volume-name",
+			expected: &nfsVolume{
+				id:      "test-server/test-base-dir/volume-name",
+				server:  "test-server",
+				baseDir: "test-base-dir",
+				subDir:  "volume-name",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid old format with nested baseDir",
+			volumeID: "test-server/test/base/dir/volume-name",
+			expected: &nfsVolume{
+				id:      "test-server/test/base/dir/volume-name",
+				server:  "test-server",
+				baseDir: "test/base/dir",
+				subDir:  "volume-name",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid new format with hash separator - minimal",
+			volumeID: "test-server#test-base-dir#volume-name",
+			expected: &nfsVolume{
+				id:      "test-server#test-base-dir#volume-name",
+				server:  "test-server",
+				baseDir: "test-base-dir",
+				subDir:  "volume-name",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid new format with uuid",
+			volumeID: "test-server#test-base-dir#volume-name#uuid-value",
+			expected: &nfsVolume{
+				id:      "test-server#test-base-dir#volume-name#uuid-value",
+				server:  "test-server",
+				baseDir: "test-base-dir",
+				subDir:  "volume-name",
+				uuid:    "uuid-value",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid new format with uuid and onDelete retain",
+			volumeID: "test-server#test-base-dir#volume-name#uuid-value#retain",
+			expected: &nfsVolume{
+				id:       "test-server#test-base-dir#volume-name#uuid-value#retain",
+				server:   "test-server",
+				baseDir:  "test-base-dir",
+				subDir:   "volume-name",
+				uuid:     "uuid-value",
+				onDelete: "retain",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid new format with uuid and onDelete delete",
+			volumeID: "test-server#test-base-dir#volume-name#uuid-value#delete",
+			expected: &nfsVolume{
+				id:       "test-server#test-base-dir#volume-name#uuid-value#delete",
+				server:   "test-server",
+				baseDir:  "test-base-dir",
+				subDir:   "volume-name",
+				uuid:     "uuid-value",
+				onDelete: "delete",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid new format with uuid and onDelete archive",
+			volumeID: "test-server#test-base-dir#volume-name#uuid-value#archive",
+			expected: &nfsVolume{
+				id:       "test-server#test-base-dir#volume-name#uuid-value#archive",
+				server:   "test-server",
+				baseDir:  "test-base-dir",
+				subDir:   "volume-name",
+				uuid:     "uuid-value",
+				onDelete: "archive",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid new format with empty uuid",
+			volumeID: "test-server#test-base-dir#volume-name##archive",
+			expected: &nfsVolume{
+				id:       "test-server#test-base-dir#volume-name##archive",
+				server:   "test-server",
+				baseDir:  "test-base-dir",
+				subDir:   "volume-name",
+				uuid:     "",
+				onDelete: "archive",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid new format with nested baseDir",
+			volumeID: "test-server#test/base/dir#volume-name#uuid",
+			expected: &nfsVolume{
+				id:      "test-server#test/base/dir#volume-name#uuid",
+				server:  "test-server",
+				baseDir: "test/base/dir",
+				subDir:  "volume-name",
+				uuid:    "uuid",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid new format with FQDN server",
+			volumeID: "nfs-server.default.svc.cluster.local#share#pvc-12345##",
+			expected: &nfsVolume{
+				id:       "nfs-server.default.svc.cluster.local#share#pvc-12345##",
+				server:   "nfs-server.default.svc.cluster.local",
+				baseDir:  "share",
+				subDir:   "pvc-12345",
+				uuid:     "",
+				onDelete: "",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid new format with IP address server",
+			volumeID: "192.168.1.100#exports#volume-name#uuid#retain",
+			expected: &nfsVolume{
+				id:       "192.168.1.100#exports#volume-name#uuid#retain",
+				server:   "192.168.1.100",
+				baseDir:  "exports",
+				subDir:   "volume-name",
+				uuid:     "uuid",
+				onDelete: "retain",
+			},
+			expectErr: false,
+		},
+		{
+			name:     "valid format with extra segments",
+			volumeID: "test-server#test-base-dir#volume-name#uuid#retain#extra",
+			expected: &nfsVolume{
+				id:       "test-server#test-base-dir#volume-name#uuid#retain#extra",
+				server:   "test-server",
+				baseDir:  "test-base-dir",
+				subDir:   "volume-name",
+				uuid:     "uuid",
+				onDelete: "retain",
+			},
+			expectErr: false,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := getNfsVolFromID(test.volumeID)
+
+			if test.expectErr && err == nil {
+				t.Errorf("expected error but got nil")
+			}
+			if !test.expectErr && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(result, test.expected) {
+				t.Errorf("got %+v, expected %+v", result, test.expected)
+			}
+		})
+	}
+}
