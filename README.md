@@ -13,7 +13,7 @@ This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System
 |driver version  | supported k8s version | status |
 |----------------|-----------------------|--------|
 |master branch   | 1.21+                 | GA     |
-|v4.13.0         | 1.21+                 | GA     |
+|v4.13.1         | 1.21+                 | GA     |
 |v4.12.1         | 1.21+                 | GA     |
 |v4.11.0         | 1.21+                 | GA     |
 

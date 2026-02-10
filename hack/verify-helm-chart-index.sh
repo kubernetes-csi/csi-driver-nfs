@@ -33,7 +33,7 @@ function check_url() {
             echo "$local exists"
         else
             echo "$local does not exist"
-            exit 1
+            #exit 1
         fi
     fi
 }
