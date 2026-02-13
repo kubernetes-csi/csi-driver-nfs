@@ -690,6 +690,26 @@ func TestNewNFSVolume(t *testing.T) {
 			},
 		},
 		{
+			desc: "subDir not specified but PVC metadata provided (backup/restore scenario)",
+			name: "pvc-random-uuid",
+			size: 200,
+			params: map[string]string{
+				paramServer:     "//nfs-server.default.svc.cluster.local",
+				paramShare:      "share",
+				pvcNameKey:      "my-pvc",
+				pvcNamespaceKey: "default",
+			},
+			expectVol: &nfsVolume{
+				id:       "nfs-server.default.svc.cluster.local#share#default-my-pvc#pvc-random-uuid#",
+				server:   "//nfs-server.default.svc.cluster.local",
+				baseDir:  "share",
+				subDir:   "default-my-pvc",
+				size:     200,
+				uuid:     "pvc-random-uuid",
+				onDelete: "delete",
+			},
+		},
+		{
 			desc:      "server value is empty",
 			params:    map[string]string{},
 			expectVol: nil,

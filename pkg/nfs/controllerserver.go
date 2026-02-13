@@ -715,8 +715,20 @@ func newNFSVolume(name string, size int64, params map[string]string, defaultOnDe
 		size:    size,
 	}
 	if subDir == "" {
-		// use pv name by default if not specified
-		vol.subDir = name
+		// When subDir is not specified, prefer using PVC metadata if available
+		// This ensures stable directory names across backup/restore operations
+		pvcNamespace := subDirReplaceMap[pvcNamespaceMetadata]
+		pvcName := subDirReplaceMap[pvcNameMetadata]
+		
+		if pvcNamespace != "" && pvcName != "" {
+			// Use PVC namespace and name for stable subdirectory naming
+			vol.subDir = fmt.Sprintf("%s-%s", pvcNamespace, pvcName)
+			// Store PV name to make volume ID unique
+			vol.uuid = name
+		} else {
+			// Fall back to PV name if PVC metadata is not available
+			vol.subDir = name
+		}
 	} else {
 		// replace pv/pvc name namespace metadata in subDir
 		vol.subDir = replaceWithMap(subDir, subDirReplaceMap)
