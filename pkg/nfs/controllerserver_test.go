@@ -216,6 +216,40 @@ func TestCreateVolume(t *testing.T) {
 			},
 			expectErr: true,
 		},
+		{
+			name: "backup/restore with PVC metadata",
+			req: &csi.CreateVolumeRequest{
+				Name: "pvc-new-random-uuid",
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					paramServer:     testServer,
+					paramShare:      testBaseDir,
+					pvcNameKey:      "my-data",
+					pvcNamespaceKey: "default",
+				},
+			},
+			resp: &csi.CreateVolumeResponse{
+				Volume: &csi.Volume{
+					VolumeId: "test-server#test-base-dir#default-my-data#pvc-new-random-uuid#",
+					VolumeContext: map[string]string{
+						paramServer:     testServer,
+						paramShare:      testBaseDir,
+						pvcNameKey:      "my-data",
+						pvcNamespaceKey: "default",
+						paramSubDir:     "default-my-data",
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range cases {
@@ -236,11 +270,33 @@ func TestCreateVolume(t *testing.T) {
 				t.Errorf("test %q failed: got resp %+v, expected %+v", test.name, resp, test.resp)
 			}
 			if !test.expectErr {
-				info, err := os.Stat(filepath.Join(cs.Driver.workingMountDir, test.req.Name, test.req.Name))
-				if err != nil {
-					t.Errorf("test %q failed: couldn't find volume subdirectory: %v", test.name, err)
+				// Get the actual subdirectory from the response
+				subDir := resp.Volume.VolumeContext[paramSubDir]
+				if subDir == "" {
+					subDir = test.req.Name
 				}
-				if !info.IsDir() {
+				// Check directory based on whether uuid is set
+				// When uuid is set (subDir provided or PVC metadata used), path is workingMountDir/uuid/subDir
+				// When uuid is not set (default behavior), path is workingMountDir/subDir/subDir
+				var checkPath string
+				if test.resp != nil && test.resp.Volume != nil {
+					// Parse volume ID to check if uuid is set
+					segments := strings.Split(resp.Volume.VolumeId, "#")
+					if len(segments) > 3 && segments[3] != "" {
+						// uuid is set, path is workingMountDir/pvName/subDir
+						checkPath = filepath.Join(cs.Driver.workingMountDir, test.req.Name, subDir)
+					} else {
+						// uuid not set, path is workingMountDir/subDir/subDir
+						checkPath = filepath.Join(cs.Driver.workingMountDir, subDir, subDir)
+					}
+				} else {
+					checkPath = filepath.Join(cs.Driver.workingMountDir, test.req.Name, test.req.Name)
+				}
+				info, err := os.Stat(checkPath)
+				if err != nil {
+					t.Errorf("test %q failed: couldn't find volume subdirectory at %s: %v", test.name, checkPath, err)
+				}
+				if info != nil && !info.IsDir() {
 					t.Errorf("test %q failed: subfile not a directory", test.name)
 				}
 			}
