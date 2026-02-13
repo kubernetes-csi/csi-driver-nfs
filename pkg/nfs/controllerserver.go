@@ -719,7 +719,7 @@ func newNFSVolume(name string, size int64, params map[string]string, defaultOnDe
 		// This ensures stable directory names across backup/restore operations
 		pvcNamespace := subDirReplaceMap[pvcNamespaceMetadata]
 		pvcName := subDirReplaceMap[pvcNameMetadata]
-		
+
 		if pvcNamespace != "" && pvcName != "" {
 			// Use PVC namespace and name for stable subdirectory naming
 			vol.subDir = fmt.Sprintf("%s-%s", pvcNamespace, pvcName)
