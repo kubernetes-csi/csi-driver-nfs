@@ -45,7 +45,7 @@ spec:
             - "--leader-election"
             - "--leader-election-namespace=$(POD_NAMESPACE)"
             - "--extra-create-metadata=true"
-            - "--feature-gates=HonorPVReclaimPolicy=true"
+            - "--feature-gates=HonorPVReclaimPolicy=true,VolumeAttributesClass=false"
             - "--timeout=1200s"
             - "--retry-interval-max=30m"
           env:
@@ -76,6 +76,7 @@ spec:
             - "-leader-election"
             - "--leader-election-namespace=$(POD_NAMESPACE)"
             - '-handle-volume-inuse-error=false'
+            - '-feature-gates=VolumeAttributesClass=false'
           env:
             - name: ADDRESS
               value: /csi/csi.sock
