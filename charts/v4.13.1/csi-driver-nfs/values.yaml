@@ -116,7 +116,7 @@ controller:
 nodeDriverRegistrar:
   healthPort: 19809
   livenessProbe:
-    enabled: false
+    enabled: true
     initialDelaySeconds: 20
     timeoutSeconds: 10
     periodSeconds: 5
