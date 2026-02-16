@@ -1,5 +1,15 @@
 # Install CSI driver with Helm 3
 
+> [!IMPORTANT]  
+> **Chart repository has migrated from raw.githubusercontent.com to GitHub Pages**  
+> The Helm chart repository has been migrated to GitHub Pages to avoid rate limiting issues with raw.githubusercontent.com.  
+> Please update your helm repo reference:
+> ```console
+> helm repo remove csi-driver-nfs
+> helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
+> helm repo update
+> ```
+
 ## Prerequisites
  - [install Helm](https://helm.sh/docs/intro/quickstart/#install-helm)
 

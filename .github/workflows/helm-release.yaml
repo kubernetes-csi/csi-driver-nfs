@@ -19,22 +19,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure Git
-        run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: v3.13.0
-
-      - name: Update index.yaml with GitHub Pages URLs
-        run: |
-          cd charts
-          # Update URLs in index.yaml from raw.githubusercontent.com to GitHub Pages URL
-          sed -i 's|raw\.githubusercontent\.com/kubernetes-csi/csi-driver-nfs/master/charts|kubernetes-csi.github.io/csi-driver-nfs|g' index.yaml
-          
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
