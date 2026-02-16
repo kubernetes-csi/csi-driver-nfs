@@ -18,7 +18,7 @@
 > Starting from version `4.11.0`, the prefix `v` is removed from helm chart release so they are in line with [semver](https://semver.org). Therefore, when upgrading, refer to version `4.11.0` instead of `v4.11.0`.
 
 ```console
-helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
+helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
 helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.12.0
 ```
 

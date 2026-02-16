@@ -1,0 +1,46 @@
+name: Publish Helm Charts to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'charts/**'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.13.0
+
+      - name: Update index.yaml with GitHub Pages URLs
+        run: |
+          cd charts
+          # Update URLs in index.yaml from raw.githubusercontent.com to GitHub Pages URL
+          sed -i 's|raw\.githubusercontent\.com/kubernetes-csi/csi-driver-nfs/master/charts|kubernetes-csi.github.io/csi-driver-nfs|g' index.yaml
+          
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./charts
+          publish_branch: gh-pages
+          keep_files: false
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
