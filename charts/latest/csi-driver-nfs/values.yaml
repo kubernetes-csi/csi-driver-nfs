@@ -7,27 +7,27 @@ image:
         pullPolicy: IfNotPresent
     csiProvisioner:
         repository: /sig-storage/csi-provisioner
-        tag: v6.1.0
+        tag: v6.1.1
         pullPolicy: IfNotPresent
     csiResizer:
         repository: /sig-storage/csi-resizer
-        tag: v2.0.0
+        tag: v2.1.0
         pullPolicy: IfNotPresent
     csiSnapshotter:
         repository: /sig-storage/csi-snapshotter
-        tag: v8.4.0
+        tag: v8.5.0
         pullPolicy: IfNotPresent
     livenessProbe:
         repository: /sig-storage/livenessprobe
-        tag: v2.17.0
+        tag: v2.18.0
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
         repository: /sig-storage/csi-node-driver-registrar
-        tag: v2.15.0
+        tag: v2.16.0
         pullPolicy: IfNotPresent
     externalSnapshotter:
         repository: /sig-storage/snapshot-controller
-        tag: v8.4.0
+        tag: v8.5.0
         pullPolicy: IfNotPresent
 
 serviceAccount:
