@@ -1,12 +1,41 @@
-linters-settings:
-  depguard:
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - staticcheck
+  settings:
+    staticcheck:
+      checks:
+        - "S*"
+    depguard:
+      rules:
+        main:
+          files:
+            - $all
+            - "!$test"
+          allow:
+            - $gostd
+            - k8s.io
+            - sigs.k8s.io
+            - github.com
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - std-error-handling
+      - common-false-positives
+      - legacy
     rules:
-      main:
-        files:
-          - $all
-          - "!$test"
-        allow:
-          - $gostd
-          - k8s.io
-          - sigs.k8s.io
-          - github.com
+      # unused-parameter is a new revive rule not present in v1's bundled revive.
+      - linters:
+          - revive
+        text: "^unused-parameter:"
+      # var-naming package name checks are new in v2's revive (v1 only checked variable names).
+      - linters:
+          - revive
+        text: "^var-naming: avoid"
+
+formatters:
+  enable:
+    - gofmt
