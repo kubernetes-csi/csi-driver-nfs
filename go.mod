@@ -1,6 +1,6 @@
 module github.com/kubernetes-csi/csi-driver-nfs
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/container-storage-interface/spec v1.11.0
