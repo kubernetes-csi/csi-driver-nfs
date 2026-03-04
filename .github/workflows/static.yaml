@@ -15,8 +15,8 @@ jobs:
             - name: Run linter
               uses: golangci/golangci-lint-action@v6
               with:
-                  version: v1.64
-                  args: -E=gofmt,unused,ineffassign,revive,misspell,copyloopvar,asciicheck,bodyclose,contextcheck --timeout=30m0s
+                  version: v2.10
+                  args: -E=errcheck,govet,unused,ineffassign,staticcheck,revive,misspell,asciicheck,bodyclose,dogsled,durationcheck,errname,forbidigo --timeout=30m0s
     verify-helm:
         name: Verify Helm
         runs-on: ubuntu-latest
