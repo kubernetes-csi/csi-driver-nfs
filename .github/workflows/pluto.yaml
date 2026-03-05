@@ -11,7 +11,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     # https://pluto.docs.fairwinds.com/advanced/#display-options
     - name: Download pluto
