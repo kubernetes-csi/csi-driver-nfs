@@ -38,14 +38,14 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: csi-provisioner
-          image: registry.k8s.io/sig-storage/csi-provisioner:v6.1.1
+          image: registry.k8s.io/sig-storage/csi-provisioner:v6.2.0
           args:
             - "-v=2"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election"
             - "--leader-election-namespace=$(POD_NAMESPACE)"
             - "--extra-create-metadata=true"
-            - "--feature-gates=HonorPVReclaimPolicy=true,VolumeAttributesClass=false"
+            - "--feature-gates=VolumeAttributesClass=false"
             - "--timeout=1200s"
             - "--retry-interval-max=30m"
           env:
