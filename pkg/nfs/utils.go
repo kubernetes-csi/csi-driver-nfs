@@ -201,7 +201,7 @@ func setKeyValueInMap(m map[string]string, key, value string) {
 
 func waitForPathNotExistWithTimeout(path string, timeout time.Duration) error {
 	// Loop until the path no longer exists or the timeout is reached
-	timeoutTime := time.Now().Add(time.Duration(timeout) * time.Second)
+	timeoutTime := time.Now().Add(timeout)
 	for {
 		if _, err := os.Lstat(path); err != nil {
 			if os.IsNotExist(err) {
