@@ -557,72 +557,41 @@ func TestGetVolumeCapabilityFromSecret(t *testing.T) {
 
 func TestValidatePath(t *testing.T) {
 	tests := []struct {
-		desc     string
-		path     string
-		expected error
+		desc        string
+		path        string
+		expectError bool
 	}{
-		{
-			desc:     "valid path",
-			path:     "/home/user/data",
-			expected: nil,
-		},
-		{
-			desc:     "valid relative path",
-			path:     "user/data/file.txt",
-			expected: nil,
-		},
-		{
-			desc:     "empty path",
-			path:     "",
-			expected: nil,
-		},
-		{
-			desc:     "root path",
-			path:     "/",
-			expected: nil,
-		},
-		{
-			desc:     "path with single dot",
-			path:     "/home/./user",
-			expected: nil,
-		},
-		{
-			desc:     "path with directory traversal at start",
-			path:     "../etc/passwd",
-			expected: fmt.Errorf("path contains directory traversal sequence"),
-		},
-		{
-			desc:     "path with directory traversal in middle",
-			path:     "/home/../etc/passwd",
-			expected: fmt.Errorf("path contains directory traversal sequence"),
-		},
-		{
-			desc:     "path with directory traversal at end",
-			path:     "/home/user/..",
-			expected: fmt.Errorf("path contains directory traversal sequence"),
-		},
-		{
-			desc:     "path with multiple directory traversals",
-			path:     "/home/../../etc/passwd",
-			expected: fmt.Errorf("path contains directory traversal sequence"),
-		},
-		{
-			desc:     "path with only directory traversal",
-			path:     "..",
-			expected: fmt.Errorf("path contains directory traversal sequence"),
-		},
-		{
-			desc:     "path with triple dots (valid)",
-			path:     "/home/.../data",
-			expected: nil,
-		},
+		{"valid path", "/home/user/data", false},
+		{"valid relative path", "user/data/file.txt", false},
+		{"empty path", "", false},
+		{"root path", "/", false},
+		{"single dot", "/home/./user", false},
+
+		{"traversal start", "../etc/passwd", true},
+		{"traversal middle", "/home/../etc/passwd", true},
+		{"traversal end", "/home/user/..", true},
+		{"multiple traversal", "/home/../../etc/passwd", true},
+		{"only traversal", "..", true},
+
+		{"triple dots valid", "/home/.../data", false},
+
+		{"windows traversal", "..\\etc\\passwd", true},
+		{"mixed separators", "foo\\..\\bar", true},
+
+		{"double slash", "foo//bar", false},
+		{"dot traversal", "./../etc", true},
 	}
 
-	for _, test := range tests {
-		t.Run(test.desc, func(t *testing.T) {
-			result := validatePath(test.path)
-			if !reflect.DeepEqual(result, test.expected) {
-				t.Errorf("test[%s]: unexpected output: %v, expected result: %v", test.desc, result, test.expected)
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			err := validatePath(tt.path)
+
+			if tt.expectError && err == nil {
+				t.Fatalf("expected error for path %q", tt.path)
+			}
+
+			if !tt.expectError && err != nil {
+				t.Fatalf("unexpected error for path %q: %v", tt.path, err)
 			}
 		})
 	}
