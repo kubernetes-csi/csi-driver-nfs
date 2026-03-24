@@ -41,6 +41,10 @@ var (
 func main() {
 	klog.InitFlags(nil)
 	_ = flag.Set("logtostderr", "true")
+	// Opt into the new klog behavior where -stderrthreshold is honored even
+	// when -logtostderr=true (see kubernetes/klog#212, kubernetes/klog#432).
+	_ = flag.Set("legacy_stderr_threshold_behavior", "false")
+	_ = flag.Set("stderrthreshold", "INFO")
 	flag.Parse()
 	if *nodeID == "" {
 		klog.Warning("nodeid is empty")
