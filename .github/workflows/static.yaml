@@ -8,12 +8,12 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Set up Go 1.x
-              uses: actions/setup-go@v6
+              uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
               with:
                 go-version: ^1.19
-            - uses: actions/checkout@master
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
             - name: Run linter
-              uses: golangci/golangci-lint-action@v9
+              uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9
               with:
                   version: v2.10
                   args: -E=errcheck,govet,unused,ineffassign,staticcheck,revive,misspell,asciicheck,bodyclose,dogsled,durationcheck,errname,forbidigo --timeout=30m0s
@@ -22,7 +22,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
-              uses: actions/checkout@master
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
             - name: Verify Helm
               run: |
                 sudo snap install yq

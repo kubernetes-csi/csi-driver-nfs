@@ -11,11 +11,11 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     # https://pluto.docs.fairwinds.com/advanced/#display-options
     - name: Download pluto
-      uses: FairwindsOps/pluto/github-action@master
+      uses: FairwindsOps/pluto/github-action@dcdabde6b68d6f9117fa97361bbc1e25e68df8aa # v5.23.5
 
     - name: Check deploy folder
       run: |
