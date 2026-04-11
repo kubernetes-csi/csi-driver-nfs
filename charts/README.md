@@ -96,7 +96,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `node.nodeDriverRegistrar.livenessProbe.enabled`             | enable node-driver-registrar liveness probe               | `false`    |
 | `node.nodeDriverRegistrar.livenessProbe.initialDelaySeconds` | node-driver-registrar liveness probe initialDelaySeconds   | `20`       |
 | `node.nodeDriverRegistrar.livenessProbe.timeoutSeconds`      | node-driver-registrar liveness probe timeoutSeconds                             | `10`       |
-| `node.nodeDriverRegistrar.livenessProbe.periodSeconds`       | node-driver-registrar liveness probe periodSeconds                       | `5`        |
+| `node.nodeDriverRegistrar.livenessProbe.periodSeconds`       | node-driver-registrar liveness probe periodSeconds                       | `20`        |
 | `node.nodeDriverRegistrar.livenessProbe.failureThreshold`    | node-driver-registrar liveness probe failureThreshold | `2`        |
 | `node.name`                                           | driver node daemonset name                            | `csi-nfs-node`
 | `node.dnsPolicy`                                      | dnsPolicy of driver node daemonset, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`          |`ClusterFirstWithHostNet`
