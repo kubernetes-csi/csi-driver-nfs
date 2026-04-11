@@ -126,7 +126,7 @@ node:
       enabled: true
       initialDelaySeconds: 20
       timeoutSeconds: 10
-      periodSeconds: 5
+      periodSeconds: 20
       failureThreshold: 2
   affinity: {}
   nodeSelector: {}
