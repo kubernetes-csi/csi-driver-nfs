@@ -709,6 +709,13 @@ func newNFSVolume(name string, size int64, params map[string]string, defaultOnDe
 		return nil, fmt.Errorf("%v is a required parameter", paramServer)
 	}
 
+	if err := validatePath(baseDir); err != nil {
+		return nil, fmt.Errorf("invalid share %q: %v", baseDir, err)
+	}
+	if err := validatePath(subDir); err != nil {
+		return nil, fmt.Errorf("invalid subDir %q: %v", subDir, err)
+	}
+
 	vol := &nfsVolume{
 		server:  server,
 		baseDir: baseDir,

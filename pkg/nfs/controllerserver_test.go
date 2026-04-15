@@ -705,6 +705,30 @@ func TestNewNFSVolume(t *testing.T) {
 			expectVol: nil,
 			expectErr: fmt.Errorf("invalid value %s for OnDelete, supported values are %v", "invalid", supportedOnDeleteValues),
 		},
+		{
+			desc: "subDir with path traversal should be rejected",
+			name: "pv-name",
+			size: 100,
+			params: map[string]string{
+				paramServer: "//nfs-server.default.svc.cluster.local",
+				paramShare:  "share",
+				paramSubDir: "../../etc/shadow",
+			},
+			expectVol: nil,
+			expectErr: fmt.Errorf("invalid subDir %q: path contains directory traversal sequence", "../../etc/shadow"),
+		},
+		{
+			desc: "share with path traversal should be rejected",
+			name: "pv-name",
+			size: 100,
+			params: map[string]string{
+				paramServer: "//nfs-server.default.svc.cluster.local",
+				paramShare:  "/exports/../../../etc",
+				paramSubDir: "data",
+			},
+			expectVol: nil,
+			expectErr: fmt.Errorf("invalid share %q: path contains directory traversal sequence", "/exports/../../../etc"),
+		},
 	}
 
 	for _, test := range cases {
