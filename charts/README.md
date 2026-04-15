@@ -92,12 +92,12 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.resources.nfs.limits.memory`              | csi-driver-nfs memory limits                         | 200Mi                                                          |
 | `controller.resources.nfs.requests.cpu`               | csi-driver-nfs cpu requests limits                   | 10m                                                            |
 | `controller.resources.nfs.requests.memory`            | csi-driver-nfs memory requests limits                | 20Mi                                                           |
-| `nodeDriverRegistrar.healthPort`                        | health check port for node-driver-registrar liveness probe        | `19809`    |
-| `nodeDriverRegistrar.livenessProbe.enabled`             | enable node-driver-registrar liveness probe               | `false`    |
-| `nodeDriverRegistrar.livenessProbe.initialDelaySeconds` | node-driver-registrar liveness probe initialDelaySeconds   | `20`       |
-| `nodeDriverRegistrar.livenessProbe.timeoutSeconds`      | node-driver-registrar liveness probe timeoutSeconds                             | `10`       |
-| `nodeDriverRegistrar.livenessProbe.periodSeconds`       | node-driver-registrar liveness probe periodSeconds                       | `5`        |
-| `nodeDriverRegistrar.livenessProbe.failureThreshold`    | node-driver-registrar liveness probe failureThreshold | `2`        |
+| `node.nodeDriverRegistrar.healthPort`                        | health check port for node-driver-registrar liveness probe        | `19809`    |
+| `node.nodeDriverRegistrar.livenessProbe.enabled`             | enable node-driver-registrar liveness probe               | `false`    |
+| `node.nodeDriverRegistrar.livenessProbe.initialDelaySeconds` | node-driver-registrar liveness probe initialDelaySeconds   | `20`       |
+| `node.nodeDriverRegistrar.livenessProbe.timeoutSeconds`      | node-driver-registrar liveness probe timeoutSeconds                             | `10`       |
+| `node.nodeDriverRegistrar.livenessProbe.periodSeconds`       | node-driver-registrar liveness probe periodSeconds                       | `20`        |
+| `node.nodeDriverRegistrar.livenessProbe.failureThreshold`    | node-driver-registrar liveness probe failureThreshold | `2`        |
 | `node.name`                                           | driver node daemonset name                            | `csi-nfs-node`
 | `node.dnsPolicy`                                      | dnsPolicy of driver node daemonset, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`          |`ClusterFirstWithHostNet`
 | `node.maxUnavailable`                             | `maxUnavailable` value of driver node daemonset                            | `1`
