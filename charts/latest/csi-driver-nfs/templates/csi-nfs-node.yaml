@@ -74,8 +74,8 @@ spec:
             - --v=2
             - --csi-address=/csi/csi.sock
             - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
-{{- if .Values.node.nodeDriverRegistrar.livenessProbe.enabled }}
-            - --http-endpoint=localhost:{{ .Values.node.nodeDriverRegistrar.healthPort }}
+{{- if .Values.nodeDriverRegistrar.livenessProbe.enabled }}
+            - --http-endpoint=localhost:{{ .Values.nodeDriverRegistrar.healthPort }}
 {{- end }}
           env:
             - name: DRIVER_REG_SOCK_PATH
@@ -90,20 +90,20 @@ spec:
               mountPath: /csi
             - name: registration-dir
               mountPath: /registration
-{{- if .Values.node.nodeDriverRegistrar.livenessProbe.enabled }}
+{{- if .Values.nodeDriverRegistrar.livenessProbe.enabled }}
           ports:
             - name: healthz
-              containerPort: {{ .Values.node.nodeDriverRegistrar.healthPort }}
+              containerPort: {{ .Values.nodeDriverRegistrar.healthPort }}
               protocol: TCP
           livenessProbe:
             httpGet:
               host: localhost
               path: /healthz
               port: healthz
-            initialDelaySeconds: {{ .Values.node.nodeDriverRegistrar.livenessProbe.initialDelaySeconds }}
-            timeoutSeconds: {{ .Values.node.nodeDriverRegistrar.livenessProbe.timeoutSeconds }}
-            periodSeconds: {{ .Values.node.nodeDriverRegistrar.livenessProbe.periodSeconds }}
-            failureThreshold: {{ .Values.node.nodeDriverRegistrar.livenessProbe.failureThreshold }}
+            initialDelaySeconds: {{ .Values.nodeDriverRegistrar.livenessProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ .Values.nodeDriverRegistrar.livenessProbe.timeoutSeconds }}
+            periodSeconds: {{ .Values.nodeDriverRegistrar.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.nodeDriverRegistrar.livenessProbe.failureThreshold }}
 {{- end }}
           resources: {{- toYaml .Values.node.resources.nodeDriverRegistrar | nindent 12 }}
           securityContext:

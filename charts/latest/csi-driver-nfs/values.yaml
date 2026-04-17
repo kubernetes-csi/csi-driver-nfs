@@ -113,6 +113,15 @@ controller:
         cpu: 10m
         memory: 20Mi
 
+nodeDriverRegistrar:
+  healthPort: 19809
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    timeoutSeconds: 10
+    periodSeconds: 20
+    failureThreshold: 2
+
 node:
   name: csi-nfs-node
   dnsPolicy: ClusterFirstWithHostNet  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
@@ -120,14 +129,6 @@ node:
   logLevel: 5
   livenessProbe:
     healthPort: 29653
-  nodeDriverRegistrar:
-    healthPort: 19809
-    livenessProbe:
-      enabled: true
-      initialDelaySeconds: 20
-      timeoutSeconds: 10
-      periodSeconds: 20
-      failureThreshold: 2
   affinity: {}
   nodeSelector: {}
   priorityClassName: system-cluster-critical
