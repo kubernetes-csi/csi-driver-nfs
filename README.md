@@ -16,7 +16,7 @@ This driver allows Kubernetes to access [NFS](https://en.wikipedia.org/wiki/Netw
 | Driver Version | Supported K8s Version | Status |
 |----------------|-----------------------|--------|
 | master branch  | 1.21+                 | GA     |
-| v4.13.1        | 1.21+                 | GA     |
+| v4.13.2        | 1.21+                 | GA     |
 | v4.12.1        | 1.21+                 | GA     |
 | v4.11.0        | 1.21+                 | GA     |
 
