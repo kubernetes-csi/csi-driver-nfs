@@ -23,7 +23,7 @@ spec:
 {{ toYaml .Values.imagePullSecrets | indent 8 }}
       {{- end }}
       hostNetwork: true # original nfs connection would be broken without hostNetwork setting
-      dnsPolicy: {{ .Values.controller.dnsPolicy }}
+      dnsPolicy: {{ .Values.node.dnsPolicy }}
       serviceAccountName: {{ .Values.serviceAccount.node }}
       priorityClassName: {{ .Values.node.priorityClassName }}
       securityContext:
