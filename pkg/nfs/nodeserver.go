@@ -127,7 +127,7 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			if err := os.MkdirAll(targetPath, 0777); err != nil {
+			if err := os.MkdirAll(targetPath, os.FileMode(mountPermissions)); err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 			notMnt = true
@@ -168,7 +168,7 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	}
 
 	if mountPermissions > 0 {
-		if err := chmodIfPermissionMismatch(targetPath, os.FileMode(mountPermissions)); err != nil {
+		if err := chmodIfPermissionMismatch(targetPath, uint32(mountPermissions)); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	} else {
