@@ -55,6 +55,7 @@ spec:
             - --v=2
             - --csi-address=/csi/csi.sock
             - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+            - --timeout=60s
           env:
             - name: DRIVER_REG_SOCK_PATH
               value: /var/lib/kubelet/plugins/csi-nfsplugin/csi.sock
