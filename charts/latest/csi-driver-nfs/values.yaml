@@ -114,6 +114,7 @@ controller:
         memory: 20Mi
 
 nodeDriverRegistrar:
+  timeout: 60
   healthPort: 19809
   livenessProbe:
     enabled: true
