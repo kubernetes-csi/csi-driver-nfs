@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -158,7 +159,9 @@ func getMountOptions(context map[string]string) string {
 	return ""
 }
 
-// chmodIfPermissionMismatch only perform chmod when permission mismatches
+// chmodIfPermissionMismatch only perform chmod when permission mismatches.
+// Uses syscall.Chmod to correctly handle setuid/setgid/sticky bits (e.g. 02770),
+// since os.Chmod maps os.FileMode bits differently from raw Unix mode bits.
 func chmodIfPermissionMismatch(targetPath string, mode os.FileMode) error {
 	info, err := os.Lstat(targetPath)
 	if err != nil {
@@ -167,7 +170,7 @@ func chmodIfPermissionMismatch(targetPath string, mode os.FileMode) error {
 	perm := info.Mode() & os.ModePerm
 	if perm != mode {
 		klog.V(2).Infof("chmod targetPath(%s, mode:0%o) with permissions(0%o)", targetPath, info.Mode(), mode)
-		if err := os.Chmod(targetPath, mode); err != nil {
+		if err := syscall.Chmod(targetPath, uint32(mode)); err != nil {
 			return err
 		}
 	} else {
