@@ -50,7 +50,7 @@ var (
 		"share":  nfsShare,
 		"csi.storage.k8s.io/provisioner-secret-name":      "mount-options",
 		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
-		"mountPermissions": "0755",
+		"mountPermissions": "2770",
 	}
 	storageClassParametersWithZeroMountPermisssions = map[string]string{
 		"server": nfsServerAddress,
