@@ -23,6 +23,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -177,6 +178,24 @@ func TestNodePublishVolume(t *testing.T) {
 				TargetPath:       targetTest,
 				Readonly:         true},
 			expectedErr: status.Error(codes.InvalidArgument, "invalid mountPermissions 07ab"),
+		},
+		{
+			desc: "[Success] Stale mount detected and remounted",
+			setup: func() {
+				lstatFunc = func(name string) (os.FileInfo, error) {
+					return nil, syscall.ESTALE
+				}
+			},
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    params,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       alreadyMountedTarget,
+				Readonly:         true},
+			expectedErr: nil,
+			cleanup: func() {
+				lstatFunc = os.Lstat
+			},
 		},
 	}
 
@@ -371,4 +390,26 @@ func TestNodeGetVolumeStats(t *testing.T) {
 	// Clean up
 	err = os.RemoveAll(fakePath)
 	assert.NoError(t, err)
+}
+
+func TestIsStaleFileHandle(t *testing.T) {
+	tests := []struct {
+		desc     string
+		err      error
+		expected bool
+	}{
+		{"nil error", nil, false},
+		{"ESTALE errno", syscall.ESTALE, true},
+		{"other errno", syscall.ENOENT, false},
+		{"stale NFS file handle string", fmt.Errorf("stale NFS file handle"), true},
+		{"stale file handle string", fmt.Errorf("stale file handle"), true},
+		{"unrelated error", fmt.Errorf("something else"), false},
+		{"wrapped ESTALE", fmt.Errorf("wrap: %w", syscall.ESTALE), true},
+	}
+	for _, tc := range tests {
+		result := isStaleFileHandle(tc.err)
+		if result != tc.expected {
+			t.Errorf("isStaleFileHandle(%v): got %v, want %v", tc.desc, result, tc.expected)
+		}
+	}
 }
