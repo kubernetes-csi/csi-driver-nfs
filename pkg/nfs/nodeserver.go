@@ -36,6 +36,9 @@ import (
 
 const mountTimeoutInSec = 110
 
+// lstatFunc is used for testing to inject stale file handle errors
+var lstatFunc = os.Lstat
+
 // NodeServer driver
 type NodeServer struct {
 	Driver  *Driver
@@ -134,7 +137,7 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	}
 	if !notMnt {
 		// check if the existing mount is stale (e.g. after NFS server restart)
-		if _, err := os.Lstat(targetPath); err != nil && os.IsPermission(err) {
+		if _, err := lstatFunc(targetPath); err != nil && os.IsPermission(err) {
 			return &csi.NodePublishVolumeResponse{}, nil
 		} else if err != nil && isStaleFileHandle(err) {
 			klog.Warningf("NodePublishVolume: detected stale mount at %s, attempting remount", targetPath)
