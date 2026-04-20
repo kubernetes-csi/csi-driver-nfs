@@ -158,20 +158,46 @@ func getMountOptions(context map[string]string) string {
 	return ""
 }
 
-// chmodIfPermissionMismatch only perform chmod when permission mismatches
-func chmodIfPermissionMismatch(targetPath string, mode os.FileMode) error {
+// unixModeToFileMode converts a raw Unix mode_t value (e.g. 02770) into Go's
+// os.FileMode representation with correct bit positions for setuid, setgid,
+// and sticky bits.
+func unixModeToFileMode(mode uint32) os.FileMode {
+	goMode := os.FileMode(mode) & os.ModePerm
+	if mode&04000 != 0 {
+		goMode |= os.ModeSetuid
+	}
+	if mode&02000 != 0 {
+		goMode |= os.ModeSetgid
+	}
+	if mode&01000 != 0 {
+		goMode |= os.ModeSticky
+	}
+	return goMode
+}
+
+// chmodIfPermissionMismatch only performs chmod when permission mismatches.
+// The mode parameter is a raw Unix mode_t value (e.g. 02770).
+// Compares both regular permission bits (0777) and special bits (setuid/setgid/sticky)
+// to avoid unnecessary chmod calls while still detecting special-bit differences.
+// Note: on Windows, the chmod fallback (os.Chmod) cannot apply special bits, so
+// modes with setuid/setgid/sticky will never fully converge there.
+func chmodIfPermissionMismatch(targetPath string, mode uint32) error {
 	info, err := os.Lstat(targetPath)
 	if err != nil {
 		return err
 	}
-	perm := info.Mode() & os.ModePerm
-	if perm != mode {
-		klog.V(2).Infof("chmod targetPath(%s, mode:0%o) with permissions(0%o)", targetPath, info.Mode(), mode)
-		if err := os.Chmod(targetPath, mode); err != nil {
+	// Convert the raw Unix mode to Go's FileMode representation for comparison.
+	desiredMode := unixModeToFileMode(mode)
+	// Mask for perm bits + special bits in Go's representation.
+	mask := os.ModePerm | os.ModeSetuid | os.ModeSetgid | os.ModeSticky
+	currentMode := info.Mode() & mask
+	if currentMode != desiredMode {
+		klog.V(2).Infof("chmod targetPath(%s, currentMode:0%o) with desiredMode(0%o)", targetPath, mode, mode)
+		if err := chmod(targetPath, mode); err != nil {
 			return err
 		}
 	} else {
-		klog.V(2).Infof("skip chmod on targetPath(%s) since mode is already 0%o)", targetPath, info.Mode())
+		klog.V(2).Infof("skip chmod on targetPath(%s) since mode is already 0%o", targetPath, mode)
 	}
 	return nil
 }
