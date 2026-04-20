@@ -168,7 +168,7 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	}
 
 	if mountPermissions > 0 {
-		if err := chmodIfPermissionMismatch(targetPath, os.FileMode(mountPermissions)); err != nil {
+		if err := chmodIfPermissionMismatch(targetPath, uint32(mountPermissions)); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	} else {
