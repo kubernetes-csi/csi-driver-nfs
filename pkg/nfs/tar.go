@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func TarPack(srcDirPath string, dstPath string, enableCompression bool) error {
@@ -167,6 +168,16 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 
 	tarReader := tar.NewReader(tarDst)
 
+	// Collect directory timestamps to restore after all files are written,
+	// because creating files inside a directory updates the directory's mtime.
+	// Process in reverse order so nested dirs are restored before parents.
+	type dirTimestamp struct {
+		path    string
+		modTime time.Time
+		accTime time.Time
+	}
+	var dirTimestamps []dirTimestamp
+
 	for {
 		var tarHeader *tar.Header
 		tarHeader, err = tarReader.Next()
@@ -198,6 +209,11 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		}
 
 		if fileInfo.Mode().IsDir() {
+			dirTimestamps = append(dirTimestamps, dirTimestamp{
+				path:    filePath,
+				modTime: tarHeader.ModTime,
+				accTime: tarHeader.AccessTime,
+			})
 			continue
 		}
 
@@ -208,14 +224,24 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 			continue
 		}
 
-		if err = tarUnpackFile(filePath, tarReader, fileInfo); err != nil {
+		if err = tarUnpackFile(filePath, tarReader, tarHeader); err != nil {
 			return fmt.Errorf("unpacking file %s: %w", filePath, err)
 		}
 	}
+
+	// Restore directory timestamps in reverse order (deepest first)
+	for i := len(dirTimestamps) - 1; i >= 0; i-- {
+		dt := dirTimestamps[i]
+		if err := os.Chtimes(dt.path, dt.accTime, dt.modTime); err != nil {
+			return fmt.Errorf("restoring timestamps for directory %s: %w", dt.path, err)
+		}
+	}
+
 	return nil
 }
 
-func tarUnpackFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (err error) {
+func tarUnpackFile(dstFileName string, src io.Reader, header *tar.Header) (err error) {
+	srcFileInfo := header.FileInfo()
 	var dstFile *os.File
 	dstFile, err = os.OpenFile(dstFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, srcFileInfo.Mode().Perm())
 	if err != nil {
@@ -232,6 +258,11 @@ func tarUnpackFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (
 
 	if srcFileInfo.Mode().IsRegular() && n != srcFileInfo.Size() {
 		return fmt.Errorf("written size check failed for %s: wrote %d, want %d", dstFileName, n, srcFileInfo.Size())
+	}
+
+	// Restore original timestamps from tar header
+	if err = os.Chtimes(dstFileName, header.AccessTime, header.ModTime); err != nil {
+		return fmt.Errorf("restoring timestamps for %s: %w", dstFileName, err)
 	}
 
 	return nil
