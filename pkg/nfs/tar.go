@@ -25,6 +25,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -170,7 +171,6 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 
 	// Collect directory timestamps to restore after all files are written,
 	// because creating files inside a directory updates the directory's mtime.
-	// Process in reverse order so nested dirs are restored before parents.
 	type dirTimestamp struct {
 		path    string
 		modTime time.Time
@@ -229,9 +229,13 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		}
 	}
 
-	// Restore directory timestamps in reverse order (deepest first)
-	for i := len(dirTimestamps) - 1; i >= 0; i-- {
-		dt := dirTimestamps[i]
+	// Restore directory timestamps deepest-first so that restoring a parent's
+	// mtime is not undone by a subsequent Chtimes on a child directory.
+	sort.Slice(dirTimestamps, func(i, j int) bool {
+		return strings.Count(dirTimestamps[i].path, string(os.PathSeparator)) >
+			strings.Count(dirTimestamps[j].path, string(os.PathSeparator))
+	})
+	for _, dt := range dirTimestamps {
 		accTime := dt.accTime
 		if accTime.IsZero() {
 			accTime = dt.modTime
