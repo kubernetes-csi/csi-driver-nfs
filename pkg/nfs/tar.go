@@ -219,11 +219,18 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		// a symlink "a" followed by "a/b" is caught before MkdirAll creates "b" outside.
 		parentDir := filepath.Dir(filePath)
 		if parentDir != dstDirPath && filePath != dstDirPath {
-			if realParent, evalErr := filepath.EvalSymlinks(parentDir); evalErr == nil {
-				realParentRel, relErr := filepath.Rel(dstDirPath, realParent)
-				if relErr != nil || realParentRel == ".." || strings.HasPrefix(realParentRel, ".."+string(os.PathSeparator)) || filepath.IsAbs(realParentRel) {
-					return fmt.Errorf("path %s resolves outside destination via symlink traversal", tarHeader.Name)
+			// Walk up to the nearest existing ancestor to handle cases where
+			// parentDir doesn't exist yet but an ancestor symlink escapes.
+			checkDir := parentDir
+			for checkDir != dstDirPath {
+				if realDir, evalErr := filepath.EvalSymlinks(checkDir); evalErr == nil {
+					realDirRel, relErr := filepath.Rel(dstDirPath, realDir)
+					if relErr != nil || realDirRel == ".." || strings.HasPrefix(realDirRel, ".."+string(os.PathSeparator)) || filepath.IsAbs(realDirRel) {
+						return tar.ErrInsecurePath
+					}
+					break
 				}
+				checkDir = filepath.Dir(checkDir)
 			}
 		}
 
