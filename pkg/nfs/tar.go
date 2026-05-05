@@ -266,7 +266,7 @@ func tarUnpackFile(dstFileName string, src io.Reader, header *tar.Header) (err e
 
 func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (err error) {
 	var dstFile *os.File
-	dstFile, err = os.OpenFile(dstFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, srcFileInfo.Mode().Perm())
+	dstFile, err = os.OpenFile(dstFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, srcFileInfo.Mode().Perm())
 	if err != nil {
 		return fmt.Errorf("opening destination file %s: %w", dstFileName, err)
 	}
