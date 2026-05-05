@@ -144,8 +144,13 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 	if err != nil {
 		return fmt.Errorf("normalizing archive destination path: %w", err)
 	}
+	// Ensure destination exists before resolving, so EvalSymlinks works on all platforms.
+	if mkErr := os.MkdirAll(dstDirPath, 0755); mkErr != nil {
+		return fmt.Errorf("creating destination directory: %w", mkErr)
+	}
 	// Resolve symlinks in dstDirPath itself so containment checks work correctly
-	// on platforms where temp paths are symlinks (e.g., macOS /tmp -> /private/tmp).
+	// on platforms where temp paths are symlinks (e.g., macOS /tmp -> /private/tmp)
+	// or short path names (e.g., Windows RUNNER~1 -> runneradmin).
 	dstDirPath, err = filepath.EvalSymlinks(dstDirPath)
 	if err != nil {
 		return fmt.Errorf("resolving destination path: %w", err)
@@ -213,10 +218,12 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		if !fileInfo.Mode().IsDir() || fileInfo.Mode()&fs.ModeSymlink != 0 {
 			parentDir = filepath.Dir(filePath)
 		}
-		if realParent, evalErr := filepath.EvalSymlinks(parentDir); evalErr == nil {
-			realParentRel, relErr := filepath.Rel(dstDirPath, realParent)
-			if relErr != nil || strings.HasPrefix(realParentRel, "..") || filepath.IsAbs(realParentRel) {
-				return fmt.Errorf("path %s resolves outside destination via symlink traversal", tarHeader.Name)
+		if parentDir != dstDirPath {
+			if realParent, evalErr := filepath.EvalSymlinks(parentDir); evalErr == nil {
+				realParentRel, relErr := filepath.Rel(dstDirPath, realParent)
+				if relErr != nil || strings.HasPrefix(realParentRel, "..") || filepath.IsAbs(realParentRel) {
+					return fmt.Errorf("path %s resolves outside destination via symlink traversal", tarHeader.Name)
+				}
 			}
 		}
 
