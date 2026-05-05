@@ -271,7 +271,7 @@ func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (e
 		return fmt.Errorf("opening destination file %s: %w", dstFileName, err)
 	}
 	defer func() {
-		err = errors.Join(err, closeAndWrapErr(dstFile, "closing destination file %s: %w", dstFile))
+		err = errors.Join(err, closeAndWrapErr(dstFile, "closing destination file %s: %w", dstFileName))
 	}()
 
 	n, err := io.Copy(dstFile, src)
