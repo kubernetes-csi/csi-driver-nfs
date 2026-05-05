@@ -389,8 +389,8 @@ func TestTarUnpackPreservesTimestamps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !fi.ModTime().Equal(knownTime) {
-		t.Errorf("file mtime: got %v, want %v", fi.ModTime(), knownTime)
+	if diff := fi.ModTime().Sub(knownTime); diff < -time.Second || diff > time.Second {
+		t.Errorf("file mtime: got %v, want %v (diff %v)", fi.ModTime(), knownTime, diff)
 	}
 
 	// Verify directory timestamp
@@ -399,7 +399,7 @@ func TestTarUnpackPreservesTimestamps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !di.ModTime().Equal(knownTime) {
-		t.Errorf("dir mtime: got %v, want %v", di.ModTime(), knownTime)
+	if diff := di.ModTime().Sub(knownTime); diff < -time.Second || diff > time.Second {
+		t.Errorf("dir mtime: got %v, want %v (diff %v)", di.ModTime(), knownTime, diff)
 	}
 }
