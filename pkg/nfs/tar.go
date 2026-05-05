@@ -218,7 +218,7 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		// For directories, check filepath.Dir(filePath) — the existing parent — so that
 		// a symlink "a" followed by "a/b" is caught before MkdirAll creates "b" outside.
 		parentDir := filepath.Dir(filePath)
-		if parentDir != dstDirPath {
+		if parentDir != dstDirPath && filePath != dstDirPath {
 			if realParent, evalErr := filepath.EvalSymlinks(parentDir); evalErr == nil {
 				realParentRel, relErr := filepath.Rel(dstDirPath, realParent)
 				if relErr != nil || realParentRel == ".." || strings.HasPrefix(realParentRel, ".."+string(os.PathSeparator)) || filepath.IsAbs(realParentRel) {
