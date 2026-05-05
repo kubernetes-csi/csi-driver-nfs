@@ -199,6 +199,21 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 			return tar.ErrInsecurePath
 		}
 
+		// Symlink-traversal guard: verify that the real (resolved) parent directory
+		// of filePath is still within dstDirPath. This catches cases where a prior
+		// symlink entry created a link inside dstDirPath that points outside, and a
+		// subsequent entry tries to write through that symlink.
+		parentDir := filePath
+		if !fileInfo.Mode().IsDir() || fileInfo.Mode()&fs.ModeSymlink != 0 {
+			parentDir = filepath.Dir(filePath)
+		}
+		if realParent, evalErr := filepath.EvalSymlinks(parentDir); evalErr == nil {
+			realParentRel, relErr := filepath.Rel(dstDirPath, realParent)
+			if relErr != nil || strings.HasPrefix(realParentRel, "..") || filepath.IsAbs(realParentRel) {
+				return fmt.Errorf("path %s resolves outside destination via symlink traversal", tarHeader.Name)
+			}
+		}
+
 		fileDirPath := filePath
 		if !fileInfo.Mode().IsDir() {
 			fileDirPath = filepath.Dir(fileDirPath)
@@ -218,17 +233,6 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		}
 
 		if fileInfo.Mode()&fs.ModeSymlink != 0 {
-			// Reject symlinks whose target resolves outside the destination directory
-			// to prevent symlink-traversal ("tar slip") attacks.
-			linkTarget := tarHeader.Linkname
-			if !filepath.IsAbs(linkTarget) {
-				linkTarget = filepath.Join(filepath.Dir(filePath), linkTarget)
-			}
-			linkTarget = filepath.Clean(linkTarget)
-			linkRel, err := filepath.Rel(dstDirPath, linkTarget)
-			if err != nil || strings.HasPrefix(linkRel, "..") || filepath.IsAbs(linkRel) {
-				return fmt.Errorf("symlink %s points outside destination: %s", tarHeader.Name, tarHeader.Linkname)
-			}
 			if err := os.Symlink(tarHeader.Linkname, filePath); err != nil {
 				return fmt.Errorf("creating symlink %s: %w", filePath, err)
 			}
