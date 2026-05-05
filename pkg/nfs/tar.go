@@ -206,22 +206,22 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		// Robust containment check: use filepath.Rel to prevent prefix collisions
 		// (e.g., dstDirPath="/tmp/out" vs filePath="/tmp/out2/...")
 		rel, err := filepath.Rel(dstDirPath, filePath)
-		if err != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
 			return tar.ErrInsecurePath
 		}
 
 		// Symlink-traversal guard: verify that the real (resolved) parent directory
 		// of filePath is still within dstDirPath. This catches cases where a prior
 		// symlink entry created a link inside dstDirPath that points outside, and a
-		// subsequent entry tries to write through that symlink.
-		parentDir := filePath
-		if !fileInfo.Mode().IsDir() || fileInfo.Mode()&fs.ModeSymlink != 0 {
-			parentDir = filepath.Dir(filePath)
-		}
+		// subsequent entry tries to write through that symlink (e.g., symlink "a" -> /etc
+		// followed by entry "a/passwd").
+		// For directories, check filepath.Dir(filePath) — the existing parent — so that
+		// a symlink "a" followed by "a/b" is caught before MkdirAll creates "b" outside.
+		parentDir := filepath.Dir(filePath)
 		if parentDir != dstDirPath {
 			if realParent, evalErr := filepath.EvalSymlinks(parentDir); evalErr == nil {
 				realParentRel, relErr := filepath.Rel(dstDirPath, realParent)
-				if relErr != nil || strings.HasPrefix(realParentRel, "..") || filepath.IsAbs(realParentRel) {
+				if relErr != nil || realParentRel == ".." || strings.HasPrefix(realParentRel, ".."+string(os.PathSeparator)) || filepath.IsAbs(realParentRel) {
 					return fmt.Errorf("path %s resolves outside destination via symlink traversal", tarHeader.Name)
 				}
 			}
