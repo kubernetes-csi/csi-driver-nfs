@@ -192,10 +192,10 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 
 		filePath := filepath.Join(dstDirPath, tarHeader.Name)
 
-		// protect against "Zip Slip"
-		if !strings.HasPrefix(filePath, dstDirPath) {
-			// mimic standard error, which will be returned in future versions of Go by default
-			// more info can be found by "tarinsecurepath" variable name
+		// Robust containment check: use filepath.Rel to prevent prefix collisions
+		// (e.g., dstDirPath="/tmp/out" vs filePath="/tmp/out2/...")
+		rel, err := filepath.Rel(dstDirPath, filePath)
+		if err != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
 			return tar.ErrInsecurePath
 		}
 
@@ -218,6 +218,17 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		}
 
 		if fileInfo.Mode()&fs.ModeSymlink != 0 {
+			// Reject symlinks whose target resolves outside the destination directory
+			// to prevent symlink-traversal ("tar slip") attacks.
+			linkTarget := tarHeader.Linkname
+			if !filepath.IsAbs(linkTarget) {
+				linkTarget = filepath.Join(filepath.Dir(filePath), linkTarget)
+			}
+			linkTarget = filepath.Clean(linkTarget)
+			linkRel, err := filepath.Rel(dstDirPath, linkTarget)
+			if err != nil || strings.HasPrefix(linkRel, "..") || filepath.IsAbs(linkRel) {
+				return fmt.Errorf("symlink %s points outside destination: %s", tarHeader.Name, tarHeader.Linkname)
+			}
 			if err := os.Symlink(tarHeader.Linkname, filePath); err != nil {
 				return fmt.Errorf("creating symlink %s: %w", filePath, err)
 			}
