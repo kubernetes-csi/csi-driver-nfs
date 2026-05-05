@@ -144,6 +144,12 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 	if err != nil {
 		return fmt.Errorf("normalizing archive destination path: %w", err)
 	}
+	// Resolve symlinks in dstDirPath itself so containment checks work correctly
+	// on platforms where temp paths are symlinks (e.g., macOS /tmp -> /private/tmp).
+	dstDirPath, err = filepath.EvalSymlinks(dstDirPath)
+	if err != nil {
+		return fmt.Errorf("resolving destination path: %w", err)
+	}
 
 	tarFile, err := os.Open(srcPath)
 	if err != nil {
