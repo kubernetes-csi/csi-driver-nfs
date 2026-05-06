@@ -259,6 +259,15 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 			continue
 		}
 
+		// Remove any existing symlink at filePath to prevent following it
+		// when writing a regular file (a malicious tar could plant a symlink
+		// then overwrite it with a regular file entry targeting outside dst).
+		if existing, lErr := os.Lstat(filePath); lErr == nil && existing.Mode()&fs.ModeSymlink != 0 {
+			if err = os.Remove(filePath); err != nil {
+				return fmt.Errorf("removing symlink before file write %s: %w", filePath, err)
+			}
+		}
+
 		if err = tarUnpackFile(filePath, tarReader, tarHeader); err != nil {
 			return fmt.Errorf("unpacking file %s: %w", filePath, err)
 		}
@@ -271,6 +280,9 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 			strings.Count(dirTimestamps[j].path, string(os.PathSeparator))
 	})
 	for _, dt := range dirTimestamps {
+		if dt.modTime.IsZero() {
+			continue
+		}
 		accTime := dt.accTime
 		if accTime.IsZero() {
 			accTime = dt.modTime
@@ -292,6 +304,9 @@ func tarUnpackFile(dstFileName string, src io.Reader, header *tar.Header) (err e
 
 	// Restore original timestamps from tar header after the file is closed,
 	// since some platforms (e.g. Windows) cannot change timestamps on open files.
+	if header.ModTime.IsZero() {
+		return nil
+	}
 	accTime := header.AccessTime
 	if accTime.IsZero() {
 		accTime = header.ModTime
