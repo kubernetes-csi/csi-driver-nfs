@@ -205,7 +205,8 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 
 		// Robust containment check: use filepath.Rel to prevent prefix collisions
 		// (e.g., dstDirPath="/tmp/out" vs filePath="/tmp/out2/...")
-		rel, err := filepath.Rel(dstDirPath, filePath)
+		var rel string
+		rel, err = filepath.Rel(dstDirPath, filePath)
 		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
 			return tar.ErrInsecurePath
 		}
@@ -244,6 +245,16 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		}
 
 		if fileInfo.Mode().IsDir() {
+			// Remove any existing symlink at filePath to prevent MkdirAll
+			// and later Chtimes from following it outside dstDirPath.
+			if existing, lErr := os.Lstat(filePath); lErr == nil && existing.Mode()&fs.ModeSymlink != 0 {
+				if err = os.Remove(filePath); err != nil {
+					return fmt.Errorf("removing symlink before mkdir %s: %w", filePath, err)
+				}
+				if err = os.MkdirAll(filePath, 0755); err != nil {
+					return fmt.Errorf("making directory %s: %w", filePath, err)
+				}
+			}
 			dirTimestamps = append(dirTimestamps, dirTimestamp{
 				path:    filePath,
 				modTime: tarHeader.ModTime,
