@@ -348,3 +348,58 @@ func TestSymlinks(t *testing.T) {
 		t.Errorf("expected file %s to be: %X, got %X", outputRelSymlinkPath, testContent, data)
 	}
 }
+
+func TestTarUnpackPreservesTimestamps(t *testing.T) {
+	// Create a source directory with known timestamps
+	srcDir := t.TempDir()
+	subDir := filepath.Join(srcDir, "subdir")
+	if err := os.MkdirAll(subDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	filePath := filepath.Join(subDir, "testfile.txt")
+	if err := os.WriteFile(filePath, []byte("hello timestamps"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set known timestamps (2020-06-15 12:00:00 UTC)
+	knownTime := time.Date(2020, 6, 15, 12, 0, 0, 0, time.UTC)
+	if err := os.Chtimes(filePath, knownTime, knownTime); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(subDir, knownTime, knownTime); err != nil {
+		t.Fatal(err)
+	}
+
+	// Pack
+	archivePath := filepath.Join(t.TempDir(), "test.tar.gz")
+	if err := TarPack(srcDir, archivePath, true); err != nil {
+		t.Fatalf("TarPack failed: %v", err)
+	}
+
+	// Unpack
+	dstDir := t.TempDir()
+	if err := TarUnpack(archivePath, dstDir, true); err != nil {
+		t.Fatalf("TarUnpack failed: %v", err)
+	}
+
+	// Verify file timestamp
+	restoredFile := filepath.Join(dstDir, "subdir", "testfile.txt")
+	fi, err := os.Stat(restoredFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := fi.ModTime().Sub(knownTime); diff < -time.Second || diff > time.Second {
+		t.Errorf("file mtime: got %v, want %v (diff %v)", fi.ModTime(), knownTime, diff)
+	}
+
+	// Verify directory timestamp
+	restoredDir := filepath.Join(dstDir, "subdir")
+	di, err := os.Stat(restoredDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := di.ModTime().Sub(knownTime); diff < -time.Second || diff > time.Second {
+		t.Errorf("dir mtime: got %v, want %v (diff %v)", di.ModTime(), knownTime, diff)
+	}
+}
