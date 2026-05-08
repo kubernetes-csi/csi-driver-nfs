@@ -25,7 +25,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 )
 
 func TarPack(srcDirPath string, dstPath string, enableCompression bool) error {
@@ -142,6 +144,17 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 	if err != nil {
 		return fmt.Errorf("normalizing archive destination path: %w", err)
 	}
+	// Ensure destination exists before resolving, so EvalSymlinks works on all platforms.
+	if mkErr := os.MkdirAll(dstDirPath, 0755); mkErr != nil {
+		return fmt.Errorf("creating destination directory: %w", mkErr)
+	}
+	// Resolve symlinks in dstDirPath itself so containment checks work correctly
+	// on platforms where temp paths are symlinks (e.g., macOS /tmp -> /private/tmp)
+	// or short path names (e.g., Windows RUNNER~1 -> runneradmin).
+	dstDirPath, err = filepath.EvalSymlinks(dstDirPath)
+	if err != nil {
+		return fmt.Errorf("resolving destination path: %w", err)
+	}
 
 	tarFile, err := os.Open(srcPath)
 	if err != nil {
@@ -167,6 +180,15 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 
 	tarReader := tar.NewReader(tarDst)
 
+	// Collect directory timestamps to restore after all files are written,
+	// because creating files inside a directory updates the directory's mtime.
+	type dirTimestamp struct {
+		path    string
+		modTime time.Time
+		accTime time.Time
+	}
+	var dirTimestamps []dirTimestamp
+
 	for {
 		var tarHeader *tar.Header
 		tarHeader, err = tarReader.Next()
@@ -181,11 +203,36 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 
 		filePath := filepath.Join(dstDirPath, tarHeader.Name)
 
-		// protect against "Zip Slip"
-		if !strings.HasPrefix(filePath, dstDirPath) {
-			// mimic standard error, which will be returned in future versions of Go by default
-			// more info can be found by "tarinsecurepath" variable name
+		// Robust containment check: use filepath.Rel to prevent prefix collisions
+		// (e.g., dstDirPath="/tmp/out" vs filePath="/tmp/out2/...")
+		var rel string
+		rel, err = filepath.Rel(dstDirPath, filePath)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
 			return tar.ErrInsecurePath
+		}
+
+		// Symlink-traversal guard: verify that the real (resolved) parent directory
+		// of filePath is still within dstDirPath. This catches cases where a prior
+		// symlink entry created a link inside dstDirPath that points outside, and a
+		// subsequent entry tries to write through that symlink (e.g., symlink "a" -> /etc
+		// followed by entry "a/passwd").
+		// For directories, check filepath.Dir(filePath) — the existing parent — so that
+		// a symlink "a" followed by "a/b" is caught before MkdirAll creates "b" outside.
+		parentDir := filepath.Dir(filePath)
+		if parentDir != dstDirPath && filePath != dstDirPath {
+			// Walk up to the nearest existing ancestor to handle cases where
+			// parentDir doesn't exist yet but an ancestor symlink escapes.
+			checkDir := parentDir
+			for checkDir != dstDirPath {
+				if realDir, evalErr := filepath.EvalSymlinks(checkDir); evalErr == nil {
+					realDirRel, relErr := filepath.Rel(dstDirPath, realDir)
+					if relErr != nil || realDirRel == ".." || strings.HasPrefix(realDirRel, ".."+string(os.PathSeparator)) || filepath.IsAbs(realDirRel) {
+						return tar.ErrInsecurePath
+					}
+					break
+				}
+				checkDir = filepath.Dir(checkDir)
+			}
 		}
 
 		fileDirPath := filePath
@@ -198,6 +245,21 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		}
 
 		if fileInfo.Mode().IsDir() {
+			// Remove any existing symlink at filePath to prevent MkdirAll
+			// and later Chtimes from following it outside dstDirPath.
+			if existing, lErr := os.Lstat(filePath); lErr == nil && existing.Mode()&fs.ModeSymlink != 0 {
+				if err = os.Remove(filePath); err != nil {
+					return fmt.Errorf("removing symlink before mkdir %s: %w", filePath, err)
+				}
+				if err = os.MkdirAll(filePath, 0755); err != nil {
+					return fmt.Errorf("making directory %s: %w", filePath, err)
+				}
+			}
+			dirTimestamps = append(dirTimestamps, dirTimestamp{
+				path:    filePath,
+				modTime: tarHeader.ModTime,
+				accTime: tarHeader.AccessTime,
+			})
 			continue
 		}
 
@@ -208,21 +270,73 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 			continue
 		}
 
-		if err = tarUnpackFile(filePath, tarReader, fileInfo); err != nil {
+		// Remove any existing symlink at filePath to prevent following it
+		// when writing a regular file (a malicious tar could plant a symlink
+		// then overwrite it with a regular file entry targeting outside dst).
+		if existing, lErr := os.Lstat(filePath); lErr == nil && existing.Mode()&fs.ModeSymlink != 0 {
+			if err = os.Remove(filePath); err != nil {
+				return fmt.Errorf("removing symlink before file write %s: %w", filePath, err)
+			}
+		}
+
+		if err = tarUnpackFile(filePath, tarReader, tarHeader); err != nil {
 			return fmt.Errorf("unpacking file %s: %w", filePath, err)
 		}
 	}
+
+	// Restore directory timestamps deepest-first so that restoring a parent's
+	// mtime is not undone by a subsequent Chtimes on a child directory.
+	sort.Slice(dirTimestamps, func(i, j int) bool {
+		return strings.Count(dirTimestamps[i].path, string(os.PathSeparator)) >
+			strings.Count(dirTimestamps[j].path, string(os.PathSeparator))
+	})
+	for _, dt := range dirTimestamps {
+		if dt.modTime.IsZero() {
+			continue
+		}
+		accTime := dt.accTime
+		if accTime.IsZero() {
+			accTime = dt.modTime
+		}
+		if err := os.Chtimes(dt.path, accTime, dt.modTime); err != nil {
+			return fmt.Errorf("restoring timestamps for directory %s: %w", dt.path, err)
+		}
+	}
+
 	return nil
 }
 
-func tarUnpackFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (err error) {
+func tarUnpackFile(dstFileName string, src io.Reader, header *tar.Header) (err error) {
+	srcFileInfo := header.FileInfo()
+
+	if err = tarWriteFile(dstFileName, src, srcFileInfo); err != nil {
+		return err
+	}
+
+	// Restore original timestamps from tar header after the file is closed,
+	// since some platforms (e.g. Windows) cannot change timestamps on open files.
+	if header.ModTime.IsZero() {
+		return nil
+	}
+	accTime := header.AccessTime
+	if accTime.IsZero() {
+		accTime = header.ModTime
+	}
+	if err = os.Chtimes(dstFileName, accTime, header.ModTime); err != nil {
+		return fmt.Errorf("restoring timestamps for %s: %w", dstFileName, err)
+	}
+
+	return nil
+}
+
+func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (err error) {
 	var dstFile *os.File
-	dstFile, err = os.OpenFile(dstFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, srcFileInfo.Mode().Perm())
+	dstFile, err = os.OpenFile(dstFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, srcFileInfo.Mode().Perm())
 	if err != nil {
 		return fmt.Errorf("opening destination file %s: %w", dstFileName, err)
 	}
 	defer func() {
-		err = errors.Join(err, closeAndWrapErr(dstFile, "closing destination file %s: %w", dstFile))
+		err = errors.Join(err, closeAndWrapErr(dstFile, "closing destination file %s: %w", dstFileName))
 	}()
 
 	n, err := io.Copy(dstFile, src)
