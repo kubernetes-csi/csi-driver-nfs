@@ -29,7 +29,7 @@ env:
   REGISTRY: ghcr.io/kubernetes-csi
   IMAGE_NAME: nfsplugin
   CHART_NAME: csi-driver-nfs
-  GO_VERSION: '1.25.0'
+  GO_VERSION: '1.25.10'
 
 jobs:
   # ── Validate version format early ──────────────────────────────────────────
