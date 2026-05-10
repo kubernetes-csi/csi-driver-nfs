@@ -29,7 +29,7 @@ env:
   REGISTRY: ghcr.io/kubernetes-csi
   IMAGE_NAME: nfsplugin
   CHART_NAME: csi-driver-nfs
-  GO_VERSION: '1.25.10'
+  # GO_VERSION sourced from go.mod via go-version-file
 
 jobs:
   # ── Validate version format early ──────────────────────────────────────────
@@ -86,7 +86,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version-file: go.mod
 
       - name: Build binary
         run: |
@@ -172,11 +172,17 @@ jobs:
       - name: Validate chart directory
         id: chart
         run: |
-          CHART_DIR="charts/${{ needs.validate.outputs.version }}/${CHART_NAME}"
+          VERSION="${{ needs.validate.outputs.version }}"
+          CHART_DIR="charts/${VERSION}/${CHART_NAME}"
+          # Fallback: some repos store the chart under charts/latest/
           if [[ ! -f "${CHART_DIR}/Chart.yaml" ]]; then
-            echo "::error::Chart not found at ${CHART_DIR}/Chart.yaml"
-            echo "Available chart versions:"
-            ls -1 charts/ | grep '^v' || echo "  (none)"
+            CHART_DIR="charts/latest/${CHART_NAME}"
+          fi
+          if [[ ! -f "${CHART_DIR}/Chart.yaml" ]]; then
+            echo "::error::Chart not found for ${VERSION}"
+            echo "Searched: charts/${VERSION}/${CHART_NAME} and charts/latest/${CHART_NAME}"
+            echo "Available chart directories:"
+            ls -1 charts/ || echo "  (none)"
             exit 1
           fi
           echo "chart_dir=${CHART_DIR}" >> "$GITHUB_OUTPUT"
