@@ -92,9 +92,9 @@ jobs:
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           if [[ "${{ matrix.goarch }}" == "arm" ]]; then
-            make nfs-armv7 IMAGE_VERSION="${VERSION}"
+            make nfs-armv7 IMAGE_VERSION="${VERSION}" PUBLISH=true
           else
-            make nfs ARCH=${{ matrix.goarch }} IMAGE_VERSION="${VERSION}"
+            make nfs ARCH=${{ matrix.goarch }} IMAGE_VERSION="${VERSION}" PUBLISH=true
           fi
 
       - name: Set up QEMU
