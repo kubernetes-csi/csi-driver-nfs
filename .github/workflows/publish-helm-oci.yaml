@@ -181,6 +181,7 @@ jobs:
           ref: ${{ needs.validate.outputs.version }}
 
       - name: Validate chart directory
+        id: chart
         run: |
           CHART_DIR="charts/${{ needs.validate.outputs.version }}/${CHART_NAME}"
           if [[ ! -f "${CHART_DIR}/Chart.yaml" ]]; then
@@ -189,7 +190,7 @@ jobs:
             ls -1 charts/ | grep '^v' || echo "  (none)"
             exit 1
           fi
-          echo "chart_dir=${CHART_DIR}" >> "$GITHUB_ENV"
+          echo "chart_dir=${CHART_DIR}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Helm
         uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4
@@ -197,12 +198,12 @@ jobs:
           version: v3.17.0
 
       - name: Lint chart
-        run: helm lint "${{ env.chart_dir }}"
+        run: helm lint "${{ steps.chart.outputs.chart_dir }}"
 
       - name: Verify chart version matches
         id: verify-version
         run: |
-          YAML_VERSION=$(grep '^version:' "${{ env.chart_dir }}/Chart.yaml" | awk '{print $2}')
+          YAML_VERSION=$(grep '^version:' "${{ steps.chart.outputs.chart_dir }}/Chart.yaml" | awk '{print $2}')
           EXPECTED="${{ needs.validate.outputs.chart_version }}"
           # Handle older charts that may have leading 'v' in Chart.yaml version
           YAML_VERSION_STRIPPED="${YAML_VERSION#v}"
@@ -221,7 +222,7 @@ jobs:
 
       - name: Package and push chart
         run: |
-          helm package "${{ env.chart_dir }}" --destination /tmp/helm-pkg
+          helm package "${{ steps.chart.outputs.chart_dir }}" --destination /tmp/helm-pkg
           PACKAGE=$(ls /tmp/helm-pkg/${CHART_NAME}-*.tgz)
           helm push "${PACKAGE}" "oci://${REGISTRY}"
 
