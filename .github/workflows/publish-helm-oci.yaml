@@ -133,7 +133,7 @@ jobs:
             DOCKER_ARCH="${{ matrix.goarch }}"
           fi
           GIT_COMMIT=$(git rev-parse HEAD)
-          docker buildx build --push \
+          docker buildx build --pull --push \
             --platform=${{ matrix.platform }} \
             --build-arg ARCH=${DOCKER_ARCH} \
             --provenance=false --sbom=false \
