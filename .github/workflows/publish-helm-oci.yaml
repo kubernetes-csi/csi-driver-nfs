@@ -173,7 +173,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate]
     outputs:
-      helm_chart_version: ${{ steps.verify-version.outputs.helm_chart_version }}
+      helm_chart_version: ${{ steps.verify_version.outputs.helm_chart_version }}
     steps:
       - name: Checkout at version tag
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -201,7 +201,7 @@ jobs:
         run: helm lint "${{ steps.chart.outputs.chart_dir }}"
 
       - name: Verify chart version matches
-        id: verify-version
+        id: verify_version
         run: |
           YAML_VERSION=$(grep '^version:' "${{ steps.chart.outputs.chart_dir }}/Chart.yaml" | awk '{print $2}')
           EXPECTED="${{ needs.validate.outputs.chart_version }}"
@@ -229,7 +229,7 @@ jobs:
       - name: Verify published chart
         run: |
           helm show chart "oci://${REGISTRY}/${CHART_NAME}" \
-            --version "${{ steps.verify-version.outputs.helm_chart_version }}"
+            --version "${{ steps.verify_version.outputs.helm_chart_version }}"
 
   # ── Summary ────────────────────────────────────────────────────────────────
   summary:
