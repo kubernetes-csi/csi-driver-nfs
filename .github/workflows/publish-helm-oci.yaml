@@ -142,6 +142,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create and push multi-arch manifest
+        env:
+          DOCKER_CLI_EXPERIMENTAL: enabled
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           IMAGE="${REGISTRY}/${IMAGE_NAME}"
@@ -190,7 +192,7 @@ jobs:
       - name: Verify chart version matches
         id: verify_version
         run: |
-          YAML_VERSION=$(grep '^version:' "${{ steps.chart.outputs.chart_dir }}/Chart.yaml" | awk '{print $2}')
+          YAML_VERSION=$(helm show chart "${{ steps.chart.outputs.chart_dir }}" | grep '^version:' | awk '{print $2}')
           EXPECTED="${{ needs.validate.outputs.chart_version }}"
           # Handle older charts that may have leading 'v' in Chart.yaml version
           YAML_VERSION_STRIPPED="${YAML_VERSION#v}"
@@ -228,24 +230,38 @@ jobs:
         env:
           VERSION: ${{ needs.validate.outputs.version }}
           CHART_VERSION: ${{ needs.publish-helm.outputs.helm_chart_version || needs.validate.outputs.chart_version }}
+          MANIFEST_RESULT: ${{ needs.manifest.result }}
+          HELM_RESULT: ${{ needs.publish-helm.result }}
         shell: bash
         run: |
           FENCE='```'
-          cat >> "$GITHUB_STEP_SUMMARY" << EOF
-          ## Published to GHCR
+          echo "## Publish to GHCR — Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          ### Container Image
-          | Image | Tag |
-          |-------|-----|
-          | ${REGISTRY}/${IMAGE_NAME} | ${VERSION} (linux/amd64, arm64, arm/v7, ppc64le) |
+          if [[ "$MANIFEST_RESULT" == "success" ]]; then
+            {
+              echo "### ✅ Container Image"
+              echo "| Image | Tag |"
+              echo "|-------|-----|"
+              echo "| ${REGISTRY}/${IMAGE_NAME} | ${VERSION} (linux/amd64, arm64, arm/v7, ppc64le) |"
+              echo ""
+              echo "${FENCE}bash"
+              echo "docker pull ${REGISTRY}/${IMAGE_NAME}:${VERSION}"
+              echo "${FENCE}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ❌ Container Image — ${MANIFEST_RESULT}" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
-          ${FENCE}bash
-          docker pull ${REGISTRY}/${IMAGE_NAME}:${VERSION}
-          ${FENCE}
+          echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          ### Helm Chart (OCI)
-          ${FENCE}bash
-          helm install csi-driver-nfs oci://${REGISTRY}/${CHART_NAME} --version ${CHART_VERSION} -n kube-system
-          ${FENCE}
-          EOF
-          sed -i 's/^          //' "$GITHUB_STEP_SUMMARY"
+          if [[ "$HELM_RESULT" == "success" ]]; then
+            {
+              echo "### ✅ Helm Chart (OCI)"
+              echo "${FENCE}bash"
+              echo "helm install csi-driver-nfs oci://${REGISTRY}/${CHART_NAME} --version ${CHART_VERSION} -n kube-system"
+              echo "${FENCE}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ❌ Helm Chart — ${HELM_RESULT}" >> "$GITHUB_STEP_SUMMARY"
+          fi
