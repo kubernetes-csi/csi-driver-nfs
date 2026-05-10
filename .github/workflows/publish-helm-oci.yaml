@@ -228,7 +228,7 @@ jobs:
       - name: Verify published chart
         run: |
           helm show chart "oci://${REGISTRY}/${CHART_NAME}" \
-            --version "${{ env.helm_chart_version }}"
+            --version "${{ steps.verify-version.outputs.helm_chart_version }}"
 
   # ── Summary ────────────────────────────────────────────────────────────────
   summary:
