@@ -226,10 +226,34 @@ jobs:
           helm show chart "oci://${REGISTRY}/${CHART_NAME}" \
             --version "${{ steps.verify_version.outputs.helm_chart_version }}"
 
+  # ── Ensure GHCR packages are public ─────────────────────────────────────────
+  set-visibility:
+    runs-on: ubuntu-latest
+    needs: [manifest, publish-helm]
+    if: needs.manifest.result == 'success' || needs.publish-helm.result == 'success'
+    steps:
+      - name: Set container package visibility to public
+        if: needs.manifest.result == 'success'
+        run: |
+          curl -s -X PATCH \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/${IMAGE_NAME}" \
+            -d '{"visibility":"public"}' || echo "::warning::Failed to set container package visibility (may need manual setup)"
+
+      - name: Set Helm chart package visibility to public
+        if: needs.publish-helm.result == 'success'
+        run: |
+          curl -s -X PATCH \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/${CHART_NAME}" \
+            -d '{"visibility":"public"}' || echo "::warning::Failed to set Helm chart package visibility (may need manual setup)"
+
   # ── Summary ────────────────────────────────────────────────────────────────
   summary:
     runs-on: ubuntu-latest
-    needs: [validate, manifest, publish-helm]
+    needs: [validate, manifest, publish-helm, set-visibility]
     if: always()
     steps:
       - name: Job summary
