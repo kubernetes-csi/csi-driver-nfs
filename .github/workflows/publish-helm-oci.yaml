@@ -89,26 +89,13 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Build binary
-        env:
-          GOARCH: ${{ matrix.goarch }}
-          GOARM: ${{ matrix.goarm }}
-          CGO_ENABLED: '0'
-          GOOS: linux
         run: |
-          # Use the same output path convention as Makefile:
-          # bin/<goarch>/nfsplugin for most arches, bin/arm/v7/nfsplugin for armv7
+          VERSION="${{ needs.validate.outputs.version }}"
           if [[ "${{ matrix.goarch }}" == "arm" ]]; then
-            OUT_DIR="bin/arm/v7"
+            make nfs-armv7 IMAGE_VERSION="${VERSION}"
           else
-            OUT_DIR="bin/${{ matrix.goarch }}"
+            make nfs ARCH=${{ matrix.goarch }} IMAGE_VERSION="${VERSION}"
           fi
-          GIT_COMMIT=$(git rev-parse HEAD)
-          mkdir -p "${OUT_DIR}"
-          go build -a -ldflags "-s -w \
-            -X github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs.driverVersion=${{ needs.validate.outputs.version }} \
-            -X github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs.gitCommit=${GIT_COMMIT} \
-            -X github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            -mod vendor -o "${OUT_DIR}/nfsplugin" ./cmd/nfsplugin
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
