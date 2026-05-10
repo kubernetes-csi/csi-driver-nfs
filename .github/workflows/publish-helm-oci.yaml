@@ -95,17 +95,20 @@ jobs:
           CGO_ENABLED: '0'
           GOOS: linux
         run: |
-          ARCH="${{ matrix.goarch }}"
-          if [[ "$ARCH" == "arm" ]]; then
-            ARCH="arm-v7"
+          # Use the same output path convention as Makefile:
+          # bin/<goarch>/nfsplugin for most arches, bin/arm/v7/nfsplugin for armv7
+          if [[ "${{ matrix.goarch }}" == "arm" ]]; then
+            OUT_DIR="bin/arm/v7"
+          else
+            OUT_DIR="bin/${{ matrix.goarch }}"
           fi
           GIT_COMMIT=$(git rev-parse HEAD)
-          mkdir -p bin/${ARCH}
-          go build -trimpath -ldflags="-s -w \
+          mkdir -p "${OUT_DIR}"
+          go build -a -ldflags "-s -w \
             -X github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs.driverVersion=${{ needs.validate.outputs.version }} \
             -X github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs.gitCommit=${GIT_COMMIT} \
             -X github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            -o bin/${ARCH}/nfsplugin ./cmd/nfsplugin
+            -mod vendor -o "${OUT_DIR}/nfsplugin" ./cmd/nfsplugin
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
@@ -123,14 +126,16 @@ jobs:
       - name: Build and push ${{ matrix.platform }}
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
-          ARCH="${{ matrix.goarch }}"
-          if [[ "$ARCH" == "arm" ]]; then
-            ARCH="arm-v7"
+          # Match Makefile convention: --build-arg ARCH=arm/v7 for armv7
+          if [[ "${{ matrix.goarch }}" == "arm" ]]; then
+            DOCKER_ARCH="arm/v7"
+          else
+            DOCKER_ARCH="${{ matrix.goarch }}"
           fi
           GIT_COMMIT=$(git rev-parse HEAD)
           docker buildx build --push \
             --platform=${{ matrix.platform }} \
-            --build-arg ARCH=${ARCH} \
+            --build-arg ARCH=${DOCKER_ARCH} \
             --provenance=false --sbom=false \
             --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${{ matrix.suffix }} \
             --label org.opencontainers.image.revision=${GIT_COMMIT} \
