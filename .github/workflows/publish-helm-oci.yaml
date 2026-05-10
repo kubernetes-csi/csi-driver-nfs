@@ -1,0 +1,258 @@
+# Publish csi-driver-nfs container images and Helm chart to GHCR.
+#
+# Triggers:
+#   - Automatically on GitHub Release publish (tag must match v*)
+#   - Manually via workflow_dispatch with a version input
+#
+# Publishes:
+#   - Multi-arch container image: ghcr.io/kubernetes-csi/nfsplugin:<version>
+#     (linux/amd64, linux/arm64, linux/arm/v7, linux/ppc64le)
+#   - Helm chart (OCI): oci://ghcr.io/kubernetes-csi/csi-driver-nfs
+#
+name: Publish to GHCR
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., v4.13.2)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io/kubernetes-csi
+  IMAGE_NAME: nfsplugin
+  CHART_NAME: csi-driver-nfs
+  GO_VERSION: '1.25.0'
+
+jobs:
+  # ── Validate version format early ──────────────────────────────────────────
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      chart_version: ${{ steps.version.outputs.chart_version }}
+    steps:
+      - name: Determine and validate version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.event.release.tag_name }}"
+          fi
+
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format: '${VERSION}'. Expected: v<major>.<minor>.<patch> (e.g., v4.13.2)"
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "chart_version=${VERSION#v}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${VERSION}"
+
+  # ── Build & push container images ──────────────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: [validate]
+    strategy:
+      matrix:
+        include:
+          - goarch: amd64
+            platform: linux/amd64
+            suffix: linux-amd64
+          - goarch: arm64
+            platform: linux/arm64
+            suffix: linux-arm64
+          - goarch: ppc64le
+            platform: linux/ppc64le
+            suffix: linux-ppc64le
+          - goarch: arm
+            goarm: '7'
+            platform: linux/arm/v7
+            suffix: linux-arm-v7
+    steps:
+      - name: Checkout at version tag
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ needs.validate.outputs.version }}
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build binary
+        env:
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: '0'
+          GOOS: linux
+        run: |
+          ARCH="${{ matrix.goarch }}"
+          if [[ "$ARCH" == "arm" ]]; then
+            ARCH="arm-v7"
+          fi
+          GIT_COMMIT=$(git rev-parse HEAD)
+          mkdir -p bin/${ARCH}
+          go build -trimpath -ldflags="-s -w \
+            -X github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs.driverVersion=${{ needs.validate.outputs.version }} \
+            -X github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs.gitCommit=${GIT_COMMIT} \
+            -X github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o bin/${ARCH}/nfsplugin ./cmd/nfsplugin
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.platform }}
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          ARCH="${{ matrix.goarch }}"
+          if [[ "$ARCH" == "arm" ]]; then
+            ARCH="arm-v7"
+          fi
+          GIT_COMMIT=$(git rev-parse HEAD)
+          docker buildx build --push \
+            --platform=${{ matrix.platform }} \
+            --build-arg ARCH=${ARCH} \
+            --provenance=false --sbom=false \
+            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${{ matrix.suffix }} \
+            --label org.opencontainers.image.revision=${GIT_COMMIT} \
+            --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} \
+            .
+
+  # ── Create multi-arch manifest ─────────────────────────────────────────────
+  manifest:
+    runs-on: ubuntu-latest
+    needs: [validate, build-linux]
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch manifest
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          IMAGE="${REGISTRY}/${IMAGE_NAME}"
+
+          docker manifest create --amend "${IMAGE}:${VERSION}" \
+            "${IMAGE}:${VERSION}-linux-amd64" \
+            "${IMAGE}:${VERSION}-linux-arm64" \
+            "${IMAGE}:${VERSION}-linux-arm-v7" \
+            "${IMAGE}:${VERSION}-linux-ppc64le"
+
+          docker manifest push -p "${IMAGE}:${VERSION}"
+          echo "Pushed manifest: ${IMAGE}:${VERSION}"
+
+  # ── Publish Helm chart as OCI (independent of image builds) ────────────────
+  publish-helm:
+    runs-on: ubuntu-latest
+    needs: [validate]
+    outputs:
+      helm_chart_version: ${{ steps.verify-version.outputs.helm_chart_version }}
+    steps:
+      - name: Checkout at version tag
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ needs.validate.outputs.version }}
+
+      - name: Validate chart directory
+        run: |
+          CHART_DIR="charts/${{ needs.validate.outputs.version }}/${CHART_NAME}"
+          if [[ ! -f "${CHART_DIR}/Chart.yaml" ]]; then
+            echo "::error::Chart not found at ${CHART_DIR}/Chart.yaml"
+            echo "Available chart versions:"
+            ls -1 charts/ | grep '^v' || echo "  (none)"
+            exit 1
+          fi
+          echo "chart_dir=${CHART_DIR}" >> "$GITHUB_ENV"
+
+      - name: Setup Helm
+        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4
+        with:
+          version: v3.17.0
+
+      - name: Lint chart
+        run: helm lint "${{ env.chart_dir }}"
+
+      - name: Verify chart version matches
+        id: verify-version
+        run: |
+          YAML_VERSION=$(grep '^version:' "${{ env.chart_dir }}/Chart.yaml" | awk '{print $2}')
+          EXPECTED="${{ needs.validate.outputs.chart_version }}"
+          # Handle older charts that may have leading 'v' in Chart.yaml version
+          YAML_VERSION_STRIPPED="${YAML_VERSION#v}"
+          if [[ "$YAML_VERSION_STRIPPED" != "$EXPECTED" ]]; then
+            echo "::error::Chart.yaml version ($YAML_VERSION) != expected ($EXPECTED)"
+            exit 1
+          fi
+          # Use the actual Chart.yaml version for helm commands
+          echo "helm_chart_version=${YAML_VERSION}" >> "$GITHUB_ENV"
+          echo "helm_chart_version=${YAML_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR (Helm)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
+            --username "${{ github.actor }}" --password-stdin
+
+      - name: Package and push chart
+        run: |
+          helm package "${{ env.chart_dir }}" --destination /tmp/helm-pkg
+          PACKAGE=$(ls /tmp/helm-pkg/${CHART_NAME}-*.tgz)
+          helm push "${PACKAGE}" "oci://${REGISTRY}"
+
+      - name: Verify published chart
+        run: |
+          helm show chart "oci://${REGISTRY}/${CHART_NAME}" \
+            --version "${{ env.helm_chart_version }}"
+
+  # ── Summary ────────────────────────────────────────────────────────────────
+  summary:
+    runs-on: ubuntu-latest
+    needs: [validate, manifest, publish-helm]
+    if: always()
+    steps:
+      - name: Job summary
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          CHART_VERSION: ${{ needs.publish-helm.outputs.helm_chart_version || needs.validate.outputs.chart_version }}
+        shell: bash
+        run: |
+          FENCE='```'
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## Published to GHCR
+
+          ### Container Image
+          | Image | Tag |
+          |-------|-----|
+          | ${REGISTRY}/${IMAGE_NAME} | ${VERSION} (linux/amd64, arm64, arm/v7, ppc64le) |
+
+          ${FENCE}bash
+          docker pull ${REGISTRY}/${IMAGE_NAME}:${VERSION}
+          ${FENCE}
+
+          ### Helm Chart (OCI)
+          ${FENCE}bash
+          helm install csi-driver-nfs oci://${REGISTRY}/${CHART_NAME} --version ${CHART_VERSION} -n kube-system
+          ${FENCE}
+          EOF
+          sed -i 's/^          //' "$GITHUB_STEP_SUMMARY"
