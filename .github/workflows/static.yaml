@@ -13,7 +13,7 @@ jobs:
                 go-version: ^1.19
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
             - name: Run linter
-              uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9
+              uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9
               with:
                   version: v2.10
                   args: -E=errcheck,govet,unused,ineffassign,staticcheck,revive,misspell,asciicheck,bodyclose,dogsled,durationcheck,errname,forbidigo --timeout=30m0s
