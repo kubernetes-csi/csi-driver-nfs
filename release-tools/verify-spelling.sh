@@ -50,7 +50,7 @@ RES=0
 echo "Checking spelling..."
 ERROR_LOG="${TMP_DIR}/errors.log"
 cd "${ROOT}"
-git ls-files | grep -v vendor | xargs misspell > "${ERROR_LOG}"
+git ls-files -z | grep -z -v vendor | xargs -0 misspell -- > "${ERROR_LOG}"
 if [[ -s "${ERROR_LOG}" ]]; then
   sed 's/^/error: /' "${ERROR_LOG}" # add 'error' to each line to highlight in e2e status
   echo "Found spelling errors!"
