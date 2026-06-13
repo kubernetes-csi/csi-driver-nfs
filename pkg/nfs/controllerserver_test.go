@@ -1235,6 +1235,49 @@ func TestCreateSnapshotWithoutCompression(t *testing.T) {
 	_ = os.RemoveAll("/tmp/snapshot-name-no-compress")
 }
 
+func TestCreateSnapshotWithDifferentShareInSnapshotClass(t *testing.T) {
+	// Test that CreateSnapshot succeeds when VolumeSnapshotClass specifies
+	// a different server/share than the source volume. This verifies that
+	// the source volume mount uses server/share from the volumeHandle,
+	// not from the snapshot class parameters.
+	cs := initTestController(t)
+
+	// Setup: create source directory matching the source volume path
+	srcPath := "/tmp/src-pv-cross-share/subdir"
+	if err := os.MkdirAll(srcPath, 0777); err != nil {
+		t.Fatalf("failed to create source directory: %v", err)
+	}
+	defer func() { _ = os.RemoveAll("/tmp/src-pv-cross-share") }()
+
+	// Snapshot class parameters specify a DIFFERENT share than the source volume
+	req := &csi.CreateSnapshotRequest{
+		SourceVolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-cross-share",
+		Name:           "snapshot-cross-share",
+		Parameters: map[string]string{
+			"server": "other-nfs-server.default.svc.cluster.local",
+			"share":  "/different-share",
+		},
+	}
+
+	resp, err := cs.CreateSnapshot(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("CreateSnapshot failed with cross-share snapshot class: %v", err)
+	}
+
+	if resp == nil || resp.Snapshot == nil {
+		t.Fatalf("CreateSnapshot returned nil response")
+	}
+
+	// Verify the snapshot was created successfully
+	expectedSourceVolumeID := "nfs-server.default.svc.cluster.local#share#subdir#src-pv-cross-share"
+	if resp.Snapshot.SourceVolumeId != expectedSourceVolumeID {
+		t.Errorf("expected SourceVolumeId %q, got %q", expectedSourceVolumeID, resp.Snapshot.SourceVolumeId)
+	}
+
+	// Cleanup snapshot directory
+	_ = os.RemoveAll("/tmp/snapshot-cross-share")
+}
+
 func TestCopyVolumeFromUncompressedSnapshot(t *testing.T) {
 	// Create an uncompressed snapshot archive and test restoration
 	srcPath := "/tmp/uncompressed-snapshot-test/uncompressed-snapshot-test"
