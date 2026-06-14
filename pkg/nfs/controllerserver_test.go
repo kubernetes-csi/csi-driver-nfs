@@ -1248,14 +1248,16 @@ func TestCreateSnapshotWithDifferentShareInSnapshotClass(t *testing.T) {
 		t.Fatalf("failed to create source directory: %v", err)
 	}
 	defer func() { _ = os.RemoveAll("/tmp/src-pv-cross-share") }()
+	defer func() { _ = os.RemoveAll("/tmp/snapshot-cross-share") }()
 
-	// Snapshot class parameters specify a DIFFERENT share than the source volume
+	// Snapshot class parameters specify a DIFFERENT server/share than the source volume.
+	// Note: share value omits leading '/' consistent with paramShare convention in this repo.
 	req := &csi.CreateSnapshotRequest{
 		SourceVolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-cross-share",
 		Name:           "snapshot-cross-share",
 		Parameters: map[string]string{
 			"server": "other-nfs-server.default.svc.cluster.local",
-			"share":  "/different-share",
+			"share":  "different-share",
 		},
 	}
 
@@ -1274,8 +1276,40 @@ func TestCreateSnapshotWithDifferentShareInSnapshotClass(t *testing.T) {
 		t.Errorf("expected SourceVolumeId %q, got %q", expectedSourceVolumeID, resp.Snapshot.SourceVolumeId)
 	}
 
-	// Cleanup snapshot directory
-	_ = os.RemoveAll("/tmp/snapshot-cross-share")
+	// Verify that the FakeMounter was called with the correct mount sources:
+	// - source volume mount should use the source volume's server/share
+	// - snapshot volume mount should use the snapshot class's server/share
+	fakeMounter := cs.Driver.ns.mounter.(*mount.FakeMounter)
+	mountLog := fakeMounter.GetLog()
+
+	var foundSourceMount, foundSnapMount bool
+	for _, action := range mountLog {
+		if action.Action != "mount" {
+			continue
+		}
+		// Source volume mount: server from volumeHandle, share from volumeHandle
+		if action.Source == "nfs-server.default.svc.cluster.local:/share" {
+			foundSourceMount = true
+		}
+		// Snapshot destination mount: server/share from snapshot class parameters
+		if action.Source == "other-nfs-server.default.svc.cluster.local:/different-share" {
+			foundSnapMount = true
+		}
+	}
+	if !foundSourceMount {
+		t.Errorf("expected source volume mount with source %q, mount log: %+v",
+			"nfs-server.default.svc.cluster.local:/share", mountLog)
+	}
+	if !foundSnapMount {
+		t.Errorf("expected snapshot destination mount with source %q, mount log: %+v",
+			"other-nfs-server.default.svc.cluster.local:/different-share", mountLog)
+	}
+
+	// Verify the snapshot archive file was created
+	archivePath := "/tmp/snapshot-cross-share/snapshot-cross-share/src-pv-cross-share.tar.gz"
+	if _, err := os.Stat(archivePath); os.IsNotExist(err) {
+		t.Errorf("expected snapshot archive at %s, but it does not exist", archivePath)
+	}
 }
 
 func TestCopyVolumeFromUncompressedSnapshot(t *testing.T) {
