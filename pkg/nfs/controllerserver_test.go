@@ -1256,8 +1256,8 @@ func TestCreateSnapshotWithDifferentShareInSnapshotClass(t *testing.T) {
 		SourceVolumeId: "nfs-server.default.svc.cluster.local#share#subdir#src-pv-cross-share",
 		Name:           "snapshot-cross-share",
 		Parameters: map[string]string{
-			"server": "other-nfs-server.default.svc.cluster.local",
-			"share":  "different-share",
+			paramServer: "other-nfs-server.default.svc.cluster.local",
+			paramShare:  "different-share",
 		},
 	}
 

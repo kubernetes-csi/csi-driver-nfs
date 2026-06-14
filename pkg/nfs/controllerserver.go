@@ -500,8 +500,9 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 		paramShare:  sharePath,
 	}
 	for k, v := range volumeContext {
-		// don't set subDir field since only nfs-server:/share should be mounted in CreateVolume/DeleteVolume
-		// don't override server or share since they are already set from the volume being mounted
+		// don't set subDir, server, or share fields: only nfs-server:/share
+		// should be mounted via the volume's own values across all internal
+		// mount callers (CreateVolume, DeleteVolume, CreateSnapshot, etc.)
 		switch strings.ToLower(k) {
 		case paramSubDir, paramServer, paramShare:
 			continue
