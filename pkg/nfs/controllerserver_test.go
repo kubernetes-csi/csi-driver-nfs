@@ -1288,11 +1288,13 @@ func TestCreateSnapshotWithDifferentShareInSnapshotClass(t *testing.T) {
 			continue
 		}
 		// Source volume mount: server from volumeHandle, share from volumeHandle
-		if action.Source == "nfs-server.default.svc.cluster.local:/share" {
+		// Use filepath.ToSlash to normalize Windows backslash separators
+		normalizedSource := filepath.ToSlash(action.Source)
+		if normalizedSource == "nfs-server.default.svc.cluster.local:/share" {
 			foundSourceMount = true
 		}
 		// Snapshot destination mount: server/share from snapshot class parameters
-		if action.Source == "other-nfs-server.default.svc.cluster.local:/different-share" {
+		if normalizedSource == "other-nfs-server.default.svc.cluster.local:/different-share" {
 			foundSnapMount = true
 		}
 	}
