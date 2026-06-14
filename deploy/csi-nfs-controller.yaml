@@ -5,6 +5,11 @@ metadata:
   name: csi-nfs-controller
   namespace: kube-system
 spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   replicas: 1
   selector:
     matchLabels:
