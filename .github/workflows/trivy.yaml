@@ -3,8 +3,7 @@ on:
   push:
     branches:
       - master
-  schedule:
-    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  pull_request:
 jobs:
   build:
     name: Build
