@@ -53,6 +53,7 @@ kubeletDir: /var/lib/kubelet
 controller:
   name: csi-nfs-controller
   replicas: 1
+  revisionHistoryLimit: 10
   strategyType: Recreate
   runOnMaster: false
   runOnControlPlane: false
@@ -126,6 +127,7 @@ nodeDriverRegistrar:
 node:
   name: csi-nfs-node
   dnsPolicy: ClusterFirstWithHostNet  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
+  revisionHistoryLimit: 10
   maxUnavailable: 1
   logLevel: 5
   livenessProbe:
@@ -162,6 +164,7 @@ externalSnapshotter:
   deletionPolicy: Delete
   controller:
     replicas: 1
+    revisionHistoryLimit: 10
   resources:
     limits:
       memory: 300Mi
