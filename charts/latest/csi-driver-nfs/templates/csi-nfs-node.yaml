@@ -6,6 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 {{ include "nfs.labels" . | indent 2 }}
 spec:
+  revisionHistoryLimit: {{ .Values.node.revisionHistoryLimit }}
   updateStrategy:
     rollingUpdate:
       maxUnavailable: {{ .Values.node.maxUnavailable }}
