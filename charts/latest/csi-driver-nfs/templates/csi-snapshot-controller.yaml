@@ -22,6 +22,7 @@ metadata:
 {{- end }}
 spec:
   replicas: {{ .Values.externalSnapshotter.controller.replicas }}
+  revisionHistoryLimit: {{ .Values.externalSnapshotter.controller.revisionHistoryLimit }}
   selector:
     matchLabels:
       app: {{ .Values.externalSnapshotter.name }}
