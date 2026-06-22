@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/container-storage-interface/spec v1.11.0
 	github.com/kubernetes-csi/csi-lib-utils v0.9.0
-	github.com/onsi/ginkgo/v2 v2.31.0
+	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.0
 	github.com/pborman/uuid v1.2.1
 	github.com/stretchr/testify v1.11.1
