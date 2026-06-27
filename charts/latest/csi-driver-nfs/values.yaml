@@ -120,7 +120,7 @@ nodeDriverRegistrar:
     enabled: true
     initialDelaySeconds: 20
     timeoutSeconds: 10
-    periodSeconds: 20
+    periodSeconds: 5
     failureThreshold: 2
 
 node:
@@ -175,8 +175,6 @@ externalSnapshotter:
 ## volumeSnapshotClass resource example:
 volumeSnapshotClass:
   create: false
-#   annotations:
-#     snapshot.storage.kubernetes.io/is-default-class: "true"
   name: csi-nfs-snapclass
   deletionPolicy: Delete
   
