@@ -99,7 +99,7 @@ spec:
               drop:
                 - ALL
             allowPrivilegeEscalation: true
-          image: gcr.io/k8s-staging-sig-storage/nfsplugin:canary
+          image: registry.k8s.io/sig-storage/nfsplugin:v4.13.3
           args:
             - "-v=5"
             - "--nodeid=$(NODE_ID)"
