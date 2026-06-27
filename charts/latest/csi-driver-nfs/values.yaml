@@ -2,32 +2,32 @@ customLabels: {}
 image:
     baseRepo: registry.k8s.io
     nfs:
-        repository: registry.k8s.io/sig-storage/nfsplugin
-        tag: v4.13.3
+        repository: gcr.io/k8s-staging-sig-storage/nfsplugin
+        tag: canary
         pullPolicy: IfNotPresent
     csiProvisioner:
         repository: /sig-storage/csi-provisioner
-        tag: v6.1.0
+        tag: v6.3.0
         pullPolicy: IfNotPresent
     csiResizer:
         repository: /sig-storage/csi-resizer
-        tag: v2.0.0
+        tag: v2.2.0
         pullPolicy: IfNotPresent
     csiSnapshotter:
         repository: /sig-storage/csi-snapshotter
-        tag: v8.4.0
+        tag: v8.6.0
         pullPolicy: IfNotPresent
     livenessProbe:
         repository: /sig-storage/livenessprobe
-        tag: v2.17.0
+        tag: v2.19.0
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
         repository: /sig-storage/csi-node-driver-registrar
-        tag: v2.15.0
+        tag: v2.17.0
         pullPolicy: IfNotPresent
     externalSnapshotter:
         repository: /sig-storage/snapshot-controller
-        tag: v8.4.0
+        tag: v8.6.0
         pullPolicy: IfNotPresent
 
 serviceAccount:
@@ -120,7 +120,7 @@ nodeDriverRegistrar:
     enabled: true
     initialDelaySeconds: 20
     timeoutSeconds: 10
-    periodSeconds: 5
+    periodSeconds: 20
     failureThreshold: 2
 
 node:
@@ -175,6 +175,8 @@ externalSnapshotter:
 ## volumeSnapshotClass resource example:
 volumeSnapshotClass:
   create: false
+#   annotations:
+#     snapshot.storage.kubernetes.io/is-default-class: "true"
   name: csi-nfs-snapclass
   deletionPolicy: Delete
   

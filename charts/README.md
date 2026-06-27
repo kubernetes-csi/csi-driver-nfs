@@ -56,13 +56,13 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `image.nfs.tag`                                   | csi-driver-nfs image tag                                   | `latest`                                                |
 | `image.nfs.pullPolicy`                            | csi-driver-nfs image pull policy                           | `IfNotPresent`                                                      |
 | `image.csiProvisioner.repository`                 | csi-provisioner docker image                               | `registry.k8s.io/sig-storage/csi-provisioner`                            |
-| `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | `v6.1.0`                                                            |
+| `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | `v6.3.0`                                                            |
 | `image.csiProvisioner.pullPolicy`                 | csi-provisioner image pull policy                          | `IfNotPresent`                                                      |
 | `image.livenessProbe.repository`                  | liveness-probe docker image                                | `registry.k8s.io/sig-storage/livenessprobe`                              |
-| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | `v2.17.0`                                                            |
+| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | `v2.19.0`                                                            |
 | `image.livenessProbe.pullPolicy`                  | liveness-probe image pull policy                           | `IfNotPresent`                                                      |
 | `image.nodeDriverRegistrar.repository`            | csi-node-driver-registrar docker image                     | `registry.k8s.io/sig-storage/csi-node-driver-registrar`                  |
-| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | `v2.15.0`                                                            |
+| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | `v2.17.0`                                                            |
 | `image.nodeDriverRegistrar.pullPolicy`            | csi-node-driver-registrar image pull policy                | `IfNotPresent`                                                      |
 | `imagePullSecrets`                                | Specify docker-registry secret names as an array           | [] (does not add image pull secrets to deployed pods)                                                           |
 | `serviceAccount.create`                           | whether create service account of csi-nfs-controller       | `true`                                                              |
@@ -96,7 +96,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `nodeDriverRegistrar.livenessProbe.enabled`             | enable node-driver-registrar liveness probe               | `false`    |
 | `nodeDriverRegistrar.livenessProbe.initialDelaySeconds` | node-driver-registrar liveness probe initialDelaySeconds   | `20`       |
 | `nodeDriverRegistrar.livenessProbe.timeoutSeconds`      | node-driver-registrar liveness probe timeoutSeconds                             | `10`       |
-| `nodeDriverRegistrar.livenessProbe.periodSeconds`       | node-driver-registrar liveness probe periodSeconds                       | `5`        |
+| `nodeDriverRegistrar.livenessProbe.periodSeconds`       | node-driver-registrar liveness probe periodSeconds                       | `20`        |
 | `nodeDriverRegistrar.livenessProbe.failureThreshold`    | node-driver-registrar liveness probe failureThreshold | `2`        |
 | `node.name`                                           | driver node daemonset name                            | `csi-nfs-node`
 | `node.dnsPolicy`                                      | dnsPolicy of driver node daemonset, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`          |`ClusterFirstWithHostNet`
