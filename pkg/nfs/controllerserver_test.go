@@ -1607,6 +1607,12 @@ func TestGetNfsVolFromID(t *testing.T) {
 			},
 			expectErr: false,
 		},
+		{
+			name:      "uuid with path traversal should be rejected",
+			volumeID:  "test-server#base#subdir#../../etc/shadow#delete",
+			expected:  nil,
+			expectErr: true,
+		},
 	}
 
 	for _, test := range cases {
