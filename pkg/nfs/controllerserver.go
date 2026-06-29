@@ -836,6 +836,9 @@ func getNfsVolFromID(id string) (*nfsVolume, error) {
 	if err := validatePath(baseDir); err != nil {
 		return nil, fmt.Errorf("invalid baseDir %q: %v", baseDir, err)
 	}
+	if err := validatePath(uuid); err != nil {
+		return nil, fmt.Errorf("invalid uuid %q: %v", uuid, err)
+	}
 
 	return &nfsVolume{
 		id:       id,
