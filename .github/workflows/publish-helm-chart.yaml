@@ -97,8 +97,10 @@ jobs:
         uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
         with:
           charts_dir: .cr-charts
-          # Skip creating a GitHub Release for this chart if one already
-          # exists at the same tag (the driver release itself owns the tag).
+          # Skip uploading if a chart release already exists for this version
+          # (e.g. on workflow re-runs). chart-releaser names releases as
+          # <chart-name>-<version> (e.g. csi-driver-nfs-4.13.4), so they do
+          # not collide with the driver's own v* tag releases.
           skip_existing: true
           # Publish index.yaml to the gh-pages branch (default).
           # Repo Settings -> Pages must be configured to serve from gh-pages.
