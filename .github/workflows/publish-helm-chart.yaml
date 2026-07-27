@@ -74,6 +74,22 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Publishing chart version: $version"
 
+      - name: Checkout release tag
+        # When chart_version is provided via workflow_dispatch, ensure we
+        # package the chart source from the matching release tag, not the
+        # branch HEAD (which may contain unreleased changes).
+        if: github.event.inputs.chart_version != ''
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          tag="v${version}"
+          if ! git rev-parse "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "::error::Tag ${tag} not found. Cannot package chart from an untagged version."
+            exit 1
+          fi
+          echo "Checking out tag ${tag}"
+          git checkout "refs/tags/${tag}"
+
       - name: Stage versioned chart for chart-releaser-action
         # chart-releaser-action expects each chart to live under a directory
         # whose Chart.yaml declares the release version. The in-tree source at
