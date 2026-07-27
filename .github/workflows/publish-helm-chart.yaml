@@ -95,9 +95,8 @@ jobs:
         # already exist on the remote (it fails with "fatal: invalid
         # reference: origin/gh-pages" otherwise). Bootstrap an empty orphan
         # branch on the first run so subsequent chart-releaser steps can
-        # commit index.yaml into it.
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # commit index.yaml into it. Git auth is handled by
+        # actions/checkout's persisted credentials above.
         run: |
           set -euo pipefail
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
