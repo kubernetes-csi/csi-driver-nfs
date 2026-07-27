@@ -19,6 +19,8 @@
 
 #### Option A: GitHub Pages (recommended)
 Hosted via GitHub Pages, not affected by rate limits on `raw.githubusercontent.com` (see [#995](https://github.com/kubernetes-csi/csi-driver-nfs/issues/995)).
+
+> **Note:** This option requires GitHub Pages to be enabled on the repo and at least one chart version to be published. If the URL does not resolve yet, use Option B below.
 ```console
 helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
 helm repo update csi-driver-nfs

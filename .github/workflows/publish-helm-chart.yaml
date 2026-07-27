@@ -10,7 +10,7 @@ name: Publish Helm Chart to GitHub Pages
 #
 # After the first successful run, users can install the chart with:
 #   helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
-#   helm repo update
+#   helm repo update csi-driver-nfs
 #   helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs \
 #     --namespace kube-system --version 4.13.4
 
@@ -59,7 +59,9 @@ jobs:
               echo "::error::chart_version input is empty and GITHUB_REF ($GITHUB_REF) is not a tag. Please provide a chart_version or run this workflow from a tag." >&2
               exit 1
             fi
-            # Strip leading refs/tags/ and any leading 'v' (charts are semver, no v-prefix since 4.11.0).
+            # Strip leading 'v' — charts are semver without v-prefix since 4.11.0.
+            # This workflow only triggers on new v* tags, so pre-4.11.0 tags
+            # (which used a v-prefixed chart version) are not affected.
             raw="${GITHUB_REF#refs/tags/}"
             version="${raw#v}"
           fi
