@@ -1,0 +1,98 @@
+name: Publish Helm Chart to GitHub Pages
+
+# Publishes the chart source under charts/latest/csi-driver-nfs as an OCI-less
+# Helm repository hosted on GitHub Pages, using chart-releaser-action.
+#
+# This is additive: the existing raw.githubusercontent.com repository (backed
+# by charts/index.yaml and pre-packaged tgz files under charts/vX.Y.Z/) is
+# untouched. GitHub Pages is offered as an alternate installation source that
+# is not affected by rate limits on raw.githubusercontent.com (see #995).
+#
+# After the first successful run, users can install the chart with:
+#   helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
+#   helm repo update
+#   helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs \
+#     --namespace kube-system --version <x.y.z>
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      chart_version:
+        description: 'Chart version to publish (e.g. 4.13.5). Leave blank to reuse the git tag.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Determine chart version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ -n "${{ github.event.inputs.chart_version }}" ]; then
+            version="${{ github.event.inputs.chart_version }}"
+          else
+            # Strip leading refs/tags/ and any leading 'v' (charts are semver, no v-prefix since 4.11.0).
+            raw="${GITHUB_REF#refs/tags/}"
+            version="${raw#v}"
+          fi
+          if [ -z "$version" ]; then
+            echo "Could not determine chart version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Publishing chart version: $version"
+
+      - name: Stage versioned chart for chart-releaser-action
+        # chart-releaser-action expects each chart to live under a directory
+        # whose Chart.yaml declares the release version. The in-tree source at
+        # charts/latest/csi-driver-nfs uses the placeholder version v0.0.0, so
+        # copy it into a staging directory (.cr-charts/csi-driver-nfs) and
+        # rewrite version + appVersion to the release version.
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          rm -rf .cr-charts .cr-release-packages
+          mkdir -p .cr-charts
+          cp -r charts/latest/csi-driver-nfs .cr-charts/csi-driver-nfs
+          sed -i \
+            -e "s/^version: .*/version: ${version}/" \
+            -e "s/^appVersion: .*/appVersion: ${version}/" \
+            .cr-charts/csi-driver-nfs/Chart.yaml
+          echo "--- staged Chart.yaml ---"
+          cat .cr-charts/csi-driver-nfs/Chart.yaml
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.7.0
+        with:
+          charts_dir: .cr-charts
+          # Skip creating a GitHub Release for this chart if one already
+          # exists at the same tag (the driver release itself owns the tag).
+          skip_existing: true
+          # Publish index.yaml to the gh-pages branch (default).
+          # Repo Settings -> Pages must be configured to serve from gh-pages.
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
