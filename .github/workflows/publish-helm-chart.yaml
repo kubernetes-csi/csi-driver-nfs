@@ -90,12 +90,20 @@ jobs:
           echo "Checking out tag ${tag}"
           git checkout "refs/tags/${tag}"
 
-      - name: Stage versioned chart for chart-releaser-action
-        # chart-releaser-action expects each chart to live under a directory
-        # whose Chart.yaml declares the release version. The in-tree source at
-        # charts/latest/csi-driver-nfs uses the placeholder version v0.0.0, so
-        # copy it into a staging directory (.cr-charts/csi-driver-nfs) and
-        # rewrite version + appVersion to the release version.
+      - name: Stage chart for chart-releaser
+        # chart-releaser-action's default flow uses `git diff <latest_tag>` to
+        # detect which charts changed. Two constraints steer this step:
+        #   1. `skip_packaging: true` is unusable in v1.7.0 because cr.sh
+        #      references `${latest_tag}` after skipping its assignment,
+        #      which trips `set -o nounset` and fails the run.
+        #   2. `charts/latest/csi-driver-nfs` may not have diffs vs the last
+        #      release tag (e.g. on manual dispatch of an existing version),
+        #      in which case chart-releaser would exit as a no-op with
+        #      "Nothing to do. No chart changes detected."
+        # Stage the chart into a fresh directory, rewrite Chart.yaml, then
+        # create a local-only temporary commit so `git diff` reports the
+        # staged chart as a change. The commit is never pushed; the runner
+        # checkout is discarded when the job ends.
         run: |
           set -euo pipefail
           version="${{ steps.version.outputs.version }}"
@@ -108,6 +116,9 @@ jobs:
             .cr-charts/csi-driver-nfs/Chart.yaml
           echo "--- staged Chart.yaml ---"
           cat .cr-charts/csi-driver-nfs/Chart.yaml
+          # Local-only temp commit so chart-releaser's git diff sees the chart.
+          git add -f .cr-charts
+          git commit -m "ci: stage chart ${version} for chart-releaser" >/dev/null
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
