@@ -1,7 +1,7 @@
 name: Publish Helm Chart to GitHub Pages
 
 # Publishes the chart source under charts/latest/csi-driver-nfs as an OCI-less
-# Helm repository hosted on GitHub Pages, using chart-releaser-action.
+# Helm repository hosted on GitHub Pages.
 #
 # This is additive: the existing raw.githubusercontent.com repository (backed
 # by charts/index.yaml and pre-packaged tgz files under charts/vX.Y.Z/) is
@@ -74,29 +74,12 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Publishing chart version: $version"
 
-      - name: Checkout release tag
-        # When chart_version is provided via workflow_dispatch, ensure we
-        # package the chart source from the matching release tag, not the
-        # branch HEAD (which may contain unreleased changes).
-        if: github.event.inputs.chart_version != ''
-        run: |
-          set -euo pipefail
-          version="${{ steps.version.outputs.version }}"
-          tag="v${version}"
-          if ! git rev-parse "refs/tags/${tag}" >/dev/null 2>&1; then
-            echo "::error::Tag ${tag} not found. Cannot package chart from an untagged version."
-            exit 1
-          fi
-          echo "Checking out tag ${tag}"
-          git checkout "refs/tags/${tag}"
-
       - name: Ensure gh-pages branch exists
-        # chart-releaser's `cr upload` step requires the gh-pages branch to
-        # already exist on the remote (it fails with "fatal: invalid
-        # reference: origin/gh-pages" otherwise). Bootstrap an empty orphan
-        # branch on the first run so subsequent chart-releaser steps can
-        # commit index.yaml into it. Git auth is handled by
-        # actions/checkout's persisted credentials above.
+        # `cr upload` requires the gh-pages branch to already exist on the
+        # remote (it fails with "fatal: invalid reference: origin/gh-pages"
+        # otherwise). Bootstrap an empty orphan branch on the first run so
+        # subsequent chart-releaser steps can commit index.yaml into it. Git
+        # auth is handled by actions/checkout's persisted credentials above.
         run: |
           set -euo pipefail
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
@@ -129,46 +112,70 @@ jobs:
           popd >/dev/null
           git worktree remove --force "$tmpdir"
 
-      - name: Stage chart for chart-releaser
-        # chart-releaser-action's default flow uses `git diff <latest_tag>` to
-        # detect which charts changed. Two constraints steer this step:
-        #   1. `skip_packaging: true` is unusable in v1.7.0 because cr.sh
-        #      references `${latest_tag}` after skipping its assignment,
-        #      which trips `set -o nounset` and fails the run.
-        #   2. `charts/latest/csi-driver-nfs` may not have diffs vs the last
-        #      release tag (e.g. on manual dispatch of an existing version),
-        #      in which case chart-releaser would exit as a no-op with
-        #      "Nothing to do. No chart changes detected."
-        # Stage the chart into a fresh directory, rewrite Chart.yaml, then
-        # create a local-only temporary commit so `git diff` reports the
-        # staged chart as a change. The commit is never pushed; the runner
-        # checkout is discarded when the job ends.
+      - name: Install chart-releaser
+        # We install cr and drive it manually instead of using the action's
+        # full flow. The action hardcodes `-c $(git rev-parse HEAD)` for
+        # `cr upload`; when the workflow stages a chart via a local temporary
+        # commit (or otherwise doesn't sit on a commit that exists on the
+        # remote), GitHub rejects the release with "target_commitish invalid".
+        # Driving cr ourselves lets us pass the release git tag SHA (or
+        # master HEAD) as --commit, which is always resolvable on origin.
+        uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
+        with:
+          install_only: true
+
+      - name: Package chart
+        id: package
         run: |
           set -euo pipefail
           version="${{ steps.version.outputs.version }}"
-          rm -rf .cr-charts .cr-release-packages
-          mkdir -p .cr-charts
-          cp -r charts/latest/csi-driver-nfs .cr-charts/csi-driver-nfs
+          # The workflow_dispatch input has already been validated; require
+          # a matching release tag before packaging.
+          tag="v${version}"
+          if ! git rev-parse "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "::error::Tag ${tag} not found. Cannot package chart from an untagged version."
+            exit 1
+          fi
+          # Dereference to the commit SHA. csi-driver-nfs uses annotated,
+          # signed tags (see RELEASE.md); rev-parsing the tag ref directly
+          # would return the tag object SHA, which GitHub rejects as an
+          # invalid target_commitish for release creation.
+          tag_sha="$(git rev-parse "refs/tags/${tag}^{commit}")"
+          echo "tag_sha=${tag_sha}" >> "$GITHUB_OUTPUT"
+          rm -rf .cr-staging .cr-release-packages
+          mkdir -p .cr-staging .cr-release-packages
+          # Extract the chart source from the release tag without changing HEAD.
+          git archive "refs/tags/${tag}" charts/latest/csi-driver-nfs | tar -x -C .cr-staging
+          mv .cr-staging/charts/latest/csi-driver-nfs .cr-staging/csi-driver-nfs
+          rm -rf .cr-staging/charts
           sed -i \
             -e "s/^version: .*/version: ${version}/" \
             -e "s/^appVersion: .*/appVersion: ${version}/" \
-            .cr-charts/csi-driver-nfs/Chart.yaml
+            .cr-staging/csi-driver-nfs/Chart.yaml
           echo "--- staged Chart.yaml ---"
-          cat .cr-charts/csi-driver-nfs/Chart.yaml
-          # Local-only temp commit so chart-releaser's git diff sees the chart.
-          git add -f .cr-charts
-          git commit -m "ci: stage chart ${version} for chart-releaser" >/dev/null
+          cat .cr-staging/csi-driver-nfs/Chart.yaml
+          helm package .cr-staging/csi-driver-nfs -d .cr-release-packages
+          ls -la .cr-release-packages
 
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
-        with:
-          charts_dir: .cr-charts
-          # Skip uploading if a chart release already exists for this version
-          # (e.g. on workflow re-runs). chart-releaser names releases as
-          # <chart-name>-<version> (e.g. csi-driver-nfs-4.13.4), so they do
-          # not collide with the driver's own v* tag releases.
-          skip_existing: true
-          # Publish index.yaml to the gh-pages branch (default).
-          # Repo Settings -> Pages must be configured to serve from gh-pages.
+      - name: Release chart and update index
         env:
           CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          owner=$(cut -d '/' -f 1 <<< "$GITHUB_REPOSITORY")
+          repo=$(cut -d '/' -f 2 <<< "$GITHUB_REPOSITORY")
+          commit="${{ steps.package.outputs.tag_sha }}"
+          # Create GitHub Release csi-driver-nfs-<version> at the tag SHA and
+          # attach the packaged tgz. --skip-existing makes re-runs idempotent.
+          cr upload \
+            --owner "$owner" \
+            --repo "$repo" \
+            --commit "$commit" \
+            --token "$CR_TOKEN" \
+            --skip-existing
+          # Update index.yaml on the gh-pages branch and push it.
+          cr index \
+            --owner "$owner" \
+            --repo "$repo" \
+            --token "$CR_TOKEN" \
+            --push
