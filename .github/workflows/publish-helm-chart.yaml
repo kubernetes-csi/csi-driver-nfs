@@ -90,6 +90,45 @@ jobs:
           echo "Checking out tag ${tag}"
           git checkout "refs/tags/${tag}"
 
+      - name: Ensure gh-pages branch exists
+        # chart-releaser's `cr upload` step requires the gh-pages branch to
+        # already exist on the remote (it fails with "fatal: invalid
+        # reference: origin/gh-pages" otherwise). Bootstrap an empty orphan
+        # branch on the first run so subsequent chart-releaser steps can
+        # commit index.yaml into it. Git auth is handled by
+        # actions/checkout's persisted credentials above.
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            echo "gh-pages branch already exists on origin."
+            exit 0
+          fi
+          echo "gh-pages branch not found on origin; bootstrapping empty orphan branch."
+          tmpdir="$(mktemp -d)"
+          git worktree add --detach "$tmpdir"
+          pushd "$tmpdir" >/dev/null
+          git checkout --orphan gh-pages
+          git rm -rf . >/dev/null 2>&1 || true
+          cat > README.md <<'EOF'
+          # csi-driver-nfs helm chart repository
+
+          This branch hosts the Helm chart repository for csi-driver-nfs via
+          GitHub Pages. Published automatically by the
+          `Publish Helm Chart to GitHub Pages` workflow.
+
+          To use:
+
+              helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
+              helm repo update csi-driver-nfs
+              helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs \
+                --namespace kube-system --version <x.y.z>
+          EOF
+          git add README.md
+          git commit -m "chore: bootstrap gh-pages branch for helm chart repository" >/dev/null
+          git push origin gh-pages
+          popd >/dev/null
+          git worktree remove --force "$tmpdir"
+
       - name: Stage chart for chart-releaser
         # chart-releaser-action's default flow uses `git diff <latest_tag>` to
         # detect which charts changed. Two constraints steer this step:
