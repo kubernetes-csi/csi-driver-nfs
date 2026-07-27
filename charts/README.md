@@ -22,13 +22,13 @@ Hosted via GitHub Pages, not affected by rate limits on `raw.githubusercontent.c
 ```console
 helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
 helm repo update csi-driver-nfs
-helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.12.0
+helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.13.4
 ```
 
 #### Option B: raw.githubusercontent.com (legacy)
 ```console
 helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
-helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.12.0
+helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.13.4
 ```
 
 ### install driver with customized driver name, deployment name

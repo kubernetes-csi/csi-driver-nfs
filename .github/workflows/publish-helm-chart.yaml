@@ -12,7 +12,7 @@ name: Publish Helm Chart to GitHub Pages
 #   helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
 #   helm repo update
 #   helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs \
-#     --namespace kube-system --version <x.y.z>
+#     --namespace kube-system --version 4.13.4
 
 on:
   push:
@@ -27,7 +27,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
 
 jobs:
   release:
@@ -55,6 +54,11 @@ jobs:
           if [ -n "${{ github.event.inputs.chart_version }}" ]; then
             version="${{ github.event.inputs.chart_version }}"
           else
+            # Require a tag ref when chart_version is not provided.
+            if [[ "$GITHUB_REF" != refs/tags/* ]]; then
+              echo "::error::chart_version input is empty and GITHUB_REF ($GITHUB_REF) is not a tag. Please provide a chart_version or run this workflow from a tag." >&2
+              exit 1
+            fi
             # Strip leading refs/tags/ and any leading 'v' (charts are semver, no v-prefix since 4.11.0).
             raw="${GITHUB_REF#refs/tags/}"
             version="${raw#v}"
