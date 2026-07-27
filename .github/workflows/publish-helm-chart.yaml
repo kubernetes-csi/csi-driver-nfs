@@ -90,29 +90,36 @@ jobs:
           echo "Checking out tag ${tag}"
           git checkout "refs/tags/${tag}"
 
-      - name: Stage versioned chart for chart-releaser-action
-        # chart-releaser-action expects each chart to live under a directory
-        # whose Chart.yaml declares the release version. The in-tree source at
-        # charts/latest/csi-driver-nfs uses the placeholder version v0.0.0, so
-        # copy it into a staging directory (.cr-charts/csi-driver-nfs) and
-        # rewrite version + appVersion to the release version.
+      - name: Package chart
+        # chart-releaser-action's default "discover changed charts" step diffs
+        # charts_dir against the latest git tag; since we stage the chart
+        # into an untracked directory, it would always report "no changes"
+        # and skip publishing. Instead, package the chart ourselves and let
+        # chart-releaser only handle upload + index update via
+        # skip_packaging: true.
         run: |
           set -euo pipefail
           version="${{ steps.version.outputs.version }}"
-          rm -rf .cr-charts .cr-release-packages
-          mkdir -p .cr-charts
-          cp -r charts/latest/csi-driver-nfs .cr-charts/csi-driver-nfs
+          rm -rf .cr-staging .cr-release-packages
+          mkdir -p .cr-staging .cr-release-packages
+          cp -r charts/latest/csi-driver-nfs .cr-staging/csi-driver-nfs
           sed -i \
             -e "s/^version: .*/version: ${version}/" \
             -e "s/^appVersion: .*/appVersion: ${version}/" \
-            .cr-charts/csi-driver-nfs/Chart.yaml
+            .cr-staging/csi-driver-nfs/Chart.yaml
           echo "--- staged Chart.yaml ---"
-          cat .cr-charts/csi-driver-nfs/Chart.yaml
+          cat .cr-staging/csi-driver-nfs/Chart.yaml
+          helm package .cr-staging/csi-driver-nfs -d .cr-release-packages
+          ls -la .cr-release-packages
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
         with:
-          charts_dir: .cr-charts
+          # Skip packaging: we already produced the tgz under
+          # .cr-release-packages above. This also bypasses the built-in
+          # "discover changed charts" diff, which would otherwise report
+          # no changes because our staged chart lives outside the repo tree.
+          skip_packaging: true
           # Skip uploading if a chart release already exists for this version
           # (e.g. on workflow re-runs). chart-releaser names releases as
           # <chart-name>-<version> (e.g. csi-driver-nfs-4.13.4), so they do
