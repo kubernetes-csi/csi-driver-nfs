@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
@@ -43,7 +43,7 @@ jobs:
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
       - name: Install Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
         with:
           version: v3.14.0
 
@@ -52,7 +52,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "${{ github.event.inputs.chart_version }}" ]; then
-            version="${{ github.event.inputs.chart_version }}"
+            # Strip leading 'v' if provided (e.g. user enters v4.13.4 -> 4.13.4)
+            input="${{ github.event.inputs.chart_version }}"
+            version="${input#v}"
           else
             # Require a tag ref when chart_version is not provided.
             if [[ "$GITHUB_REF" != refs/tags/* ]]; then
@@ -92,7 +94,7 @@ jobs:
           cat .cr-charts/csi-driver-nfs/Chart.yaml
 
       - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.7.0
+        uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
         with:
           charts_dir: .cr-charts
           # Skip creating a GitHub Release for this chart if one already
