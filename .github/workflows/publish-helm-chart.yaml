@@ -129,15 +129,18 @@ jobs:
         run: |
           set -euo pipefail
           version="${{ steps.version.outputs.version }}"
-          # Use the chart source at the matching release tag (falls back to
-          # HEAD when the tag is not present, e.g. when chart_version input
-          # matches an untagged commit — reject in that case).
+          # The workflow_dispatch input has already been validated; require
+          # a matching release tag before packaging.
           tag="v${version}"
           if ! git rev-parse "refs/tags/${tag}" >/dev/null 2>&1; then
             echo "::error::Tag ${tag} not found. Cannot package chart from an untagged version."
             exit 1
           fi
-          tag_sha="$(git rev-parse "refs/tags/${tag}")"
+          # Dereference to the commit SHA. csi-driver-nfs uses annotated,
+          # signed tags (see RELEASE.md); rev-parsing the tag ref directly
+          # would return the tag object SHA, which GitHub rejects as an
+          # invalid target_commitish for release creation.
+          tag_sha="$(git rev-parse "refs/tags/${tag}^{commit}")"
           echo "tag_sha=${tag_sha}" >> "$GITHUB_OUTPUT"
           rm -rf .cr-staging .cr-release-packages
           mkdir -p .cr-staging .cr-release-packages
