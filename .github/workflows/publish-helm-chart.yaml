@@ -12,7 +12,7 @@ name: Publish Helm Chart to GitHub Pages
 #   helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
 #   helm repo update csi-driver-nfs
 #   helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs \
-#     --namespace kube-system --version 4.13.4
+#     --namespace kube-system --version <x.y.z>
 
 on:
   push:
