@@ -6,7 +6,7 @@
 ### Tips
  - install csi snapshot controller: `--set externalSnapshotter.enabled=true`
  - run controller on control plane node: `--set controller.runOnControlPlane=true`
- - set replica of controller as `2`: `--set controller.replicas=2`
+ - set replica of controller as `2`: `--set controller.replicas=2` (requires ≥ 2 schedulable nodes — see [High-availability controller](#high-availability-controller) below)
  - Microk8s based kubernetes recommended settings(refer to https://microk8s.io/docs/nfs):
     - `--set controller.dnsPolicy=ClusterFirstWithHostNet` with `--set node.dnsPolicy=ClusterFirstWithHostNet` -
       external smb server cannot be found based on Default dns.
@@ -34,6 +34,32 @@ helm repo update csi-driver-nfs
 helm search repo csi-driver-nfs --versions
 helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.13.4
 ```
+
+### High-availability controller
+
+`controller.replicas > 1` requires the same number of schedulable nodes as replicas. The controller Deployment uses `hostNetwork: true` (needed to mount NFS shares for CreateVolume), and its `liveness-probe` sidecar plus the `nfs` container's livenessProbe both bind a **fixed host port** (`controller.livenessProbe.healthPort`, default `29652`).
+
+Scheduling two controller replicas onto the same node causes the second pod's `liveness-probe` container to fail binding the port, which trips the livenessProbe and puts the pod into `CrashLoopBackOff`.
+
+To run controller replicas > 1:
+
+1. Ensure your cluster has at least `controller.replicas` schedulable nodes (single-node dev clusters like `k3d` / `kind` must keep `controller.replicas=1`).
+2. Add `podAntiAffinity` on `kubernetes.io/hostname` so replicas cannot co-locate:
+
+```yaml
+controller:
+  replicas: 2
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app: csi-nfs-controller
+```
+
+> [!NOTE]
+> Leader-election log lines like `"Failed to update lease optimistically, falling back to slow path"` in the active controller are **normal noise** when there are 2+ candidates racing for the same lease. They do not indicate a bug.
 
 ### install driver with customized driver name, deployment name
 > only supported from `v3.1.0`+
