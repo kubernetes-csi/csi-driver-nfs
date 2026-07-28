@@ -116,7 +116,11 @@ jobs:
           EOF
           git add README.md
           git commit -m "chore: bootstrap gh-pages branch for helm chart repository" >/dev/null
-          git push origin gh-pages --force-with-lease
+          # Use a plain (non-forced) push so this bootstrap step can only
+          # ever create gh-pages. If the ls-remote check above ever misses
+          # an existing branch (e.g. transient failure), the push will be
+          # safely rejected instead of rewriting gh-pages history.
+          git push origin gh-pages
           popd >/dev/null
           git worktree remove --force "$tmpdir"
 
