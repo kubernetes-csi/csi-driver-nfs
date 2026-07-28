@@ -157,7 +157,12 @@ jobs:
           # with plain git + `helm repo index` avoids the Releases API
           # entirely, and produces the same helm repo layout users expect.
           workdir="$(mktemp -d)"
-          git worktree add "$workdir" gh-pages
+          # Explicitly base the worktree on origin/gh-pages so we never
+          # accidentally branch off HEAD (the release tag commit). Using
+          # -B forces the local gh-pages branch to point at origin/gh-pages
+          # even if a stale local ref exists, making the subsequent push a
+          # fast-forward.
+          git worktree add -B gh-pages "$workdir" origin/gh-pages
           cp "$pkg" "$workdir/"
           pushd "$workdir" >/dev/null
           # Merge the new tgz into the existing index.yaml (create one on
