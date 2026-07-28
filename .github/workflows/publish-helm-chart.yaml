@@ -169,13 +169,13 @@ jobs:
           # attach the packaged tgz. --skip-existing makes re-runs idempotent.
           cr upload \
             --owner "$owner" \
-            --repo "$repo" \
+            --git-repo "$repo" \
             --commit "$commit" \
             --token "$CR_TOKEN" \
             --skip-existing
           # Update index.yaml on the gh-pages branch and push it.
           cr index \
             --owner "$owner" \
-            --repo "$repo" \
+            --git-repo "$repo" \
             --token "$CR_TOKEN" \
             --push
