@@ -37,9 +37,9 @@ helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-syste
 
 ### High-availability controller
 
-`controller.replicas > 1` requires the same number of schedulable nodes as replicas. The controller Deployment uses `hostNetwork: true` (needed to mount NFS shares for CreateVolume), and its `liveness-probe` sidecar plus the `nfs` container's livenessProbe both bind a **fixed host port** (`controller.livenessProbe.healthPort`, default `29652`).
+`controller.replicas > 1` requires the same number of schedulable nodes as replicas. The controller Deployment uses `hostNetwork: true` (needed to mount NFS shares for CreateVolume), so all containers in the pod share the node's network namespace. Its `liveness-probe` sidecar listens on a **fixed host port** (`controller.livenessProbe.healthPort`, default `29652`), which the `nfs` container's livenessProbe HTTP-GETs.
 
-Scheduling two controller replicas onto the same node causes the second pod's `liveness-probe` container to fail binding the port, which trips the livenessProbe and puts the pod into `CrashLoopBackOff`.
+Scheduling two controller replicas onto the same node causes the second pod's `liveness-probe` sidecar to fail binding the port (already taken by the first pod), which trips the `nfs` container's livenessProbe and puts the pod into `CrashLoopBackOff`.
 
 To run controller replicas > 1:
 
