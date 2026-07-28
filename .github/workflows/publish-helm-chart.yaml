@@ -136,12 +136,6 @@ jobs:
             echo "::error::Tag ${tag} not found. Cannot package chart from an untagged version."
             exit 1
           fi
-          # Dereference to the commit SHA. csi-driver-nfs uses annotated,
-          # signed tags (see RELEASE.md); rev-parsing the tag ref directly
-          # would return the tag object SHA, which GitHub rejects as an
-          # invalid target_commitish for release creation.
-          tag_sha="$(git rev-parse "refs/tags/${tag}^{commit}")"
-          echo "tag_sha=${tag_sha}" >> "$GITHUB_OUTPUT"
           rm -rf .cr-staging .cr-release-packages
           mkdir -p .cr-staging .cr-release-packages
           # Extract the chart source from the release tag without changing HEAD.
@@ -157,25 +151,25 @@ jobs:
           helm package .cr-staging/csi-driver-nfs -d .cr-release-packages
           ls -la .cr-release-packages
 
-      - name: Release chart and update index
+      - name: Publish chart on gh-pages
         env:
           CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           owner=$(cut -d '/' -f 1 <<< "$GITHUB_REPOSITORY")
           repo=$(cut -d '/' -f 2 <<< "$GITHUB_REPOSITORY")
-          commit="${{ steps.package.outputs.tag_sha }}"
-          # Create GitHub Release csi-driver-nfs-<version> at the tag SHA and
-          # attach the packaged tgz. --skip-existing makes re-runs idempotent.
-          cr upload \
-            --owner "$owner" \
-            --git-repo "$repo" \
-            --commit "$commit" \
-            --token "$CR_TOKEN" \
-            --skip-existing
-          # Update index.yaml on the gh-pages branch and push it.
+          # Publish the chart directly on the gh-pages branch (both the tgz
+          # package and index.yaml). We deliberately do NOT call `cr upload`
+          # to create a GitHub Release: the org-scoped GITHUB_TOKEN in
+          # kubernetes-csi cannot create Releases (Releases API returns 403
+          # "Resource not accessible by integration" even with
+          # `permissions: contents: write`). Hosting the tgz on gh-pages
+          # side-steps that restriction, and the resulting helm repo
+          # (https://kubernetes-csi.github.io/csi-driver-nfs) still works
+          # the same way for users.
           cr index \
             --owner "$owner" \
             --git-repo "$repo" \
             --token "$CR_TOKEN" \
+            --packages-with-index \
             --push
