@@ -23,7 +23,7 @@ Add the helm repo (pick either source — both host the same charts):
 # Option 1: raw.githubusercontent.com (default)
 helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
 
-# Option 2: GitHub Pages mirror (available since 4.13.4, not affected by raw.githubusercontent.com rate limits, see #995)
+# Option 2: GitHub Pages mirror (available since 4.13.0, not affected by raw.githubusercontent.com rate limits, see #995)
 helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
 ```
 
