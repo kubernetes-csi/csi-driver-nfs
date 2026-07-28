@@ -28,6 +28,15 @@ on:
 permissions:
   contents: write
 
+# Serialize all runs that publish to gh-pages so concurrent tag pushes (or a
+# tag push racing with a manual backfill) can't both try to update index.yaml
+# / push the tgz at once. Without this, one run would either non-fast-forward
+# on push or clobber the other's index.yaml entry. We deliberately do NOT
+# cancel-in-progress: every version must finish publishing.
+concurrency:
+  group: publish-helm-chart-gh-pages
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -107,7 +116,7 @@ jobs:
           EOF
           git add README.md
           git commit -m "chore: bootstrap gh-pages branch for helm chart repository" >/dev/null
-          git push origin gh-pages
+          git push origin gh-pages --force-with-lease
           popd >/dev/null
           git worktree remove --force "$tmpdir"
 
