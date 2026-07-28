@@ -171,6 +171,5 @@ jobs:
             --owner "$owner" \
             --git-repo "$repo" \
             --token "$CR_TOKEN" \
-            --index-path . \
             --packages-with-index \
             --push
