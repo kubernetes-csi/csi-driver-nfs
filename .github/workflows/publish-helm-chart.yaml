@@ -136,12 +136,6 @@ jobs:
             echo "::error::Tag ${tag} not found. Cannot package chart from an untagged version."
             exit 1
           fi
-          # Dereference to the commit SHA. csi-driver-nfs uses annotated,
-          # signed tags (see RELEASE.md); rev-parsing the tag ref directly
-          # would return the tag object SHA, which GitHub rejects as an
-          # invalid target_commitish for release creation.
-          tag_sha="$(git rev-parse "refs/tags/${tag}^{commit}")"
-          echo "tag_sha=${tag_sha}" >> "$GITHUB_OUTPUT"
           rm -rf .cr-staging .cr-release-packages
           mkdir -p .cr-staging .cr-release-packages
           # Extract the chart source from the release tag without changing HEAD.
