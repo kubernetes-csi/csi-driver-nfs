@@ -27,9 +27,11 @@ helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/cs
 helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
 ```
 
-Then install:
+Then update the repo cache, search for available versions, and install:
 
 ```console
+helm repo update csi-driver-nfs
+helm search repo csi-driver-nfs
 helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.13.4
 ```
 
