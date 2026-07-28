@@ -1,7 +1,7 @@
 name: Publish Helm Chart to GitHub Pages
 
-# Publishes the chart source under charts/latest/csi-driver-nfs as an OCI-less
-# Helm repository hosted on GitHub Pages.
+# Publishes the chart source under charts/latest/csi-driver-nfs as a Helm
+# repository hosted on GitHub Pages (the gh-pages branch).
 #
 # This is additive: the existing raw.githubusercontent.com repository (backed
 # by charts/index.yaml and pre-packaged tgz files under charts/vX.Y.Z/) is
@@ -43,7 +43,7 @@ jobs:
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
       - name: Install Helm
-        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v4
         with:
           version: v3.14.0
 
@@ -75,11 +75,10 @@ jobs:
           echo "Publishing chart version: $version"
 
       - name: Ensure gh-pages branch exists
-        # `cr upload` requires the gh-pages branch to already exist on the
-        # remote (it fails with "fatal: invalid reference: origin/gh-pages"
-        # otherwise). Bootstrap an empty orphan branch on the first run so
-        # subsequent chart-releaser steps can commit index.yaml into it. Git
-        # auth is handled by actions/checkout's persisted credentials above.
+        # The publish step needs the gh-pages branch to already exist on
+        # origin so it can check it out with 'git worktree'. Bootstrap an
+        # empty orphan branch on the first run. Git auth is handled by
+        # actions/checkout's persisted credentials above.
         run: |
           set -euo pipefail
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
@@ -112,18 +111,6 @@ jobs:
           popd >/dev/null
           git worktree remove --force "$tmpdir"
 
-      - name: Install chart-releaser
-        # We install cr and drive it manually instead of using the action's
-        # full flow. The action hardcodes `-c $(git rev-parse HEAD)` for
-        # `cr upload`; when the workflow stages a chart via a local temporary
-        # commit (or otherwise doesn't sit on a commit that exists on the
-        # remote), GitHub rejects the release with "target_commitish invalid".
-        # Driving cr ourselves lets us pass the release git tag SHA (or
-        # master HEAD) as --commit, which is always resolvable on origin.
-        uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
-        with:
-          install_only: true
-
       - name: Package chart
         id: package
         run: |
@@ -152,24 +139,49 @@ jobs:
           ls -la .cr-release-packages
 
       - name: Publish chart on gh-pages
-        env:
-          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          owner=$(cut -d '/' -f 1 <<< "$GITHUB_REPOSITORY")
-          repo=$(cut -d '/' -f 2 <<< "$GITHUB_REPOSITORY")
+          version="${{ steps.version.outputs.version }}"
+          pkg=".cr-release-packages/csi-driver-nfs-${version}.tgz"
+          if [ ! -f "$pkg" ]; then
+            echo "::error::Expected package $pkg was not produced by the previous step."
+            exit 1
+          fi
           # Publish the chart directly on the gh-pages branch (both the tgz
-          # package and index.yaml). We deliberately do NOT call `cr upload`
-          # to create a GitHub Release: the org-scoped GITHUB_TOKEN in
-          # kubernetes-csi cannot create Releases (Releases API returns 403
-          # "Resource not accessible by integration" even with
-          # `permissions: contents: write`). Hosting the tgz on gh-pages
-          # side-steps that restriction, and the resulting helm repo
-          # (https://kubernetes-csi.github.io/csi-driver-nfs) still works
-          # the same way for users.
-          cr index \
-            --owner "$owner" \
-            --git-repo "$repo" \
-            --token "$CR_TOKEN" \
-            --packages-with-index \
-            --push
+          # package and index.yaml). We deliberately do NOT use
+          # chart-releaser: even with --packages-with-index, `cr index` in
+          # v1.7.0 still queries the GitHub Release URL (`GET
+          # /releases/tags/csi-driver-nfs-<ver>`) and fails with 404 because
+          # kubernetes-csi's org-scoped GITHUB_TOKEN cannot create Releases
+          # ("Resource not accessible by integration"). Doing this by hand
+          # with plain git + `helm repo index` avoids the Releases API
+          # entirely, and produces the same helm repo layout users expect.
+          workdir="$(mktemp -d)"
+          # Explicitly base the worktree on origin/gh-pages so we never
+          # accidentally branch off HEAD (the release tag commit). Using
+          # -B forces the local gh-pages branch to point at origin/gh-pages
+          # even if a stale local ref exists, making the subsequent push a
+          # fast-forward.
+          git worktree add -B gh-pages "$workdir" origin/gh-pages
+          cp "$pkg" "$workdir/"
+          pushd "$workdir" >/dev/null
+          # Merge the new tgz into the existing index.yaml (create one on
+          # first publish). --url makes the download URLs absolute so
+          # `helm repo add` can serve them directly from GitHub Pages.
+          if [ -f index.yaml ]; then
+            helm repo index . \
+              --url "https://kubernetes-csi.github.io/csi-driver-nfs" \
+              --merge index.yaml
+          else
+            helm repo index . \
+              --url "https://kubernetes-csi.github.io/csi-driver-nfs"
+          fi
+          git add "csi-driver-nfs-${version}.tgz" index.yaml
+          if git diff --cached --quiet; then
+            echo "No changes to publish."
+          else
+            git commit -m "publish csi-driver-nfs chart ${version}"
+            git push origin gh-pages
+          fi
+          popd >/dev/null
+          git worktree remove --force "$workdir"
