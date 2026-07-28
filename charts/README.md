@@ -17,9 +17,24 @@
 > [!IMPORTANT]  
 > Starting from version `4.11.0`, the prefix `v` is removed from helm chart release so they are in line with [semver](https://semver.org). Therefore, when upgrading, refer to version `4.11.0` instead of `v4.11.0`.
 
+The chart is published to two Helm repositories. Either one works — pick whichever is more reliable from your network.
+
+#### Option 1: raw.githubusercontent.com (default)
+
 ```console
 helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
-helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.12.0
+helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.13.4
+```
+
+#### Option 2: GitHub Pages (mirror)
+
+Available starting from version `4.13.4`. Not affected by `raw.githubusercontent.com` rate limits (see [#995](https://github.com/kubernetes-csi/csi-driver-nfs/issues/995)).
+
+```console
+helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
+helm repo update csi-driver-nfs
+helm search repo csi-driver-nfs
+helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.13.4
 ```
 
 ### install driver with customized driver name, deployment name
