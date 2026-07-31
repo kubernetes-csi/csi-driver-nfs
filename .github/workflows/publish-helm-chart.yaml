@@ -176,6 +176,18 @@ jobs:
           # even if a stale local ref exists, making the subsequent push a
           # fast-forward.
           git worktree add -B gh-pages "$workdir" origin/gh-pages
+          # Skip republishing if this exact version's tgz is already on
+          # gh-pages. `helm repo index` unconditionally rewrites the
+          # top-level `generated:` timestamp (and per-entry `created:`
+          # timestamps when re-packaging), so without this guard a rerun
+          # for an already-published version would produce a commit with
+          # only timestamp churn, spamming gh-pages history and making
+          # reruns non-idempotent.
+          if [ -f "$workdir/csi-driver-nfs-${version}.tgz" ]; then
+            echo "csi-driver-nfs-${version}.tgz already published on gh-pages; skipping republish."
+            git worktree remove --force "$workdir"
+            exit 0
+          fi
           cp "$pkg" "$workdir/"
           pushd "$workdir" >/dev/null
           # Merge the new tgz into the existing index.yaml (create one on
