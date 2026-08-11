@@ -14,28 +14,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script verifies that the content of a directory managed
-# by "git subtree" has not been modified locally. It does that
-# by looking for commits that modify the files with the
-# subtree prefix (aka directory) while ignoring merge
-# commits. Merge commits are where "git subtree" pulls the
-# upstream files into the directory.
+# Verify that DIR is a clean copy of upstream csi-release-tools.
 #
-# Theoretically a developer can subvert this check by modifying files
-# in a merge commit, but in practice that shouldn't happen.
+# We read the upstream SHA from the "git-subtree-split" line that
+# "git subtree" writes into the pull commit's message, fetch that
+# SHA, and require its tree to equal HEAD:DIR.
 
 DIR="$1"
-if [ ! "$DIR" ]; then
+if [ -z "$DIR" ]; then
     echo "usage: $0 <directory>" >&2
     exit 1
 fi
 
-REV=$(git log -n1 --remove-empty --format=format:%H --no-merges -- "$DIR")
-if [ "$REV" ]; then
-    echo "Directory '$DIR' contains non-upstream changes:"
-    echo
-    git log --no-merges -- "$DIR"
+# csi-release-tools itself does not contain release-tools/.
+[ -d "$DIR" ] || exit 0
+
+UPSTREAM_URL="${UPSTREAM_URL:-https://github.com/kubernetes-csi/csi-release-tools.git}"
+
+REV=$(git log -1 --grep="^git-subtree-dir: $DIR\$" --format=%H)
+if [ -z "$REV" ]; then
+    echo "No subtree pull recorded for '$DIR'." >&2
     exit 1
-else
-    echo "$DIR is a clean copy of upstream."
 fi
+
+# A squashed PR with multiple pulls carries one trailer block per pull; the last one is HEAD.
+SPLIT=$(git log -1 --format=%B "$REV" | grep '^git-subtree-split: ' | tail -1 | cut -d' ' -f2)
+if [ -z "$SPLIT" ]; then
+    echo "Subtree commit $REV has no git-subtree-split trailer." >&2
+    exit 1
+fi
+
+git fetch --quiet --no-tags "$UPSTREAM_URL" "$SPLIT"
+
+if [ "$(git rev-parse "HEAD:$DIR")" = "$(git rev-parse "$SPLIT^{tree}")" ]; then
+    echo "$DIR matches upstream at $SPLIT."
+    exit 0
+fi
+
+echo "$DIR diverges from upstream at $SPLIT:" >&2
+git diff --stat "$SPLIT" "HEAD:$DIR" >&2
+exit 1

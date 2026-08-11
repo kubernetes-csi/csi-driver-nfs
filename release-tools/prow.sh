@@ -86,7 +86,7 @@ configvar CSI_PROW_BUILD_PLATFORMS "linux amd64 amd64; linux ppc64le ppc64le -pp
 # which is disabled with GOFLAGS=-mod=vendor).
 configvar GOFLAGS_VENDOR "$( [ -d vendor ] && echo '-mod=vendor' )" "Go flags for using the vendor directory"
 
-configvar CSI_PROW_GO_VERSION_BUILD "1.26.4" "Go version for building the component" # depends on component's source code
+configvar CSI_PROW_GO_VERSION_BUILD "1.26.5" "Go version for building the component" # depends on component's source code
 configvar CSI_PROW_GO_VERSION_E2E "" "override Go version for building the Kubernetes E2E test suite" # normally doesn't need to be set, see install_e2e
 configvar CSI_PROW_GO_VERSION_SANITY "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building the csi-sanity test suite" # depends on CSI_PROW_SANITY settings below
 configvar CSI_PROW_GO_VERSION_KIND "${CSI_PROW_GO_VERSION_BUILD}" "Go version for building 'kind'" # depends on CSI_PROW_KIND_VERSION below
@@ -240,7 +240,7 @@ configvar CSI_PROW_SIDECAR_E2E_PATH "${CSI_PROW_SIDECAR_E2E_IMPORT_PATH}" "CSI S
 # of the cluster. The alternative would have been to (cross-)compile csi-sanity
 # and install it inside the cluster, which is not necessarily easier.
 configvar CSI_PROW_SANITY_REPO https://github.com/kubernetes-csi/csi-test "csi-test repo"
-configvar CSI_PROW_SANITY_VERSION v5.3.1 "csi-test version"
+configvar CSI_PROW_SANITY_VERSION v5.5.0 "csi-test version"
 configvar CSI_PROW_SANITY_PACKAGE_PATH github.com/kubernetes-csi/csi-test "csi-test package"
 configvar CSI_PROW_SANITY_SERVICE "hostpath-service" "Kubernetes TCP service name that exposes csi.sock"
 configvar CSI_PROW_SANITY_POD "csi-hostpathplugin-0" "Kubernetes pod with CSI driver"
