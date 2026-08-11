@@ -180,7 +180,7 @@ def get_regexs():
     years = range(2014, date.today().year + 1)
     regexs["date"] = re.compile( '(%s)' % "|".join(map(lambda l: str(l), years)) )
     # strip // +build \n\n build constraints
-    regexs["go_build_constraints"] = re.compile(r"^(// \+build.*\n)+\n", re.MULTILINE)
+    regexs["go_build_constraints"] = re.compile(r"^(//go:build.*\n(// \+build.*\n)*|// \+build.*\n(// \+build.*\n)*)\n", re.MULTILINE)
     # strip #!.* from shell scripts
     regexs["shebang"] = re.compile(r"^(#!.*\n)\n*", re.MULTILINE)
     return regexs

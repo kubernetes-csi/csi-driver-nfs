@@ -7,27 +7,27 @@ image:
         pullPolicy: IfNotPresent
     csiProvisioner:
         repository: /sig-storage/csi-provisioner
-        tag: v6.2.0
+        tag: v6.3.0
         pullPolicy: IfNotPresent
     csiResizer:
         repository: /sig-storage/csi-resizer
-        tag: v2.1.0
+        tag: v2.2.1
         pullPolicy: IfNotPresent
     csiSnapshotter:
         repository: /sig-storage/csi-snapshotter
-        tag: v8.5.0
+        tag: v8.6.0
         pullPolicy: IfNotPresent
     livenessProbe:
         repository: /sig-storage/livenessprobe
-        tag: v2.18.0
+        tag: v2.19.0
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
         repository: /sig-storage/csi-node-driver-registrar
-        tag: v2.16.0
+        tag: v2.17.0
         pullPolicy: IfNotPresent
     externalSnapshotter:
         repository: /sig-storage/snapshot-controller
-        tag: v8.5.0
+        tag: v8.6.0
         pullPolicy: IfNotPresent
 
 serviceAccount:
@@ -53,6 +53,7 @@ kubeletDir: /var/lib/kubelet
 controller:
   name: csi-nfs-controller
   replicas: 1
+  revisionHistoryLimit: 10
   strategyType: Recreate
   runOnMaster: false
   runOnControlPlane: false
@@ -113,21 +114,24 @@ controller:
         cpu: 10m
         memory: 20Mi
 
+nodeDriverRegistrar:
+  timeout: 60
+  healthPort: 19809
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    timeoutSeconds: 10
+    periodSeconds: 20
+    failureThreshold: 2
+
 node:
   name: csi-nfs-node
   dnsPolicy: ClusterFirstWithHostNet  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
+  revisionHistoryLimit: 10
   maxUnavailable: 1
   logLevel: 5
   livenessProbe:
     healthPort: 29653
-  nodeDriverRegistrar:
-    healthPort: 19809
-    livenessProbe:
-      enabled: true
-      initialDelaySeconds: 20
-      timeoutSeconds: 10
-      periodSeconds: 20
-      failureThreshold: 2
   affinity: {}
   nodeSelector: {}
   priorityClassName: system-cluster-critical
@@ -160,6 +164,7 @@ externalSnapshotter:
   deletionPolicy: Delete
   controller:
     replicas: 1
+    revisionHistoryLimit: 10
   resources:
     limits:
       memory: 300Mi

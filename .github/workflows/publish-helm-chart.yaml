@@ -1,0 +1,212 @@
+name: Publish Helm Chart to GitHub Pages
+
+# Publishes the chart source under charts/latest/csi-driver-nfs as a Helm
+# repository hosted on GitHub Pages (the gh-pages branch).
+#
+# This is additive: the existing raw.githubusercontent.com repository (backed
+# by charts/index.yaml and pre-packaged tgz files under charts/vX.Y.Z/) is
+# untouched. GitHub Pages is offered as an alternate installation source that
+# is not affected by rate limits on raw.githubusercontent.com (see #995).
+#
+# After the first successful run, users can install the chart with:
+#   helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
+#   helm repo update csi-driver-nfs
+#   helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs \
+#     --namespace kube-system --version <x.y.z>
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      chart_version:
+        description: 'Chart version to publish (e.g. 4.13.5). Leave blank to reuse the git tag.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+# Serialize all runs that publish to gh-pages so concurrent tag pushes (or a
+# tag push racing with a manual backfill) can't both try to update index.yaml
+# / push the tgz at once. Without this, one run would either non-fast-forward
+# on push or clobber the other's index.yaml entry. We deliberately do NOT
+# cancel-in-progress: every version must finish publishing.
+concurrency:
+  group: publish-helm-chart-gh-pages
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v4
+        with:
+          version: v3.14.0
+
+      - name: Determine chart version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ -n "${{ github.event.inputs.chart_version }}" ]; then
+            # Strip leading 'v' if provided (e.g. user enters v4.13.4 -> 4.13.4)
+            input="${{ github.event.inputs.chart_version }}"
+            version="${input#v}"
+          else
+            # Require a tag ref when chart_version is not provided.
+            if [[ "$GITHUB_REF" != refs/tags/* ]]; then
+              echo "::error::chart_version input is empty and GITHUB_REF ($GITHUB_REF) is not a tag. Please provide a chart_version or run this workflow from a tag." >&2
+              exit 1
+            fi
+            # Strip leading 'v' — charts are semver without v-prefix since 4.11.0.
+            # This workflow only triggers on new v* tags, so pre-4.11.0 tags
+            # (which used a v-prefixed chart version) are not affected.
+            raw="${GITHUB_REF#refs/tags/}"
+            version="${raw#v}"
+          fi
+          if [ -z "$version" ]; then
+            echo "Could not determine chart version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Publishing chart version: $version"
+
+      - name: Ensure gh-pages branch exists
+        # The publish step needs the gh-pages branch to already exist on
+        # origin so it can check it out with 'git worktree'. Bootstrap an
+        # empty orphan branch on the first run. Git auth is handled by
+        # actions/checkout's persisted credentials above.
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            echo "gh-pages branch already exists on origin."
+            exit 0
+          fi
+          echo "gh-pages branch not found on origin; bootstrapping empty orphan branch."
+          tmpdir="$(mktemp -d)"
+          git worktree add --detach "$tmpdir"
+          pushd "$tmpdir" >/dev/null
+          git checkout --orphan gh-pages
+          git rm -rf . >/dev/null 2>&1 || true
+          cat > README.md <<'EOF'
+          # csi-driver-nfs helm chart repository
+
+          This branch hosts the Helm chart repository for csi-driver-nfs via
+          GitHub Pages. Published automatically by the
+          `Publish Helm Chart to GitHub Pages` workflow.
+
+          To use:
+
+              helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
+              helm repo update csi-driver-nfs
+              helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs \
+                --namespace kube-system --version <x.y.z>
+          EOF
+          git add README.md
+          git commit -m "chore: bootstrap gh-pages branch for helm chart repository" >/dev/null
+          # Use a plain (non-forced) push so this bootstrap step can only
+          # ever create gh-pages. If the ls-remote check above ever misses
+          # an existing branch (e.g. transient failure), the push will be
+          # safely rejected instead of rewriting gh-pages history.
+          git push origin gh-pages
+          popd >/dev/null
+          git worktree remove --force "$tmpdir"
+
+      - name: Package chart
+        id: package
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          # The workflow_dispatch input has already been validated; require
+          # a matching release tag before packaging.
+          tag="v${version}"
+          if ! git rev-parse "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "::error::Tag ${tag} not found. Cannot package chart from an untagged version."
+            exit 1
+          fi
+          rm -rf .cr-staging .cr-release-packages
+          mkdir -p .cr-staging .cr-release-packages
+          # Extract the chart source from the release tag without changing HEAD.
+          git archive "refs/tags/${tag}" charts/latest/csi-driver-nfs | tar -x -C .cr-staging
+          mv .cr-staging/charts/latest/csi-driver-nfs .cr-staging/csi-driver-nfs
+          rm -rf .cr-staging/charts
+          sed -i \
+            -e "s/^version: .*/version: ${version}/" \
+            -e "s/^appVersion: .*/appVersion: ${version}/" \
+            .cr-staging/csi-driver-nfs/Chart.yaml
+          echo "--- staged Chart.yaml ---"
+          cat .cr-staging/csi-driver-nfs/Chart.yaml
+          helm package .cr-staging/csi-driver-nfs -d .cr-release-packages
+          ls -la .cr-release-packages
+
+      - name: Publish chart on gh-pages
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          pkg=".cr-release-packages/csi-driver-nfs-${version}.tgz"
+          if [ ! -f "$pkg" ]; then
+            echo "::error::Expected package $pkg was not produced by the previous step."
+            exit 1
+          fi
+          # Publish the chart directly on the gh-pages branch (both the tgz
+          # package and index.yaml). We deliberately do NOT use
+          # chart-releaser: even with --packages-with-index, `cr index` in
+          # v1.7.0 still queries the GitHub Release URL (`GET
+          # /releases/tags/csi-driver-nfs-<ver>`) and fails with 404 because
+          # kubernetes-csi's org-scoped GITHUB_TOKEN cannot create Releases
+          # ("Resource not accessible by integration"). Doing this by hand
+          # with plain git + `helm repo index` avoids the Releases API
+          # entirely, and produces the same helm repo layout users expect.
+          workdir="$(mktemp -d)"
+          # Explicitly base the worktree on origin/gh-pages so we never
+          # accidentally branch off HEAD (the release tag commit). Using
+          # -B forces the local gh-pages branch to point at origin/gh-pages
+          # even if a stale local ref exists, making the subsequent push a
+          # fast-forward.
+          git worktree add -B gh-pages "$workdir" origin/gh-pages
+          # Skip republishing if this exact version's tgz is already on
+          # gh-pages. `helm repo index` unconditionally rewrites the
+          # top-level `generated:` timestamp (and per-entry `created:`
+          # timestamps when re-packaging), so without this guard a rerun
+          # for an already-published version would produce a commit with
+          # only timestamp churn, spamming gh-pages history and making
+          # reruns non-idempotent.
+          if [ -f "$workdir/csi-driver-nfs-${version}.tgz" ]; then
+            echo "csi-driver-nfs-${version}.tgz already published on gh-pages; skipping republish."
+            git worktree remove --force "$workdir"
+            exit 0
+          fi
+          cp "$pkg" "$workdir/"
+          pushd "$workdir" >/dev/null
+          # Merge the new tgz into the existing index.yaml (create one on
+          # first publish). --url makes the download URLs absolute so
+          # `helm repo add` can serve them directly from GitHub Pages.
+          if [ -f index.yaml ]; then
+            helm repo index . \
+              --url "https://kubernetes-csi.github.io/csi-driver-nfs" \
+              --merge index.yaml
+          else
+            helm repo index . \
+              --url "https://kubernetes-csi.github.io/csi-driver-nfs"
+          fi
+          git add "csi-driver-nfs-${version}.tgz" index.yaml
+          if git diff --cached --quiet; then
+            echo "No changes to publish."
+          else
+            git commit -m "publish csi-driver-nfs chart ${version}"
+            git push origin gh-pages
+          fi
+          popd >/dev/null
+          git worktree remove --force "$workdir"

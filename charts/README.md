@@ -6,7 +6,7 @@
 ### Tips
  - install csi snapshot controller: `--set externalSnapshotter.enabled=true`
  - run controller on control plane node: `--set controller.runOnControlPlane=true`
- - set replica of controller as `2`: `--set controller.replicas=2`
+ - set replica of controller as `2`: `--set controller.replicas=2` (requires ≥ 2 schedulable nodes — see [High-availability controller](#high-availability-controller) below)
  - Microk8s based kubernetes recommended settings(refer to https://microk8s.io/docs/nfs):
     - `--set controller.dnsPolicy=ClusterFirstWithHostNet` with `--set node.dnsPolicy=ClusterFirstWithHostNet` -
       external smb server cannot be found based on Default dns.
@@ -17,10 +17,49 @@
 > [!IMPORTANT]  
 > Starting from version `4.11.0`, the prefix `v` is removed from helm chart release so they are in line with [semver](https://semver.org). Therefore, when upgrading, refer to version `4.11.0` instead of `v4.11.0`.
 
+Add the helm repo (pick either source — both host the same charts):
+
 ```console
+# Option 1: raw.githubusercontent.com (default)
 helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
-helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.12.0
+
+# Option 2: GitHub Pages mirror (available since 4.13.0, not affected by raw.githubusercontent.com rate limits, see #995)
+helm repo add csi-driver-nfs https://kubernetes-csi.github.io/csi-driver-nfs
 ```
+
+Then update the repo cache, search for available versions, and install:
+
+```console
+helm repo update csi-driver-nfs
+helm search repo csi-driver-nfs --versions
+helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.13.4
+```
+
+### High-availability controller
+
+`controller.replicas > 1` requires the same number of schedulable nodes as replicas. The controller Deployment uses `hostNetwork: true` (needed to mount NFS shares for CreateVolume), so all containers in the pod share the node's network namespace. Its `liveness-probe` sidecar listens on a **fixed host port** (`controller.livenessProbe.healthPort`, default `29652`), which the `nfs` container's livenessProbe HTTP-GETs.
+
+Scheduling two controller replicas onto the same node causes the second pod's `liveness-probe` sidecar to fail binding the port (already taken by the first pod), which trips the `nfs` container's livenessProbe and puts the pod into `CrashLoopBackOff`.
+
+To run controller replicas > 1:
+
+1. Ensure your cluster has at least `controller.replicas` schedulable nodes (single-node dev clusters like `k3d` / `kind` must keep `controller.replicas=1`).
+2. Add `podAntiAffinity` on `kubernetes.io/hostname` so replicas cannot co-locate:
+
+```yaml
+controller:
+  replicas: 2
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app: csi-nfs-controller
+```
+
+> [!NOTE]
+> Leader-election log lines like `"Failed to update lease optimistically, falling back to slow path"` in the active controller are **normal noise** when there are 2+ candidates racing for the same lease. They do not indicate a bug.
 
 ### install driver with customized driver name, deployment name
 > only supported from `v3.1.0`+
@@ -56,18 +95,19 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `image.nfs.tag`                                   | csi-driver-nfs image tag                                   | `latest`                                                |
 | `image.nfs.pullPolicy`                            | csi-driver-nfs image pull policy                           | `IfNotPresent`                                                      |
 | `image.csiProvisioner.repository`                 | csi-provisioner docker image                               | `registry.k8s.io/sig-storage/csi-provisioner`                            |
-| `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | `v6.2.0`                                                            |
+| `image.csiProvisioner.tag`                        | csi-provisioner docker image tag                           | `v6.3.0`                                                            |
 | `image.csiProvisioner.pullPolicy`                 | csi-provisioner image pull policy                          | `IfNotPresent`                                                      |
 | `image.livenessProbe.repository`                  | liveness-probe docker image                                | `registry.k8s.io/sig-storage/livenessprobe`                              |
-| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | `v2.18.0`                                                            |
+| `image.livenessProbe.tag`                         | liveness-probe docker image tag                            | `v2.19.0`                                                            |
 | `image.livenessProbe.pullPolicy`                  | liveness-probe image pull policy                           | `IfNotPresent`                                                      |
 | `image.nodeDriverRegistrar.repository`            | csi-node-driver-registrar docker image                     | `registry.k8s.io/sig-storage/csi-node-driver-registrar`                  |
-| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | `v2.16.0`                                                            |
+| `image.nodeDriverRegistrar.tag`                   | csi-node-driver-registrar docker image tag                 | `v2.17.0`                                                            |
 | `image.nodeDriverRegistrar.pullPolicy`            | csi-node-driver-registrar image pull policy                | `IfNotPresent`                                                      |
 | `imagePullSecrets`                                | Specify docker-registry secret names as an array           | [] (does not add image pull secrets to deployed pods)                                                           |
 | `serviceAccount.create`                           | whether create service account of csi-nfs-controller       | `true`                                                              |
 | `rbac.create`                                     | whether create rbac of csi-nfs-controller                  | `true`                                                              |
 | `controller.replicas`                             | replica number of csi-nfs-controller                         | `1`                                                                 |
+| `controller.revisionHistoryLimit`                 | revisionHistoryLimit of csi-nfs-controller                   | `10`                                                                |
 | `controller.runOnMaster`                          | run controller on master node(deprecated on k8s 1.25+)                                                          |`false`                                                           |
 | `controller.runOnControlPlane`                    | run controller on control plane node                                                          |`false`                                                           |
 | `controller.dnsPolicy`                            | dnsPolicy of controller driver, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`                              | `ClusterFirstWithHostNet`                                                             |
@@ -92,12 +132,12 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.resources.nfs.limits.memory`              | csi-driver-nfs memory limits                         | 200Mi                                                          |
 | `controller.resources.nfs.requests.cpu`               | csi-driver-nfs cpu requests limits                   | 10m                                                            |
 | `controller.resources.nfs.requests.memory`            | csi-driver-nfs memory requests limits                | 20Mi                                                           |
-| `node.nodeDriverRegistrar.healthPort`                        | health check port for node-driver-registrar liveness probe        | `19809`    |
-| `node.nodeDriverRegistrar.livenessProbe.enabled`             | enable node-driver-registrar liveness probe               | `false`    |
-| `node.nodeDriverRegistrar.livenessProbe.initialDelaySeconds` | node-driver-registrar liveness probe initialDelaySeconds   | `20`       |
-| `node.nodeDriverRegistrar.livenessProbe.timeoutSeconds`      | node-driver-registrar liveness probe timeoutSeconds                             | `10`       |
-| `node.nodeDriverRegistrar.livenessProbe.periodSeconds`       | node-driver-registrar liveness probe periodSeconds                       | `20`        |
-| `node.nodeDriverRegistrar.livenessProbe.failureThreshold`    | node-driver-registrar liveness probe failureThreshold | `2`        |
+| `nodeDriverRegistrar.healthPort`                        | health check port for node-driver-registrar liveness probe        | `19809`    |
+| `nodeDriverRegistrar.livenessProbe.enabled`             | enable node-driver-registrar liveness probe               | `false`    |
+| `nodeDriverRegistrar.livenessProbe.initialDelaySeconds` | node-driver-registrar liveness probe initialDelaySeconds   | `20`       |
+| `nodeDriverRegistrar.livenessProbe.timeoutSeconds`      | node-driver-registrar liveness probe timeoutSeconds                             | `10`       |
+| `nodeDriverRegistrar.livenessProbe.periodSeconds`       | node-driver-registrar liveness probe periodSeconds                       | `20`        |
+| `nodeDriverRegistrar.livenessProbe.failureThreshold`    | node-driver-registrar liveness probe failureThreshold | `2`        |
 | `node.name`                                           | driver node daemonset name                            | `csi-nfs-node`
 | `node.dnsPolicy`                                      | dnsPolicy of driver node daemonset, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`          |`ClusterFirstWithHostNet`
 | `node.maxUnavailable`                             | `maxUnavailable` value of driver node daemonset                            | `1`
@@ -106,6 +146,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `node.affinity`                                      | node pod affinity                                     | {}                                                             |
 | `node.nodeSelector`                                   | node pod node selector                                | `{}`                                                             |
 | `node.priorityClassName`                              | node pod priority class name                          | `system-cluster-critical`                                                             |
+| `node.revisionHistoryLimit`                           | node pod revisionHistoryLimit                         | `10`                                                                |
 | `node.tolerations`                              | node pod tolerations                            |                                                              |
 | `node.resources.livenessProbe.limits.memory`          | liveness-probe memory limits                          | 100Mi                                                          |
 | `node.resources.livenessProbe.requests.cpu`           | liveness-probe cpu requests limits                    | 10m                                                            |
@@ -119,6 +160,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `externalSnapshotter.enabled`                         | enable snapshot-controller                         | `false`
 | `externalSnapshotter.name`                            | name of snapshot-controller                         | `snapshot-controller`
 | `externalSnapshotter.controller.replicas`             | replica number of snapshot-controller                         | 1
+| `externalSnapshotter.controller.revisionHistoryLimit` | revisionHistoryLimit of snapshot-controller                   | `10`                                                                |
 | `externalSnapshotter.resources.limits.memory`         | snapshot-controller memory limits                          | 300Mi                                                          |
 | `externalSnapshotter.resources.requests.cpu`          | snapshot-controller cpu requests limits                    | 10m                                                            |
 | `externalSnapshotter.resources.requests.memory`       | snapshot-controller memory requests limits                 | 20Mi                                                           |

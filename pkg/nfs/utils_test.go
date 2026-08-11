@@ -173,7 +173,7 @@ func TestChmodIfPermissionMismatch(t *testing.T) {
 	tests := []struct {
 		desc          string
 		path          string
-		mode          os.FileMode
+		mode          uint32
 		expectedError error
 	}{
 		{
