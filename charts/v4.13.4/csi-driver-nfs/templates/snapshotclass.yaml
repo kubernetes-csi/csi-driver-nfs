@@ -4,6 +4,11 @@ apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
   name: {{ .Values.volumeSnapshotClass.name }}
+{{ include "nfs.labels" . | indent 2 }}
+  annotations:
+    {{- with .Values.volumeSnapshotClass.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 driver: {{ .Values.driver.name }}
 deletionPolicy: {{ .Values.volumeSnapshotClass.deletionPolicy }}
 {{- end }}
