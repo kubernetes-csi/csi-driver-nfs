@@ -5,7 +5,7 @@ entries:
     appVersion: 4.13.4
     created: "2026-06-30T08:55:50.879031893Z"
     description: CSI NFS Driver for Kubernetes
-    digest: 815ac441a2dd0e48c82fa92d043e96caac4dd8ac422fbba91ed76892ed32da54
+    digest: 0645e75a470b076cdb9441374bd534a8a29660d0b8df523e59ada49d6a484eb7
     name: csi-driver-nfs
     urls:
     - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/release-4.12/charts/latest/csi-driver-nfs-4.13.4.tgz
@@ -14,7 +14,7 @@ entries:
     appVersion: 4.13.4
     created: "2026-06-30T08:55:50.890403441Z"
     description: CSI NFS Driver for Kubernetes
-    digest: 815ac441a2dd0e48c82fa92d043e96caac4dd8ac422fbba91ed76892ed32da54
+    digest: 0645e75a470b076cdb9441374bd534a8a29660d0b8df523e59ada49d6a484eb7
     name: csi-driver-nfs
     urls:
     - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/release-4.12/charts/v4.13.4/csi-driver-nfs-4.13.4.tgz
