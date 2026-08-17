@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -217,12 +218,35 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			}
 			// give the kernel a moment to notice the old gssd is gone
 			time.Sleep(500 * time.Millisecond)
-			gssdCmd := exec.Command("/usr/sbin/rpc.gssd", "-vvv")
+			// -vvv: verbose, -f: foreground (so we can capture output),
+			// -D: don't require reverse-DNS canonicalization of target NFS server
+			// (kube-dns generally does not serve PTR records for Service IPs, and
+			// the default gssd behavior is to canonicalize the mount target's
+			// hostname before building the SPN, which then fails to match the
+			// nfs/<svc-fqdn>@REALM entry in our keytab and hangs the upcall).
+			gssdCmd := exec.Command("/usr/sbin/rpc.gssd", "-vvv", "-f", "-D")
+			var gssdOut lockedBuffer
+			gssdCmd.Stdout = &gssdOut
+			gssdCmd.Stderr = &gssdOut
 			if err := gssdCmd.Start(); err != nil {
 				klog.Errorf("failed to (re)start rpc.gssd: %v", err)
 				return err
 			}
-			klog.V(3).Infof("(re)started rpc.gssd pid=%d", gssdCmd.Process.Pid)
+			klog.V(3).Infof("(re)started rpc.gssd pid=%d args=%v", gssdCmd.Process.Pid, gssdCmd.Args)
+			// Drain rpc.gssd output into klog so failures are diagnosable instead
+			// of the current silent 110s mount timeout.
+			go func(pid int) {
+				t := time.NewTicker(2 * time.Second)
+				defer t.Stop()
+				for range t.C {
+					if s := gssdOut.drain(); s != "" {
+						klog.V(3).Infof("rpc.gssd pid=%d: %s", pid, s)
+					}
+					if gssdCmd.ProcessState != nil {
+						return
+					}
+				}
+			}(gssdCmd.Process.Pid)
 			// give rpc.gssd a beat to open its rpc_pipefs watches before the mount
 			time.Sleep(1 * time.Second)
 		}
@@ -416,4 +440,26 @@ func isStaleFileHandle(err error) bool {
 		return errno == syscall.ESTALE
 	}
 	return strings.Contains(err.Error(), "stale NFS file handle") || strings.Contains(err.Error(), "stale file handle")
+}
+
+// lockedBuffer is a bytes.Buffer safe for concurrent Write() from a subprocess
+// pipe reader and drain() reads from a klog forwarder goroutine.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+// drain returns and clears the currently buffered bytes as a string.
+func (b *lockedBuffer) drain() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	s := b.buf.String()
+	b.buf.Reset()
+	return s
 }
