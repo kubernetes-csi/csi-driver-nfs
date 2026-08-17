@@ -9,7 +9,7 @@ Name | Meaning | Example Value | Mandatory | Default value
 server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 share | NFS share path | `/` | Yes |
 subDir | sub directory under nfs share |  | No | if sub directory does not exist, this driver would create a new one
-mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount |  | No |
+mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount. See [When to set `mountPermissions`](#when-to-set-mountpermissions) below. |  | No |
 onDelete | when volume is deleted, keep the directory if it's `retain` | `delete`(default), `retain`, `archive`  | No | `delete`
 
  - VolumeID(`volumeHandle`) is the identifier of the volume handled by the driver, format of VolumeID:
@@ -26,7 +26,7 @@ Name | Meaning | Example Value | Mandatory | Default value
 volumeHandle | Specify a value the driver can use to uniquely identify the share in the cluster. | A recommended way to produce a unique value is to combine the nfs-server address, sub directory name and share name: `{nfs-server-address}#{share-name}#{sub-dir-name}`. | Yes |
 volumeAttributes.server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 volumeAttributes.share | NFS share path | `/` |  Yes  |
-volumeAttributes.mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount |  | No |
+volumeAttributes.mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount. See [When to set `mountPermissions`](#when-to-set-mountpermissions) below. |  | No |
 
 ### `VolumeSnapshotClass`
 
@@ -47,6 +47,39 @@ Name | Meaning | Available Value | Mandatory | Default value
 > **Note:** When `--enable-snapshot-compression=false`, snapshots are stored without gzip compression (using `.tar` format instead of `.tar.gz`). This can significantly speed up snapshot creation and restoration for volumes containing already-compressed data. The driver automatically detects the archive format when restoring from a snapshot, ensuring backward compatibility with existing compressed snapshots.
 
 ### Tips
+#### When to set `mountPermissions`
+> By default (`mountPermissions: 0`) the driver does **not** run `chmod` on the mount root after mounting. For **dynamically provisioned** volumes the controller creates the sub-directory with `os.MkdirAll(..., 0777)`, which is then masked by the controller pod's umask (typically `022`), so the resulting mode is usually `0755`. For **statically provisioned** volumes no `MkdirAll` runs and the mount root keeps whatever mode the NFS server already has on the share. Either way, the driver leaves the mode to the underlying filesystem rather than forcing a permissive bit pattern.
+
+If your pods run as **non-root** and get `Permission denied` when writing to the volume, you have three options, listed from most to least preferred:
+
+1. **Use `securityContext.fsGroup` on the pod.** The kubelet's fsGroup logic changes ownership of the mounted volume so that the pod's group can write to it. No driver-side `chmod` needed. This is the standard Kubernetes pattern.
+   ```yaml
+   spec:
+     securityContext:
+       fsGroup: 2000
+   ```
+   > Prerequisites: the `CSIDriver` object must advertise `fsGroupPolicy: File` (the driver ships this by default — see [`deploy/example/fsgroup/README.md`](../deploy/example/fsgroup/README.md)), and the NFS export must allow the kubelet-issued `chown`/`chgrp` on the mount root (i.e. `no_root_squash`, or a `squash_uid` that owns the share). Root-squashed exports may reject the ownership change and surface as a mount failure instead of a write failure.
+2. **Relax the umask on the CSI controller process** so newly created sub-directories are group-writable. Lower the umask of the CSI controller container (e.g. wrap the entrypoint with `umask 002` in the container `command`) so subsequent `MkdirAll(0777)` calls stay at `0775`/`0777`. This is a per-directory fix and only affects sub-directories created after the change.
+3. **Set `mountPermissions` as a last resort.** The driver will `chmod` the mount root to the given mode after each mount. Where to set it depends on how the driver is deployed / how the volume is provisioned:
+   - **Cluster-wide default** — set it once in the Helm chart. `driver.mountPermissions` in `values.yaml` is threaded into the `--mount-permissions` flag on both the controller and node DaemonSet (`charts/latest/csi-driver-nfs/templates/csi-nfs-{controller,node}.yaml`), so every volume served by that driver install picks it up:
+     ```yaml
+     driver:
+       mountPermissions: "0775"
+     ```
+   - **Dynamic provisioning** — override per-StorageClass under `parameters`:
+     ```yaml
+     parameters:
+       mountPermissions: "0777"
+     ```
+   - **Static provisioning** — set it under `spec.csi.volumeAttributes` on the PersistentVolume:
+     ```yaml
+     spec:
+       csi:
+         volumeAttributes:
+           mountPermissions: "0777"
+     ```
+   > ⚠️ `mountPermissions: "0777"` makes the share world-writable and does not solve cross-GID isolation: any pod on the node can write. Do not use this on NFS servers shared across trust boundaries or multi-tenant clusters. Prefer option 1 (with a matching GID) or option 2 first.
+
 #### `subDir` parameter supports following pv/pvc metadata conversion
 > if `subDir` value contains following strings, it would be converted into corresponding pv/pvc name or namespace
  - `${pvc.metadata.name}`
