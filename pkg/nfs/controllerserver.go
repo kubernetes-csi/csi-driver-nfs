@@ -506,8 +506,17 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 		// don't set subDir, server, or share fields: only nfs-server:/share
 		// should be mounted via the volume's own values across all internal
 		// mount callers (CreateVolume, DeleteVolume, CreateSnapshot, etc.)
+		//
+		// Also drop mountPermissions: the internal mount is only used by the
+		// controller to MkdirAll a subdirectory under the base share. Passing
+		// mountPermissions here makes NodePublishVolume run chmod on the mount
+		// root itself, which is rejected by root_squash'd NFS servers (and by
+		// Kerberos exports where the client is authenticated as a non-owner)
+		// with EPERM even though the mount itself succeeded. The subdirectory
+		// permissions are handled separately via chmodIfPermissionMismatch on
+		// internalVolumePath in CreateVolume.
 		switch strings.ToLower(k) {
-		case paramSubDir, paramServer, paramShare:
+		case paramSubDir, paramServer, paramShare, mountPermissionsField:
 			continue
 		default:
 			volContext[k] = v

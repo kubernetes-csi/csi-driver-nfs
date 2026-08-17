@@ -192,7 +192,7 @@ func chmodIfPermissionMismatch(targetPath string, mode uint32) error {
 	mask := os.ModePerm | os.ModeSetuid | os.ModeSetgid | os.ModeSticky
 	currentMode := info.Mode() & mask
 	if currentMode != desiredMode {
-		klog.V(2).Infof("chmod targetPath(%s, currentMode:0%o) with desiredMode(0%o)", targetPath, mode, mode)
+		klog.V(2).Infof("chmod targetPath(%s, currentMode:0%o) with desiredMode(0%o)", targetPath, uint32(currentMode.Perm()|currentMode&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky)), mode)
 		if err := chmod(targetPath, mode); err != nil {
 			return err
 		}
