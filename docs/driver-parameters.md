@@ -48,7 +48,7 @@ Name | Meaning | Available Value | Mandatory | Default value
 
 ### Tips
 #### When to set `mountPermissions`
-> By default (`mountPermissions: 0`) the driver does **not** run `chmod` on the mount root. The permissions of the sub-directory created on the NFS server are whatever the NFS server produces — typically `0755` under a standard umask. This is intentional: the driver does not want to override the storage administrator's permission model.
+> By default (`mountPermissions: 0`) the driver does **not** run `chmod` on the mount root after creating the sub-directory. The controller creates the sub-directory with `os.MkdirAll(..., 0777)`, which is then masked by the controller pod's umask (typically `022`), so the resulting mode is usually `0755`. This is intentional: the driver leaves the mode to the process umask rather than forcing a permissive bit pattern.
 
 If your pods run as **non-root** and get `Permission denied` when writing to the volume, you have three options, listed from most to least preferred:
 
@@ -58,12 +58,20 @@ If your pods run as **non-root** and get `Permission denied` when writing to the
      securityContext:
        fsGroup: 2000
    ```
-2. **Relax the umask on the NFS server** so that new sub-directories are group-writable (e.g. `umask=002` on the export). Appropriate when the NFS server is dedicated to a single trust boundary.
-3. **Set `mountPermissions` on the StorageClass** as a last resort. The driver will `chmod` the mount root to the given mode after each mount.
-   ```yaml
-   parameters:
-     mountPermissions: "0777"
-   ```
+2. **Relax the umask** so that newly created sub-directories are group-writable. Either lower the umask of the CSI controller process (e.g. via the container spec) so subsequent `MkdirAll(0777)` calls actually stay at `0775`/`0777`, or configure the NFS server export with a permissive umask if it applies one on top.
+3. **Set `mountPermissions` as a last resort.** The driver will `chmod` the mount root to the given mode after each mount. Where to set it depends on the provisioning flow:
+   - **Dynamic provisioning:** set `mountPermissions` under the StorageClass `parameters`:
+     ```yaml
+     parameters:
+       mountPermissions: "0777"
+     ```
+   - **Static provisioning:** set it under `spec.csi.volumeAttributes` on the PersistentVolume:
+     ```yaml
+     spec:
+       csi:
+         volumeAttributes:
+           mountPermissions: "0777"
+     ```
    > ⚠️ `mountPermissions: "0777"` makes the share world-writable. Do not use this on NFS servers shared across trust boundaries or multi-tenant clusters. Prefer option 1 or 2 first.
 
 #### `subDir` parameter supports following pv/pvc metadata conversion
