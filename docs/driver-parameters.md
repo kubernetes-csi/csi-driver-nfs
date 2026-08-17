@@ -9,7 +9,7 @@ Name | Meaning | Example Value | Mandatory | Default value
 server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 share | NFS share path | `/` | Yes |
 subDir | sub directory under nfs share |  | No | if sub directory does not exist, this driver would create a new one
-mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount |  | No |
+mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount. See [When to set `mountPermissions`](#when-to-set-mountpermissions) below. |  | No |
 onDelete | when volume is deleted, keep the directory if it's `retain` | `delete`(default), `retain`, `archive`  | No | `delete`
 
  - VolumeID(`volumeHandle`) is the identifier of the volume handled by the driver, format of VolumeID:
@@ -26,7 +26,7 @@ Name | Meaning | Example Value | Mandatory | Default value
 volumeHandle | Specify a value the driver can use to uniquely identify the share in the cluster. | A recommended way to produce a unique value is to combine the nfs-server address, sub directory name and share name: `{nfs-server-address}#{share-name}#{sub-dir-name}`. | Yes |
 volumeAttributes.server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 volumeAttributes.share | NFS share path | `/` |  Yes  |
-volumeAttributes.mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount |  | No |
+volumeAttributes.mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount. See [When to set `mountPermissions`](#when-to-set-mountpermissions) below. |  | No |
 
 ### `VolumeSnapshotClass`
 
@@ -47,6 +47,25 @@ Name | Meaning | Available Value | Mandatory | Default value
 > **Note:** When `--enable-snapshot-compression=false`, snapshots are stored without gzip compression (using `.tar` format instead of `.tar.gz`). This can significantly speed up snapshot creation and restoration for volumes containing already-compressed data. The driver automatically detects the archive format when restoring from a snapshot, ensuring backward compatibility with existing compressed snapshots.
 
 ### Tips
+#### When to set `mountPermissions`
+> By default (`mountPermissions: 0`) the driver does **not** run `chmod` on the mount root. The permissions of the sub-directory created on the NFS server are whatever the NFS server produces — typically `0755` under a standard umask. This is intentional: the driver does not want to override the storage administrator's permission model.
+
+If your pods run as **non-root** and get `Permission denied` when writing to the volume, you have three options, listed from most to least preferred:
+
+1. **Use `securityContext.fsGroup` on the pod.** The kubelet's fsGroup logic changes ownership of the mounted volume so that the pod's group can write to it. No driver-side `chmod` needed. This is the standard Kubernetes pattern and works with most NFS servers.
+   ```yaml
+   spec:
+     securityContext:
+       fsGroup: 2000
+   ```
+2. **Relax the umask on the NFS server** so that new sub-directories are group-writable (e.g. `umask=002` on the export). Appropriate when the NFS server is dedicated to a single trust boundary.
+3. **Set `mountPermissions` on the StorageClass** as a last resort. The driver will `chmod` the mount root to the given mode after each mount.
+   ```yaml
+   parameters:
+     mountPermissions: "0777"
+   ```
+   > ⚠️ `mountPermissions: "0777"` makes the share world-writable. Do not use this on NFS servers shared across trust boundaries or multi-tenant clusters. Prefer option 1 or 2 first.
+
 #### `subDir` parameter supports following pv/pvc metadata conversion
 > if `subDir` value contains following strings, it would be converted into corresponding pv/pvc name or namespace
  - `${pvc.metadata.name}`
