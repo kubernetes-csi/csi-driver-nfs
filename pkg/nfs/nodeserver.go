@@ -177,23 +177,54 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			if err != nil && os.IsNotExist(err) {
 				cmd := exec.CommandContext(ctx, "ktutil")
 				cmd.Stdin = bytes.NewBufferString(fmt.Sprintf("addent -p %s -password -k 1 -f\n%s\nwkt /etc/krb5.keytab", krbPrinc, krbPwd))
+				var ktOut bytes.Buffer
+				cmd.Stdout = &ktOut
+				cmd.Stderr = &ktOut
 				if err := cmd.Run(); err != nil {
-					klog.Errorf("error running 'ktutil': %+v", err)
+					klog.Errorf("error running 'ktutil': %+v, output=%q", err, ktOut.String())
 					return err
 				}
+				klog.V(3).Infof("ktutil output: %s", ktOut.String())
 			}
 			// obtain kerberos TGT
 			cmd := exec.CommandContext(ctx, "kinit", krbPrinc)
 			cmd.Stdin = bytes.NewBufferString(krbPwd + "\n")
+			var kinitOut bytes.Buffer
+			cmd.Stdout = &kinitOut
+			cmd.Stderr = &kinitOut
 			if err := cmd.Run(); err != nil {
-				klog.Errorf("error running 'kinit': %+v", err)
+				klog.Errorf("error running 'kinit': %+v, output=%q", err, kinitOut.String())
 				return err
 			}
+			klog.V(3).Infof("kinit (password) output: %s", kinitOut.String())
 			// initialize credentials from keytab
+			kinitOut.Reset()
 			cmd = exec.CommandContext(ctx, "kinit", "-k", krbPrinc)
+			cmd.Stdout = &kinitOut
+			cmd.Stderr = &kinitOut
 			if err := cmd.Run(); err != nil {
-				klog.Warningf("error running 'kinit -k', but soldiering on: %+v", err)
+				klog.Warningf("error running 'kinit -k', but soldiering on: %+v, output=%q", err, kinitOut.String())
+			} else {
+				klog.V(3).Infof("kinit -k output: %s", kinitOut.String())
 			}
+			// Restart rpc.gssd so it picks up the freshly-written /etc/krb5.conf
+			// and /etc/krb5.keytab. rpc.gssd was started at container init before
+			// these files existed, and it does not re-read them on its own.
+			// Without a restart the kernel GSS upcall for sec=krb5 hangs and the
+			// mount(2) call times out after 110s.
+			if out, err := exec.CommandContext(ctx, "pkill", "-x", "rpc.gssd").CombinedOutput(); err != nil {
+				klog.V(3).Infof("pkill rpc.gssd: err=%v output=%q (ok if not previously running)", err, string(out))
+			}
+			// give the kernel a moment to notice the old gssd is gone
+			time.Sleep(500 * time.Millisecond)
+			gssdCmd := exec.Command("/usr/sbin/rpc.gssd", "-vvv")
+			if err := gssdCmd.Start(); err != nil {
+				klog.Errorf("failed to (re)start rpc.gssd: %v", err)
+				return err
+			}
+			klog.V(3).Infof("(re)started rpc.gssd pid=%d", gssdCmd.Process.Pid)
+			// give rpc.gssd a beat to open its rpc_pipefs watches before the mount
+			time.Sleep(1 * time.Second)
 		}
 		return ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
 	}
