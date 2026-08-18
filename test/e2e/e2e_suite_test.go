@@ -95,8 +95,8 @@ var (
 	krbStorageClassParameters = map[string]string{
 		"server": "nfs-krb-server.default.svc.cluster.local",
 		"share":  "/srv/shared",
-		"csi.storage.k8s.io/provisioner-secret-namespace":   "default",
-		"csi.storage.k8s.io/provisioner-secret-name":        "mount-options",
+		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
+		"csi.storage.k8s.io/provisioner-secret-name":      "mount-options",
 		// Kerberos auth requires the driver to read the krb5 password + krb5.conf
 		// from a CSI secret on both the controller (CreateVolume) and the node
 		// (NodePublishVolume) code paths. Without the node-publish-secret-* keys
