@@ -856,17 +856,33 @@ func getNfsVolFromID(id string) (*nfsVolume, error) {
 //	nfs-server.default.svc.cluster.local#share#snapshot-016f784f-56f4-44d1-9041-5f59e82dbce1#snapshot-016f784f-56f4-44d1-9041-5f59e82dbce1#pvc-4bcbf944-b6f7-4bd0-b50f-3c3dd00efc64
 func getNfsSnapFromID(id string) (*nfsSnapshot, error) {
 	segments := strings.Split(id, separator)
-	if len(segments) == totalIDSnapElements {
-		return &nfsSnapshot{
-			id:      id,
-			server:  segments[idSnapServer],
-			baseDir: segments[idSnapBaseDir],
-			src:     segments[idSnapArchiveName],
-			uuid:    segments[idSnapUUID],
-		}, nil
+	if len(segments) != totalIDSnapElements {
+		return &nfsSnapshot{}, fmt.Errorf("failed to create nfsSnapshot from snapshot ID")
 	}
 
-	return &nfsSnapshot{}, fmt.Errorf("failed to create nfsSnapshot from snapshot ID")
+	baseDir := segments[idSnapBaseDir]
+	uuid := segments[idSnapUUID]
+	src := segments[idSnapArchiveName]
+
+	// These fields flow into filesystem paths (mount targets, os.RemoveAll,
+	// tar archive paths); reject directory traversal sequences.
+	if err := validatePath(baseDir); err != nil {
+		return nil, fmt.Errorf("invalid baseDir %q: %v", baseDir, err)
+	}
+	if err := validatePath(uuid); err != nil {
+		return nil, fmt.Errorf("invalid uuid %q: %v", uuid, err)
+	}
+	if err := validatePath(src); err != nil {
+		return nil, fmt.Errorf("invalid src %q: %v", src, err)
+	}
+
+	return &nfsSnapshot{
+		id:      id,
+		server:  segments[idSnapServer],
+		baseDir: baseDir,
+		src:     src,
+		uuid:    uuid,
+	}, nil
 }
 
 // isValidVolumeCapabilities validates the given VolumeCapability array is valid

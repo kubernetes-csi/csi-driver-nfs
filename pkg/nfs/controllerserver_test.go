@@ -1631,3 +1631,89 @@ func TestGetNfsVolFromID(t *testing.T) {
 		})
 	}
 }
+
+func TestGetNfsSnapFromID(t *testing.T) {
+	cases := []struct {
+		name       string
+		snapshotID string
+		expected   *nfsSnapshot
+		expectErr  bool
+	}{
+		{
+			name:       "empty snapshot ID",
+			snapshotID: "",
+			expected:   &nfsSnapshot{},
+			expectErr:  true,
+		},
+		{
+			name:       "too few segments",
+			snapshotID: "test-server#base-dir#snap-uuid",
+			expected:   &nfsSnapshot{},
+			expectErr:  true,
+		},
+		{
+			name:       "too many segments",
+			snapshotID: "test-server#base-dir#snap-uuid#archive-path#archive-name#extra",
+			expected:   &nfsSnapshot{},
+			expectErr:  true,
+		},
+		{
+			name:       "valid snapshot ID",
+			snapshotID: "nfs-server.default.svc.cluster.local#share#snapshot-016f#snapshot-016f#pvc-4bcb",
+			expected: &nfsSnapshot{
+				id:      "nfs-server.default.svc.cluster.local#share#snapshot-016f#snapshot-016f#pvc-4bcb",
+				server:  "nfs-server.default.svc.cluster.local",
+				baseDir: "share",
+				uuid:    "snapshot-016f",
+				src:     "pvc-4bcb",
+			},
+			expectErr: false,
+		},
+		{
+			name:       "valid snapshot ID with nested baseDir",
+			snapshotID: "test-server#test/base/dir#snap-uuid#archive-path#archive-name",
+			expected: &nfsSnapshot{
+				id:      "test-server#test/base/dir#snap-uuid#archive-path#archive-name",
+				server:  "test-server",
+				baseDir: "test/base/dir",
+				uuid:    "snap-uuid",
+				src:     "archive-name",
+			},
+			expectErr: false,
+		},
+		{
+			name:       "baseDir with path traversal should be rejected",
+			snapshotID: "test-server#../../etc#snap-uuid#archive-path#archive-name",
+			expected:   nil,
+			expectErr:  true,
+		},
+		{
+			name:       "uuid with path traversal should be rejected",
+			snapshotID: "test-server#base-dir#../../etc/shadow#archive-path#archive-name",
+			expected:   nil,
+			expectErr:  true,
+		},
+		{
+			name:       "src with path traversal should be rejected",
+			snapshotID: "test-server#base-dir#snap-uuid#archive-path#../../etc/passwd",
+			expected:   nil,
+			expectErr:  true,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := getNfsSnapFromID(test.snapshotID)
+
+			if test.expectErr && err == nil {
+				t.Errorf("expected error but got nil")
+			}
+			if !test.expectErr && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(result, test.expected) {
+				t.Errorf("got %+v, expected %+v", result, test.expected)
+			}
+		})
+	}
+}
