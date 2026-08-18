@@ -335,7 +335,15 @@ func getVolumeCapabilityFromSecret(volumeID string, secret map[string]string) *c
 }
 
 func validatePath(path string) error {
-	for _, segment := range strings.Split(path, "/") {
+	// Normalize Windows-style separators so backslash traversal (e.g. "..\..")
+	// is caught regardless of the platform the controller runs on. Use
+	// ReplaceAll rather than filepath.ToSlash, which is a no-op on Linux and so
+	// would miss backslash traversal there. Deliberately avoid filepath.Clean:
+	// it collapses trailing ".." (Clean("a/b/..") == "a"), which would drop the
+	// traversal sequence and weaken detection. See PR #1071 for the earlier
+	// Clean-based attempt that was reverted for exactly this reason.
+	normalized := strings.ReplaceAll(path, "\\", "/")
+	for _, segment := range strings.Split(normalized, "/") {
 		if segment == ".." {
 			return fmt.Errorf("path contains directory traversal sequence")
 		}
