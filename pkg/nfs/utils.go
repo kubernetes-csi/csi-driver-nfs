@@ -322,7 +322,7 @@ func WaitUntilTimeout(timeout time.Duration, execFunc ExecFunc, timeoutFunc Time
 func getVolumeCapabilityFromSecret(volumeID string, secret map[string]string) *csi.VolumeCapability {
 	mountOptions := getMountOptions(secret)
 	if mountOptions != "" {
-		klog.V(2).Infof("found mountOptions(%s) for volume(%s)", mountOptions, volumeID)
+		klog.V(2).Infof("found mountOptions for volume(%s)", volumeID)
 		return &csi.VolumeCapability{
 			AccessType: &csi.VolumeCapability_Mount{
 				Mount: &csi.VolumeCapability_MountVolume{
