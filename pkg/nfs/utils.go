@@ -350,3 +350,16 @@ func validatePath(path string) error {
 	}
 	return nil
 }
+
+// isPathWithinBase reports whether path resolves to a location inside base,
+// using purely lexical analysis (filepath.Rel). It rejects paths that resolve
+// to base's parent or a sibling (rel == ".." or a "../" prefix) and absolute
+// paths. Callers that need to account for symlinks must resolve them
+// (e.g. filepath.EvalSymlinks) before calling.
+func isPathWithinBase(base, path string) bool {
+	rel, err := filepath.Rel(base, path)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
+		return false
+	}
+	return true
+}

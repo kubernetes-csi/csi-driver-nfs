@@ -180,7 +180,10 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}()
 
 	// Create subdirectory under base-dir
-	internalVolumePath := getInternalVolumePath(cs.Driver.workingMountDir, nfsVol)
+	internalVolumePath, err := getInternalVolumePath(cs.Driver.workingMountDir, nfsVol)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%v", err)
+	}
 	if err = os.MkdirAll(internalVolumePath, 0777); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to make subdirectory: %v", err)
 	}
@@ -252,10 +255,17 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 			}
 		}()
 
-		internalVolumePath := getInternalVolumePath(cs.Driver.workingMountDir, nfsVol)
+		internalVolumePath, err := getInternalVolumePath(cs.Driver.workingMountDir, nfsVol)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "%v", err)
+		}
+		internalMountPath, err := getInternalMountPath(cs.Driver.workingMountDir, nfsVol)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "%v", err)
+		}
 
 		if strings.EqualFold(nfsVol.onDelete, archive) {
-			archivedInternalVolumePath := filepath.Join(getInternalMountPath(cs.Driver.workingMountDir, nfsVol), "archived-"+nfsVol.subDir)
+			archivedInternalVolumePath := filepath.Join(internalMountPath, "archived-"+nfsVol.subDir)
 			if strings.Contains(nfsVol.subDir, "/") {
 				parentDir := filepath.Dir(archivedInternalVolumePath)
 				klog.V(2).Infof("DeleteVolume: subdirectory(%s) contains '/', make sure the parent directory(%s) exists", nfsVol.subDir, parentDir)
@@ -289,7 +299,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 			parentDir := filepath.Dir(internalVolumePath)
 			klog.V(2).Infof("DeleteVolume: removing empty directories in %s", parentDir)
-			if err = removeEmptyDirs(getInternalMountPath(cs.Driver.workingMountDir, nfsVol), parentDir); err != nil {
+			if err = removeEmptyDirs(internalMountPath, parentDir); err != nil {
 				return nil, status.Errorf(codes.Internal, "failed to remove empty directories: %v", err)
 			}
 		}
@@ -375,7 +385,10 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			klog.Warningf("failed to unmount snapshot nfs server: %v", err)
 		}
 	}()
-	snapInternalVolPath := getInternalVolumePath(cs.Driver.workingMountDir, snapVol)
+	snapInternalVolPath, err := getInternalVolumePath(cs.Driver.workingMountDir, snapVol)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%v", err)
+	}
 	if err = os.MkdirAll(snapInternalVolPath, 0777); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to make subdirectory: %v", err)
 	}
@@ -392,7 +405,10 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 	}()
 
-	srcPath := getInternalVolumePath(cs.Driver.workingMountDir, srcVol)
+	srcPath, err := getInternalVolumePath(cs.Driver.workingMountDir, srcVol)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%v", err)
+	}
 	dstPath := filepath.Join(snapInternalVolPath, snapshot.archiveName(cs.Driver.enableSnapshotCompression))
 
 	klog.V(2).Infof("tar %v -> %v", srcPath, dstPath)
@@ -454,7 +470,10 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}()
 
 	// delete snapshot archive
-	internalVolumePath := getInternalVolumePath(cs.Driver.workingMountDir, vol)
+	internalVolumePath, err := getInternalVolumePath(cs.Driver.workingMountDir, vol)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%v", err)
+	}
 	klog.V(2).Infof("Removing snapshot archive at %v", internalVolumePath)
 	if err = os.RemoveAll(internalVolumePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete subdirectory: %v", err)
@@ -493,7 +512,10 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 	}
 
 	sharePath := filepath.Join(string(filepath.Separator) + vol.baseDir)
-	targetPath := getInternalMountPath(cs.Driver.workingMountDir, vol)
+	targetPath, err := getInternalMountPath(cs.Driver.workingMountDir, vol)
+	if err != nil {
+		return err
+	}
 
 	volContext := map[string]string{
 		paramServer: vol.server,
@@ -512,7 +534,7 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 	}
 
 	klog.V(2).Infof("internally mounting %s:%s at %s", vol.server, sharePath, targetPath)
-	_, err := cs.Driver.ns.NodePublishVolume(ctx, &csi.NodePublishVolumeRequest{
+	_, err = cs.Driver.ns.NodePublishVolume(ctx, &csi.NodePublishVolumeRequest{
 		TargetPath:       targetPath,
 		VolumeContext:    volContext,
 		VolumeCapability: volCap,
@@ -523,11 +545,14 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 
 // Unmount nfs server at base-dir
 func (cs *ControllerServer) internalUnmount(ctx context.Context, vol *nfsVolume) error {
-	targetPath := getInternalMountPath(cs.Driver.workingMountDir, vol)
+	targetPath, err := getInternalMountPath(cs.Driver.workingMountDir, vol)
+	if err != nil {
+		return err
+	}
 
 	// Unmount nfs server at base-dir
 	klog.V(4).Infof("internally unmounting %v", targetPath)
-	_, err := cs.Driver.ns.NodeUnpublishVolume(ctx, &csi.NodeUnpublishVolumeRequest{
+	_, err = cs.Driver.ns.NodeUnpublishVolume(ctx, &csi.NodeUnpublishVolumeRequest{
 		VolumeId:   vol.id,
 		TargetPath: targetPath,
 	})
@@ -564,7 +589,10 @@ func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.Creat
 	}()
 
 	// untar snapshot archive to dst path
-	snapInternalVolPath := getInternalVolumePath(cs.Driver.workingMountDir, snapVol)
+	snapInternalVolPath, err := getInternalVolumePath(cs.Driver.workingMountDir, snapVol)
+	if err != nil {
+		return status.Errorf(codes.Internal, "%v", err)
+	}
 	// Try compressed archive first for backward compatibility, then uncompressed
 	enableCompression := true
 	snapPath := filepath.Join(snapInternalVolPath, snap.archiveName(true))
@@ -573,7 +601,10 @@ func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.Creat
 		snapPath = filepath.Join(snapInternalVolPath, snap.archiveName(false))
 		enableCompression = false
 	}
-	dstPath := getInternalVolumePath(cs.Driver.workingMountDir, dstVol)
+	dstPath, err := getInternalVolumePath(cs.Driver.workingMountDir, dstVol)
+	if err != nil {
+		return status.Errorf(codes.Internal, "%v", err)
+	}
 	klog.V(2).Infof("copy volume from snapshot %v -> %v", snapPath, dstPath)
 
 	if cs.Driver.useTarCommandInSnapshot {
@@ -600,9 +631,16 @@ func (cs *ControllerServer) copyFromVolume(ctx context.Context, req *csi.CreateV
 	if err != nil {
 		return status.Error(codes.NotFound, err.Error())
 	}
+	srcVolPath, err := getInternalVolumePath(cs.Driver.workingMountDir, srcVol)
+	if err != nil {
+		return status.Errorf(codes.Internal, "%v", err)
+	}
 	// Note that the source path must include trailing '/.', can't use 'filepath.Join()' as it performs path cleaning
-	srcPath := fmt.Sprintf("%v/.", getInternalVolumePath(cs.Driver.workingMountDir, srcVol))
-	dstPath := getInternalVolumePath(cs.Driver.workingMountDir, dstVol)
+	srcPath := fmt.Sprintf("%v/.", srcVolPath)
+	dstPath, err := getInternalVolumePath(cs.Driver.workingMountDir, dstVol)
+	if err != nil {
+		return status.Errorf(codes.Internal, "%v", err)
+	}
 	klog.V(2).Infof("copy volume from volume %v -> %v", srcPath, dstPath)
 
 	var volCap *csi.VolumeCapability
@@ -667,6 +705,11 @@ func newNFSSnapshot(name string, params map[string]string, vol *nfsVolume) (*nfs
 	if server == "" {
 		return nil, fmt.Errorf("%v is a required parameter", paramServer)
 	}
+	// baseDir comes from the snapshot class "share" parameter and flows into the
+	// internal mount path; validate it for parity with newNFSVolume.
+	if err := validatePath(baseDir); err != nil {
+		return nil, fmt.Errorf("invalid share %q: %v", baseDir, err)
+	}
 	snapshot := &nfsSnapshot{
 		server:  server,
 		baseDir: baseDir,
@@ -713,12 +756,13 @@ func newNFSVolume(name string, size int64, params map[string]string, defaultOnDe
 	if server == "" {
 		return nil, fmt.Errorf("%v is a required parameter", paramServer)
 	}
+	// Note: server is not run through validatePath; it is an NFS host, not a
+	// path component. A caller who controls the server value can only redirect
+	// the internal mount to an NFS server they already control, which is
+	// inherent to how the server is encoded in the volume ID.
 
 	if err := validatePath(baseDir); err != nil {
 		return nil, fmt.Errorf("invalid share %q: %v", baseDir, err)
-	}
-	if err := validatePath(subDir); err != nil {
-		return nil, fmt.Errorf("invalid subDir %q: %v", subDir, err)
 	}
 
 	vol := &nfsVolume{
@@ -736,6 +780,10 @@ func newNFSVolume(name string, size int64, params map[string]string, defaultOnDe
 		vol.uuid = name
 	}
 
+	if err := validatePath(vol.subDir); err != nil {
+		return nil, fmt.Errorf("invalid subDir %q: %v", vol.subDir, err)
+	}
+
 	if err := validateOnDeleteValue(onDelete); err != nil {
 		return nil, err
 	}
@@ -749,16 +797,34 @@ func newNFSVolume(name string, size int64, params map[string]string, defaultOnDe
 	return vol, nil
 }
 
+// validatePathWithinBase reports an error if path does not resolve to a
+// location within base. It is a defense-in-depth backstop for the internal
+// mount/volume paths: even if a caller-supplied component slips past the
+// validatePath checks performed when parsing volume/snapshot IDs, the
+// destructive filesystem operations keyed off these paths (os.MkdirAll,
+// os.RemoveAll, os.Rename) must never touch anything outside workingMountDir.
+// It shares the lexical containment check (isPathWithinBase) used by TarUnpack.
+func validatePathWithinBase(base, path string) error {
+	if !isPathWithinBase(base, path) {
+		return fmt.Errorf("resolved path %q escapes base directory %q", path, base)
+	}
+	return nil
+}
+
 // getInternalMountPath: get working directory for CreateVolume and DeleteVolume
-func getInternalMountPath(workingMountDir string, vol *nfsVolume) string {
+func getInternalMountPath(workingMountDir string, vol *nfsVolume) (string, error) {
 	if vol == nil {
-		return ""
+		return "", nil
 	}
 	mountDir := vol.uuid
 	if vol.uuid == "" {
 		mountDir = vol.subDir
 	}
-	return filepath.Join(workingMountDir, mountDir)
+	path := filepath.Join(workingMountDir, mountDir)
+	if err := validatePathWithinBase(workingMountDir, path); err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 // Get internal path where the volume is created
@@ -768,8 +834,16 @@ func getInternalMountPath(workingMountDir string, vol *nfsVolume) string {
 //     CreateVolume calls in parallel and they may use the same underlying share.
 //     Instead of refcounting how many CreateVolume calls are using the same
 //     share, it's simpler to just do a mount per request.
-func getInternalVolumePath(workingMountDir string, vol *nfsVolume) string {
-	return filepath.Join(getInternalMountPath(workingMountDir, vol), vol.subDir)
+func getInternalVolumePath(workingMountDir string, vol *nfsVolume) (string, error) {
+	mountPath, err := getInternalMountPath(workingMountDir, vol)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(mountPath, vol.subDir)
+	if err := validatePathWithinBase(workingMountDir, path); err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 // Given a nfsVolume, return a CSI volume id

@@ -616,8 +616,92 @@ func TestGetInternalMountPath(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		path := getInternalMountPath(test.workingMountDir, test.vol)
+		path, err := getInternalMountPath(test.workingMountDir, test.vol)
+		assert.NoError(t, err)
 		assert.Equal(t, path, test.result)
+	}
+}
+
+// TestInternalPathContainment is a defense-in-depth check: even if a traversal
+// sequence slips past the ID/parameter validation, the internal path builders
+// must refuse to resolve a path outside workingMountDir.
+func TestInternalPathContainment(t *testing.T) {
+	cases := []struct {
+		desc      string
+		vol       *nfsVolume
+		expectErr bool
+	}{
+		{
+			desc: "clean subDir/uuid stays within base",
+			vol:  &nfsVolume{subDir: "subdir", uuid: "uuid"},
+		},
+		{
+			desc:      "uuid escapes base",
+			vol:       &nfsVolume{subDir: "subdir", uuid: "../../../etc"},
+			expectErr: true,
+		},
+		{
+			desc:      "subDir escapes base (empty uuid)",
+			vol:       &nfsVolume{subDir: "../../../etc"},
+			expectErr: true,
+		},
+		{
+			desc:      "subDir escapes base via nested traversal",
+			vol:       &nfsVolume{subDir: "a/../../../etc", uuid: "uuid"},
+			expectErr: true,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.desc, func(t *testing.T) {
+			_, mErr := getInternalMountPath("/tmp", test.vol)
+			_, vErr := getInternalVolumePath("/tmp", test.vol)
+			if test.expectErr {
+				// At least one builder must reject; the escaping component may be
+				// subDir (only caught by getInternalVolumePath) or uuid (caught
+				// by both).
+				assert.True(t, mErr != nil || vErr != nil, "expected containment error")
+			} else {
+				assert.NoError(t, mErr)
+				assert.NoError(t, vErr)
+			}
+		})
+	}
+}
+
+func TestNewNFSSnapshot(t *testing.T) {
+	validVol := &nfsVolume{server: "nfs-server", baseDir: "share", subDir: "subdir", uuid: "vol-uuid"}
+	cases := []struct {
+		desc      string
+		name      string
+		params    map[string]string
+		vol       *nfsVolume
+		expectErr bool
+	}{
+		{
+			desc:   "valid snapshot",
+			name:   "snap-name",
+			params: map[string]string{paramServer: "nfs-server", paramShare: "share"},
+			vol:    validVol,
+		},
+		{
+			desc:      "share with path traversal should be rejected",
+			name:      "snap-name",
+			params:    map[string]string{paramServer: "nfs-server", paramShare: "/exports/../../../etc"},
+			vol:       validVol,
+			expectErr: true,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.desc, func(t *testing.T) {
+			_, err := newNFSSnapshot(test.name, test.params, test.vol)
+			if test.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
 
@@ -728,6 +812,22 @@ func TestNewNFSVolume(t *testing.T) {
 			},
 			expectVol: nil,
 			expectErr: fmt.Errorf("invalid share %q: path contains directory traversal sequence", "/exports/../../../etc"),
+		},
+		{
+			// The raw subDir template contains no "..": the traversal only
+			// appears after pvc metadata substitution, so validation must run
+			// against the expanded value.
+			desc: "subDir traversal injected via metadata substitution should be rejected",
+			name: "pv-name",
+			size: 100,
+			params: map[string]string{
+				paramServer: "//nfs-server.default.svc.cluster.local",
+				paramShare:  "share",
+				paramSubDir: fmt.Sprintf("%s/data", pvcNameMetadata),
+				pvcNameKey:  "..",
+			},
+			expectVol: nil,
+			expectErr: fmt.Errorf("invalid subDir %q: path contains directory traversal sequence", "../data"),
 		},
 	}
 
