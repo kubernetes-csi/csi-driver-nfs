@@ -63,7 +63,7 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 							NameGenerate:      "test-volume-",
 							MountPathGenerate: "/mnt/test-",
 						},
-						MountOptions: []string{"sec=krb5", "noresvport", "nfsvers=4.1"},
+						MountOptions: []string{"sec=krb5", "nfsvers=4.1"},
 					},
 				},
 			},
