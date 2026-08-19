@@ -23,6 +23,9 @@ spec:
     - name: tcp-88
       port: 88
       protocol: TCP
+    - name: udp-88
+      port: 88
+      protocol: UDP
     - name: tcp-749
       port: 749
       protocol: TCP
@@ -83,6 +86,9 @@ spec:
             - name: tcp-88
               containerPort: 88
               protocol: TCP
+            - name: udp-88
+              containerPort: 88
+              protocol: UDP
             - name: tcp-749
               containerPort: 749
               protocol: TCP
