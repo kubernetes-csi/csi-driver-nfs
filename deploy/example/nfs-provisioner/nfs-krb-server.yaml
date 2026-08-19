@@ -63,6 +63,8 @@ spec:
               value: NFS-KRB-SERVER.DEFAULT.SVC.CLUSTER.LOCAL
             - name: NFS_KRB_PRINC
               value: nfs/nfs-krb-server.default.svc.cluster.local
+            - name: NFS_KRB_FQDN
+              value: nfs-krb-server.default.svc.cluster.local
             - name: NFS_KRB_PWD
               valueFrom:
                 secretKeyRef:
