@@ -797,16 +797,24 @@ func newNFSVolume(name string, size int64, params map[string]string, defaultOnDe
 	return vol, nil
 }
 
-// validatePathWithinBase reports an error if path does not resolve to a
-// location within base. It is a defense-in-depth backstop for the internal
+// validatePathWithinBase reports an error if path does not resolve to a strict
+// descendant of base. It is a defense-in-depth backstop for the internal
 // mount/volume paths: even if a caller-supplied component slips past the
 // validatePath checks performed when parsing volume/snapshot IDs, the
 // destructive filesystem operations keyed off these paths (os.MkdirAll,
 // os.RemoveAll, os.Rename) must never touch anything outside workingMountDir.
-// It shares the lexical containment check (isPathWithinBase) used by TarUnpack.
+// It shares the lexical containment check (isPathWithinBase) used by TarUnpack,
+// and additionally rejects path == base: an empty subDir/uuid component would
+// otherwise collapse the internal path to workingMountDir itself, letting
+// deletion run os.RemoveAll on the mounted share root. The equality check is
+// kept here rather than in isPathWithinBase because TarUnpack legitimately
+// resolves a "." archive entry to its destination root.
 func validatePathWithinBase(base, path string) error {
 	if !isPathWithinBase(base, path) {
 		return fmt.Errorf("resolved path %q escapes base directory %q", path, base)
+	}
+	if filepath.Clean(path) == filepath.Clean(base) {
+		return fmt.Errorf("resolved path %q must be a subdirectory of base directory %q", path, base)
 	}
 	return nil
 }

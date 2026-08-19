@@ -650,6 +650,14 @@ func TestInternalPathContainment(t *testing.T) {
 			vol:       &nfsVolume{subDir: "a/../../../etc", uuid: "uuid"},
 			expectErr: true,
 		},
+		{
+			// A malformed ID with empty subDir and uuid would collapse the
+			// internal path to workingMountDir itself; deletion must not run
+			// os.RemoveAll on the mounted share root.
+			desc:      "empty subDir and uuid must not resolve to base",
+			vol:       &nfsVolume{},
+			expectErr: true,
+		},
 	}
 
 	for _, test := range cases {
