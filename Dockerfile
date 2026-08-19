@@ -37,13 +37,13 @@ if [ "$1" = "true" ]; then
 
 	# Debian 13 sysvinit scripts assume systemd-created runtime dirs.
 	# Create the paths they touch so `service rpcbind start` doesn't fail.
-	mkdir -p /run/sendsigs.omit.d /var/lib/nfs/rpc_pipefs /var/lib/nfs/statd /var/lib/nfs/v4recovery
+	mkdir -p /run/sendsigs.omit.d /var/lib/nfs/rpc_pipefs /var/lib/nfs/statd /var/lib/nfs/v4recovery /run/rpc_pipefs
 
 	# rpc.gssd needs rpc_pipefs mounted; nfs-common sysvinit will happily
 	# report "gssd." as started even when it isn't, causing sec=krb5 mounts
 	# to hang forever. Mount it explicitly.
-	if ! mountpoint -q /var/lib/nfs/rpc_pipefs; then
-		mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs || true
+	if ! mountpoint -q /run/rpc_pipefs; then
+		mount -t rpc_pipefs sunrpc /run/rpc_pipefs || true
 	fi
 
 	service rpcbind start || rpcbind -w || true
