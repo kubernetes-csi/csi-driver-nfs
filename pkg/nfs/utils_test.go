@@ -616,6 +616,26 @@ func TestValidatePath(t *testing.T) {
 			path:     "/home/.../data",
 			expected: nil,
 		},
+		{
+			desc:     "windows-style directory traversal",
+			path:     "..\\etc\\passwd",
+			expected: fmt.Errorf("path contains directory traversal sequence"),
+		},
+		{
+			desc:     "mixed separators with traversal",
+			path:     "foo\\..\\bar",
+			expected: fmt.Errorf("path contains directory traversal sequence"),
+		},
+		{
+			desc:     "double slash without traversal",
+			path:     "foo//bar",
+			expected: nil,
+		},
+		{
+			desc:     "dot then traversal",
+			path:     "./../etc",
+			expected: fmt.Errorf("path contains directory traversal sequence"),
+		},
 	}
 
 	for _, test := range tests {
