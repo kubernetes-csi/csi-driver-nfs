@@ -205,9 +205,7 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 
 		// Robust containment check: use filepath.Rel to prevent prefix collisions
 		// (e.g., dstDirPath="/tmp/out" vs filePath="/tmp/out2/...")
-		var rel string
-		rel, err = filepath.Rel(dstDirPath, filePath)
-		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
+		if !isPathWithinBase(dstDirPath, filePath) {
 			return tar.ErrInsecurePath
 		}
 
@@ -225,8 +223,7 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 			checkDir := parentDir
 			for checkDir != dstDirPath {
 				if realDir, evalErr := filepath.EvalSymlinks(checkDir); evalErr == nil {
-					realDirRel, relErr := filepath.Rel(dstDirPath, realDir)
-					if relErr != nil || realDirRel == ".." || strings.HasPrefix(realDirRel, ".."+string(os.PathSeparator)) || filepath.IsAbs(realDirRel) {
+					if !isPathWithinBase(dstDirPath, realDir) {
 						return tar.ErrInsecurePath
 					}
 					break

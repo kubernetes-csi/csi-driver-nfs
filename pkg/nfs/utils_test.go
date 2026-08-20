@@ -575,8 +575,8 @@ func TestValidatePath(t *testing.T) {
 
 		{"triple dots valid", "/home/.../data", false},
 
-		{"windows traversal", "..\\etc\\passwd", false},
-		{"mixed separators", "foo\\..\\bar", false},
+		{"windows traversal", "..\\etc\\passwd", true},
+		{"mixed separators", "foo\\..\\bar", true},
 
 		{"double slash", "foo//bar", false},
 		{"dot traversal", "./../etc", true},

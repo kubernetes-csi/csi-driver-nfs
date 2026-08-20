@@ -335,10 +335,31 @@ func getVolumeCapabilityFromSecret(volumeID string, secret map[string]string) *c
 }
 
 func validatePath(path string) error {
-	for _, segment := range strings.Split(path, "/") {
+	// Normalize Windows-style separators so backslash traversal (e.g. "..\..")
+	// is caught regardless of the platform the controller runs on. Use
+	// ReplaceAll rather than filepath.ToSlash, which is a no-op on Linux and so
+	// would miss backslash traversal there. Deliberately avoid filepath.Clean:
+	// it collapses trailing ".." (Clean("a/b/..") == "a"), which would drop the
+	// traversal sequence and weaken detection. See PR #1071 for the earlier
+	// Clean-based attempt that was reverted for exactly this reason.
+	normalized := strings.ReplaceAll(path, "\\", "/")
+	for _, segment := range strings.Split(normalized, "/") {
 		if segment == ".." {
 			return fmt.Errorf("path contains directory traversal sequence")
 		}
 	}
 	return nil
+}
+
+// isPathWithinBase reports whether path resolves to a location inside base,
+// using purely lexical analysis (filepath.Rel). It rejects paths that resolve
+// to base's parent or a sibling (rel == ".." or a "../" prefix) and absolute
+// paths. Callers that need to account for symlinks must resolve them
+// (e.g. filepath.EvalSymlinks) before calling.
+func isPathWithinBase(base, path string) bool {
+	rel, err := filepath.Rel(base, path)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
+		return false
+	}
+	return true
 }
