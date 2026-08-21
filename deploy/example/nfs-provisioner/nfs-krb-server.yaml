@@ -55,14 +55,14 @@ spec:
           command:
             - bash
             - -c
-            - ./init.sh & sleep 10; ls /var/log; tail -f /var/log/messages /var/log/rpc-gssd.log
+            - ./init.sh & sleep 10; ls /var/log; tail -f /var/log/messages /var/log/gssd.log
           env:
             - name: SHARED_DIRECTORY
               value: /srv/shared
             - name: NFS_KRB_REALM
               value: NFS-KRB-SERVER.DEFAULT.SVC.CLUSTER.LOCAL
             - name: NFS_KRB_PRINC
-              value: nfs/nfs-krb-server.default.svc.cluster.local
+              value: nfs/csi-nfs-client.default.svc.cluster.local
             - name: NFS_KRB_FQDN
               value: nfs-krb-server.default.svc.cluster.local
             - name: NFS_KRB_PWD
