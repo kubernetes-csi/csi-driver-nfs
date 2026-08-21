@@ -51,11 +51,22 @@ spec:
       containers:
         - name: nfs-krb-server
           image: docker.io/thealmightydrawingtablet/nfs-krb:alpine
-          imagePullPolicy: Always
-          command:
-            - bash
-            - -c
-            - ./init.sh & sleep 10; ls /var/log; tail -f /var/log/messages /var/log/gssd.log
+          imagePullPolicy: Always 
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - rpcinfo -t 127.0.0.1 nfs 4 >/dev/null
+            periodSeconds: 2
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - rpcinfo -t 127.0.0.1 nfs 4 >/dev/null
+            periodSeconds: 5
           env:
             - name: SHARED_DIRECTORY
               value: /srv/shared
