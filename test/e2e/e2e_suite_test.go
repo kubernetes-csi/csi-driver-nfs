@@ -105,10 +105,10 @@ var (
 		// immediately with EINVAL ("an incorrect mount option was specified").
 		"csi.storage.k8s.io/node-publish-secret-namespace": "default",
 		"csi.storage.k8s.io/node-publish-secret-name":      "mount-options",
-		"mountPermissions":   "0755",
-		"authKrbConf":        "krb5.conf",
-		"authPasswordSecret": "krb-pwd",
-		"authPrincipal":      "nfs/csi-nfs-client.default.svc.cluster.local@NFS-KRB-SERVER.DEFAULT.SVC.CLUSTER.LOCAL",
+		"mountPermissions": "0755",
+		"authKrbConf":      "krb5.conf",
+		"authKeytab":       "client.keytab.b64",
+		"authPrincipal":    "host/csi-nfs-controller.kube-system.svc.cluster.local@NFS-KRB-SERVER.DEFAULT.SVC.CLUSTER.LOCAL",
 	}
 
 	controllerServer *nfs.ControllerServer
