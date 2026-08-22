@@ -29,8 +29,8 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"go.uber.org/goleak"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 	"google.golang.org/grpc"
 	"k8s.io/klog/v2"
 )
