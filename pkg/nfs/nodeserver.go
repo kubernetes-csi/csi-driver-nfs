@@ -17,12 +17,15 @@ limitations under the License.
 package nfs
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -47,7 +50,7 @@ type NodeServer struct {
 }
 
 // NodePublishVolume mount the volume
-func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	volCap := req.GetVolumeCapability()
 	if volCap == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume capability missing in request")
@@ -73,6 +76,7 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	}
 
 	var server, baseDir, subDir string
+	var krbPwd, krbPrinc, krbConf string
 	subDirReplaceMap := map[string]string{}
 
 	mountPermissions := ns.Driver.mountPermissions
@@ -84,6 +88,16 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 			baseDir = v
 		case paramSubDir:
 			subDir = v
+		case paramKrbPrincipal:
+			krbPrinc = v
+		case paramKrbPasswordSecret:
+			if v != "" {
+				krbPwd = req.GetSecrets()[v]
+			}
+		case paramKrbConf:
+			if v != "" {
+				krbConf = req.GetSecrets()[v]
+			}
 		case pvcNamespaceKey:
 			subDirReplaceMap[pvcNamespaceMetadata] = v
 		case pvcNameKey:
@@ -150,8 +164,92 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 		}
 	}
 
+	if krbConf != "" {
+		if err = os.WriteFile("/etc/krb5.conf", []byte(krbConf), 0775); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
 	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)
 	execFunc := func() error {
+		if krbPrinc != "" && krbPwd != "" {
+			klog.V(3).Infof("Setting up kerberos auth with principal '%s' and password '%s'", krbPrinc, krbPwd)
+			_, err := os.Stat("/etc/krb5.keytab")
+			// initialize keytab if it doesn't exist
+			if err != nil && os.IsNotExist(err) {
+				cmd := exec.CommandContext(ctx, "ktutil")
+				cmd.Stdin = bytes.NewBufferString(fmt.Sprintf("addent -p %s -password -k 1 -f\n%s\nwkt /etc/krb5.keytab", krbPrinc, krbPwd))
+				var ktOut bytes.Buffer
+				cmd.Stdout = &ktOut
+				cmd.Stderr = &ktOut
+				if err := cmd.Run(); err != nil {
+					klog.Errorf("error running 'ktutil': %+v, output=%q", err, ktOut.String())
+					return err
+				}
+				klog.V(3).Infof("ktutil output: %s", ktOut.String())
+			}
+			// obtain kerberos TGT
+			cmd := exec.CommandContext(ctx, "kinit", krbPrinc)
+			cmd.Stdin = bytes.NewBufferString(krbPwd + "\n")
+			var kinitOut bytes.Buffer
+			cmd.Stdout = &kinitOut
+			cmd.Stderr = &kinitOut
+			if err := cmd.Run(); err != nil {
+				klog.Errorf("error running 'kinit': %+v, output=%q", err, kinitOut.String())
+				return err
+			}
+			klog.V(3).Infof("kinit (password) output: %s", kinitOut.String())
+			// initialize credentials from keytab
+			kinitOut.Reset()
+			cmd = exec.CommandContext(ctx, "kinit", "-k", krbPrinc)
+			cmd.Stdout = &kinitOut
+			cmd.Stderr = &kinitOut
+			if err := cmd.Run(); err != nil {
+				klog.Warningf("error running 'kinit -k', but soldiering on: %+v, output=%q", err, kinitOut.String())
+			} else {
+				klog.V(3).Infof("kinit -k output: %s", kinitOut.String())
+			}
+			// Restart rpc.gssd so it picks up the freshly-written /etc/krb5.conf
+			// and /etc/krb5.keytab. rpc.gssd was started at container init before
+			// these files existed, and it does not re-read them on its own.
+			// Without a restart the kernel GSS upcall for sec=krb5 hangs and the
+			// mount(2) call times out after 110s.
+			if out, err := exec.CommandContext(ctx, "pkill", "-x", "rpc.gssd").CombinedOutput(); err != nil {
+				klog.V(3).Infof("pkill rpc.gssd: err=%v output=%q (ok if not previously running)", err, string(out))
+			}
+			// give the kernel a moment to notice the old gssd is gone
+			time.Sleep(500 * time.Millisecond)
+			// -vvv: verbose, -f: foreground (so we can capture output),
+			// -D: don't require reverse-DNS canonicalization of target NFS server
+			// (kube-dns generally does not serve PTR records for Service IPs, and
+			// the default gssd behavior is to canonicalize the mount target's
+			// hostname before building the SPN, which then fails to match the
+			// nfs/<svc-fqdn>@REALM entry in our keytab and hangs the upcall).
+			gssdCmd := exec.Command("/usr/sbin/rpc.gssd", "-vvv", "-f", "-D")
+			var gssdOut lockedBuffer
+			gssdCmd.Stdout = &gssdOut
+			gssdCmd.Stderr = &gssdOut
+			if err := gssdCmd.Start(); err != nil {
+				klog.Errorf("failed to (re)start rpc.gssd: %v", err)
+				return err
+			}
+			klog.V(3).Infof("(re)started rpc.gssd pid=%d args=%v", gssdCmd.Process.Pid, gssdCmd.Args)
+			// Drain rpc.gssd output into klog so failures are diagnosable instead
+			// of the current silent 110s mount timeout.
+			go func(pid int) {
+				t := time.NewTicker(2 * time.Second)
+				defer t.Stop()
+				for range t.C {
+					if s := gssdOut.drain(); s != "" {
+						klog.V(3).Infof("rpc.gssd pid=%d: %s", pid, s)
+					}
+					if gssdCmd.ProcessState != nil {
+						return
+					}
+				}
+			}(gssdCmd.Process.Pid)
+			// give rpc.gssd a beat to open its rpc_pipefs watches before the mount
+			time.Sleep(1 * time.Second)
+		}
 		return ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
 	}
 	timeoutFunc := func() error {
@@ -342,4 +440,26 @@ func isStaleFileHandle(err error) bool {
 		return errno == syscall.ESTALE
 	}
 	return strings.Contains(err.Error(), "stale NFS file handle") || strings.Contains(err.Error(), "stale file handle")
+}
+
+// lockedBuffer is a bytes.Buffer safe for concurrent Write() from a subprocess
+// pipe reader and drain() reads from a klog forwarder goroutine.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+// drain returns and clears the currently buffered bytes as a string.
+func (b *lockedBuffer) drain() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	s := b.buf.String()
+	b.buf.Reset()
+	return s
 }

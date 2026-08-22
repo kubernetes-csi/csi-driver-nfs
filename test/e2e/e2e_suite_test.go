@@ -92,6 +92,25 @@ var (
 		"mountPermissions": "0755",
 		"onDelete":         "archive",
 	}
+	krbStorageClassParameters = map[string]string{
+		"server": "nfs-krb-server.default.svc.cluster.local",
+		"share":  "/srv/shared",
+		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
+		"csi.storage.k8s.io/provisioner-secret-name":      "mount-options",
+		// Kerberos auth requires the driver to read the krb5 password + krb5.conf
+		// from a CSI secret on both the controller (CreateVolume) and the node
+		// (NodePublishVolume) code paths. Without the node-publish-secret-* keys
+		// below, req.GetSecrets() is empty on the node, so the driver skips the
+		// kinit + rpc.gssd bring-up block and mount(2) with sec=krb5 fails
+		// immediately with EINVAL ("an incorrect mount option was specified").
+		"csi.storage.k8s.io/node-publish-secret-namespace": "default",
+		"csi.storage.k8s.io/node-publish-secret-name":      "mount-options",
+		"mountPermissions":   "0755",
+		"authKrbConf":        "krb5.conf",
+		"authPasswordSecret": "krb-pwd",
+		"authPrincipal":      "nfs/csi-nfs-client.default.svc.cluster.local@NFS-KRB-SERVER.DEFAULT.SVC.CLUSTER.LOCAL",
+	}
+
 	controllerServer *nfs.ControllerServer
 )
 
