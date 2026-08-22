@@ -84,3 +84,30 @@ func TestChmodIfPermissionMismatchSpecialBits(t *testing.T) {
 		})
 	}
 }
+
+func TestChownIfOwnerMismatch(t *testing.T) {
+	dir := t.TempDir()
+	targetPath := dir + "/testdir"
+	if err := os.Mkdir(targetPath, 0777); err != nil {
+		t.Fatalf("failed to create test dir: %v", err)
+	}
+
+	uid := os.Getuid()
+	gid := os.Getgid()
+
+	if err := chownIfOwnerMismatch(targetPath, uid, gid); err != nil {
+		t.Fatalf("chownIfOwnerMismatch to current owner failed: %v", err)
+	}
+
+	if err := chownIfOwnerMismatch(targetPath, unsetOwner, unsetOwner); err != nil {
+		t.Fatalf("chownIfOwnerMismatch with both unset failed: %v", err)
+	}
+
+	gotUID, gotGID, err := fileOwner(targetPath)
+	if err != nil {
+		t.Fatalf("fileOwner failed: %v", err)
+	}
+	if gotUID != uid || gotGID != gid {
+		t.Errorf("expected owner %d:%d, got %d:%d", uid, gid, gotUID, gotGID)
+	}
+}

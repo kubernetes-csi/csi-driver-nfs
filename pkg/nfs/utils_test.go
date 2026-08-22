@@ -90,6 +90,65 @@ func TestParseEndpoint(t *testing.T) {
 	}
 }
 
+func TestParseOwnerID(t *testing.T) {
+	tests := []struct {
+		desc        string
+		field       string
+		value       string
+		expectedID  int
+		expectedErr string
+	}{
+		{
+			desc:       "empty value is unset",
+			field:      paramUID,
+			value:      "",
+			expectedID: unsetOwner,
+		},
+		{
+			desc:       "valid uid",
+			field:      paramUID,
+			value:      "243",
+			expectedID: 243,
+		},
+		{
+			desc:       "zero is valid",
+			field:      paramGID,
+			value:      "0",
+			expectedID: 0,
+		},
+		{
+			desc:        "non-numeric",
+			field:       paramUID,
+			value:       "abc",
+			expectedErr: "invalid uid abc",
+		},
+		{
+			desc:        "negative",
+			field:       paramGID,
+			value:       "-1",
+			expectedErr: "invalid gid -1",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			id, err := parseOwnerID(test.field, test.value)
+			if test.expectedErr != "" {
+				if err == nil || err.Error() != test.expectedErr {
+					t.Errorf("expected error %q, got %v", test.expectedErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if id != test.expectedID {
+				t.Errorf("expected id %d, got %d", test.expectedID, id)
+			}
+		})
+	}
+}
+
 func TestGetLogLevel(t *testing.T) {
 	tests := []struct {
 		method string

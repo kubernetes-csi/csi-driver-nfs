@@ -127,6 +127,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	mountPermissions := cs.Driver.mountPermissions
+	uid, gid := unsetOwner, unsetOwner
 	reqCapacity := req.GetCapacityRange().GetRequiredBytes()
 	parameters := req.GetParameters()
 	if parameters == nil {
@@ -148,6 +149,20 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 				var err error
 				if mountPermissions, err = strconv.ParseUint(v, 8, 32); err != nil {
 					return nil, status.Errorf(codes.InvalidArgument, "invalid mountPermissions %s in storage class", v)
+				}
+			}
+		case paramUID:
+			{
+				var err error
+				if uid, err = parseOwnerID(paramUID, v); err != nil {
+					return nil, status.Error(codes.InvalidArgument, err.Error())
+				}
+			}
+		case paramGID:
+			{
+				var err error
+				if gid, err = parseOwnerID(paramGID, v); err != nil {
+					return nil, status.Error(codes.InvalidArgument, err.Error())
 				}
 			}
 		default:
@@ -193,6 +208,10 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		if err := chmodIfPermissionMismatch(internalVolumePath, uint32(mountPermissions)); err != nil {
 			klog.Warningf("failed to chmod subdirectory: %v", err)
 		}
+	}
+
+	if err := chownIfOwnerMismatch(internalVolumePath, uid, gid); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to chown subdirectory: %v", err)
 	}
 
 	if req.GetVolumeContentSource() != nil {
@@ -524,9 +543,11 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 	for k, v := range volumeContext {
 		// don't set subDir, server, or share fields: only nfs-server:/share
 		// should be mounted via the volume's own values across all internal
-		// mount callers (CreateVolume, DeleteVolume, CreateSnapshot, etc.)
+		// mount callers (CreateVolume, DeleteVolume, CreateSnapshot, etc.).
+		// uid/gid must also be omitted: NodePublishVolume would otherwise
+		// chown the NFS share root instead of the new subdirectory.
 		switch strings.ToLower(k) {
-		case paramSubDir, paramServer, paramShare:
+		case paramSubDir, paramServer, paramShare, paramUID, paramGID:
 			continue
 		default:
 			volContext[k] = v

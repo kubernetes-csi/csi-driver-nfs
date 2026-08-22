@@ -26,3 +26,14 @@ import "os"
 func chmod(path string, mode uint32) error {
 	return os.Chmod(path, os.FileMode(mode))
 }
+
+func fileOwner(path string) (int, int, error) {
+	if _, err := os.Lstat(path); err != nil {
+		return unsetOwner, unsetOwner, err
+	}
+	return unsetOwner, unsetOwner, nil
+}
+
+func chownPath(_ string, _, _ int) error {
+	return nil
+}

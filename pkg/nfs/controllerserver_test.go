@@ -216,6 +216,84 @@ func TestCreateVolume(t *testing.T) {
 			},
 			expectErr: true,
 		},
+		{
+			name: "valid uid and gid",
+			req: &csi.CreateVolumeRequest{
+				Name: testCSIVolume,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					paramServer: testServer,
+					paramShare:  testBaseDir,
+					paramUID:    fmt.Sprintf("%d", os.Getuid()),
+					paramGID:    fmt.Sprintf("%d", os.Getgid()),
+				},
+			},
+			resp: &csi.CreateVolumeResponse{
+				Volume: &csi.Volume{
+					VolumeId: newTestVolumeID,
+					VolumeContext: map[string]string{
+						paramServer: testServer,
+						paramShare:  testBaseDir,
+						paramSubDir: testCSIVolume,
+						paramUID:    fmt.Sprintf("%d", os.Getuid()),
+						paramGID:    fmt.Sprintf("%d", os.Getgid()),
+					},
+				},
+			},
+		},
+		{
+			name: "[Error] invalid uid",
+			req: &csi.CreateVolumeRequest{
+				Name: testCSIVolume,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					paramServer: testServer,
+					paramShare:  testBaseDir,
+					paramUID:    "abc",
+				},
+			},
+			expectErr: true,
+		},
+		{
+			name: "[Error] invalid gid",
+			req: &csi.CreateVolumeRequest{
+				Name: testCSIVolume,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					paramServer: testServer,
+					paramShare:  testBaseDir,
+					paramGID:    "-1",
+				},
+			},
+			expectErr: true,
+		},
 	}
 
 	for _, test := range cases {

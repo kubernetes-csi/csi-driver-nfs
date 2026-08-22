@@ -67,6 +67,19 @@ func TestNodePublishVolume(t *testing.T) {
 		mountPermissionsField: "07ab",
 	}
 
+	paramsWithOwner := map[string]string{
+		"server":  "server",
+		"share":   "share",
+		paramUID: fmt.Sprintf("%d", os.Getuid()),
+		paramGID: fmt.Sprintf("%d", os.Getgid()),
+	}
+
+	invalidUIDParams := map[string]string{
+		"server":  "server",
+		"share":   "share",
+		paramUID: "abc",
+	}
+
 	volumeCap := csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER}
 	alreadyMountedTarget := testutil.GetWorkDirPath("false_is_likely_exist_target", t)
 	targetTest := testutil.GetWorkDirPath("target_test", t)
@@ -178,6 +191,26 @@ func TestNodePublishVolume(t *testing.T) {
 				TargetPath:       targetTest,
 				Readonly:         true},
 			expectedErr: status.Error(codes.InvalidArgument, "invalid mountPermissions 07ab"),
+		},
+		{
+			desc: "[Success] Valid request with uid and gid",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    paramsWithOwner,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest,
+				Readonly:         true},
+			expectedErr: nil,
+		},
+		{
+			desc: "[Error] invalid uid",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    invalidUIDParams,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest,
+				Readonly:         true},
+			expectedErr: status.Error(codes.InvalidArgument, "invalid uid abc"),
 		},
 		{
 			desc: "[Success] Stale mount detected and remounted",
