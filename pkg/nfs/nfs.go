@@ -78,7 +78,7 @@ const (
 	// Kerberos principal to use when mounting with `-o sec=krb5*`
 	paramKrbPrincipal = "authprincipal"
 	// name of a secret containing the base64-encoded Kerberos keytab to authenticate with
-	paramKrbKeytab        = "authkeytab"
+	paramKrbKeytab = "authkeytab"
 	// name of a secret containing the contents of a krb5.conf file with
 	// realm and/or KDC information
 	paramKrbConf          = "authkrbconf"
