@@ -19,6 +19,7 @@ package nfs
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -76,7 +77,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	var server, baseDir, subDir string
-	var krbPwd, krbPrinc, krbConf string
+	var encodedKrbKeytab, krbPrinc, krbConf string
 	subDirReplaceMap := map[string]string{}
 
 	mountPermissions := ns.Driver.mountPermissions
@@ -90,9 +91,9 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			subDir = v
 		case paramKrbPrincipal:
 			krbPrinc = v
-		case paramKrbPasswordSecret:
+		case paramKrbKeytab:
 			if v != "" {
-				krbPwd = req.GetSecrets()[v]
+				encodedKrbKeytab = req.GetSecrets()[v]
 			}
 		case paramKrbConf:
 			if v != "" {
@@ -169,38 +170,34 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
+
 	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)
 	execFunc := func() error {
-		if krbPrinc != "" && krbPwd != "" {
-			klog.V(3).Infof("Setting up kerberos auth with principal '%s' and password '%s'", krbPrinc, krbPwd)
-			_, err := os.Stat("/etc/krb5.keytab")
-			// initialize keytab if it doesn't exist
-			if err != nil && os.IsNotExist(err) {
-				cmd := exec.CommandContext(ctx, "ktutil")
-				cmd.Stdin = bytes.NewBufferString(fmt.Sprintf("addent -p %s -password -k 1 -f\n%s\nwkt /etc/krb5.keytab", krbPrinc, krbPwd))
-				var ktOut bytes.Buffer
-				cmd.Stdout = &ktOut
-				cmd.Stderr = &ktOut
-				if err := cmd.Run(); err != nil {
-					klog.Errorf("error running 'ktutil': %+v, output=%q", err, ktOut.String())
-					return err
-				}
-				klog.V(3).Infof("ktutil output: %s", ktOut.String())
-			}
-			// obtain kerberos TGT
-			cmd := exec.CommandContext(ctx, "kinit", krbPrinc)
-			cmd.Stdin = bytes.NewBufferString(krbPwd + "\n")
-			var kinitOut bytes.Buffer
-			cmd.Stdout = &kinitOut
-			cmd.Stderr = &kinitOut
-			if err := cmd.Run(); err != nil {
-				klog.Errorf("error running 'kinit': %+v, output=%q", err, kinitOut.String())
+		var (
+			keytab []byte
+			err    error
+		)
+		if encodedKrbKeytab != "" {
+			keytab, err = base64.StdEncoding.DecodeString(encodedKrbKeytab)
+			if err != nil {
+				klog.Errorf("error while decoding keytab: %v", err)
 				return err
 			}
-			klog.V(3).Infof("kinit (password) output: %s", kinitOut.String())
+		}
+		if len(keytab) > 0 {
+			err = os.WriteFile("/etc/krb5.keytab", keytab, 0600)
+			if err != nil {
+				klog.Errorf("error while writing decoded keytab: %v", err)
+				return err
+			}
+		}
+
+		if krbPrinc != "" {
+			klog.V(3).Infof("Setting up kerberos auth with principal '%s'", krbPrinc)
+			var kinitOut bytes.Buffer
 			// initialize credentials from keytab
 			kinitOut.Reset()
-			cmd = exec.CommandContext(ctx, "kinit", "-k", krbPrinc)
+			cmd := exec.CommandContext(ctx, "kinit", "-k", krbPrinc)
 			cmd.Stdout = &kinitOut
 			cmd.Stderr = &kinitOut
 			if err := cmd.Run(); err != nil {
