@@ -8,6 +8,7 @@ metadata:
     app: nfs-krb-server
 spec:
   type: ClusterIP  # use "LoadBalancer" to get a public ip
+  clusterIP: None
   selector:
     app: nfs-krb-server
   ports:
@@ -70,20 +71,24 @@ spec:
           env:
             - name: SHARED_DIRECTORY
               value: /srv/shared
+            - name: NFS_V4_DOMAIN
+              value: default.svc.cluster.local
             - name: NFS_KRB_REALM
               value: NFS-KRB-SERVER.DEFAULT.SVC.CLUSTER.LOCAL
-            - name: NFS_KRB_PRINC
-              value: nfs/csi-nfs-client.default.svc.cluster.local
-            - name: NFS_KRB_FQDN
+            - name: NFS_CLIENT_FQDN
+              value: csi-nfs-controller.kube-system.svc.cluster.local
+            - name: NFS_SERVER_FQDN
               value: nfs-krb-server.default.svc.cluster.local
-            - name: NFS_KRB_PWD
+            - name: KDC_MASTER_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: mount-options
                   key: krb-pwd
           volumeMounts:
-            - mountPath: /srv/shared
-              name: nfs-vol
+            - name: nfs-vol
+              mountPath: /srv/shared
+            - name: kerberos-client-config
+              mountPath: /shared
           securityContext:
             privileged: true
           ports:
@@ -109,4 +114,8 @@ spec:
         - name: nfs-vol
           hostPath:
             path: /srv/nfs-krb-vol  # modify this to specify another path to store nfs share data
+            type: DirectoryOrCreate
+        - name: kerberos-client-config
+          hostPath:
+            path: /srv/nfs-krb-client
             type: DirectoryOrCreate
