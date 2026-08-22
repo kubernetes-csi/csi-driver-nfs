@@ -114,8 +114,17 @@ func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, h
 	resp, err := handler(ctx, req)
 	if err != nil {
 		klog.Errorf("GRPC error: %v", err)
-	} else {
-		klog.V(level).Infof("GRPC response: %s", protosanitizer.StripSecrets(resp))
+	} else if klog.V(level).Enabled() {
+		// Only serialize when the level is enabled so that high-frequency
+		// RPCs (Probe, NodeGetCapabilities) don't pay the JSON marshal cost.
+		// Empty responses (e.g. NodePublishVolume/NodeUnpublishVolume success)
+		// carry zero diagnostic value but dominate node logs; demote to V(6).
+		respStr := protosanitizer.StripSecrets(resp).String()
+		respLevel := level
+		if respStr == "{}" {
+			respLevel = klog.Level(6)
+		}
+		klog.V(respLevel).Infof("GRPC response: %s", respStr)
 	}
 	return resp, err
 }
