@@ -53,9 +53,17 @@ rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # The external-provisioner sidecar only reads the optional
+  # csi.storage.k8s.io/provisioner-secret referenced by a StorageClass (used to
+  # supply mountOptions during DeleteVolume). Pinning resourceNames restricts
+  # this to secrets literally named "mount-options" instead of granting read
+  # access to every secret in the cluster, while remaining namespace-agnostic so
+  # it keeps working when provisioner-secret-namespace is templated (e.g.
+  # ${pvc.namespace}). Extend the list if you use additional secret names.
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get"]
+    resourceNames: ["mount-options"]
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
