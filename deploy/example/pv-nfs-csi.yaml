@@ -22,3 +22,5 @@ spec:
     volumeAttributes:
       server: nfs-server.default.svc.cluster.local
       share: /
+      # uid: "243"
+      # gid: "243"

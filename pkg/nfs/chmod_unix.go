@@ -19,11 +19,31 @@ limitations under the License.
 
 package nfs
 
-import "syscall"
+import (
+	"fmt"
+	"os"
+	"syscall"
+)
 
 // chmod uses syscall.Chmod to correctly handle setuid/setgid/sticky bits
 // (e.g. 02770), since os.Chmod maps os.FileMode bits differently from raw
 // Unix mode bits.
 func chmod(path string, mode uint32) error {
 	return syscall.Chmod(path, mode)
+}
+
+func fileOwner(path string) (int, int, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return unsetOwner, unsetOwner, err
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return unsetOwner, unsetOwner, fmt.Errorf("failed to get uid/gid for %s", path)
+	}
+	return int(stat.Uid), int(stat.Gid), nil
+}
+
+func chownPath(path string, uid, gid int) error {
+	return os.Chown(path, uid, gid)
 }

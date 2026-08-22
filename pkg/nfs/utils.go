@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -41,6 +42,8 @@ const (
 	retain                          = "retain"
 	archive                         = "archive"
 	volumeOperationAlreadyExistsFmt = "An operation with the given Volume ID %s already exists"
+	// unsetOwner is passed to os.Chown to leave uid or gid unchanged.
+	unsetOwner = -1
 )
 
 var supportedOnDeleteValues = []string{"", delete, retain, archive}
@@ -200,6 +203,45 @@ func chmodIfPermissionMismatch(targetPath string, mode uint32) error {
 		klog.V(2).Infof("skip chmod on targetPath(%s) since mode is already 0%o", targetPath, mode)
 	}
 	return nil
+}
+
+// parseOwnerID parses an optional numeric uid/gid StorageClass parameter.
+// An empty value means "leave this ID unchanged".
+func parseOwnerID(field, value string) (int, error) {
+	if value == "" {
+		return unsetOwner, nil
+	}
+	id, err := strconv.ParseInt(value, 10, 32)
+	if err != nil || id < 0 {
+		return unsetOwner, fmt.Errorf("invalid %s %s", field, value)
+	}
+	return int(id), nil
+}
+
+// chownIfOwnerMismatch only performs chown when uid/gid are set and the
+// current owner does not already match. uid or gid may be unsetOwner (-1) to
+// leave that ID unchanged, matching os.Chown.
+func chownIfOwnerMismatch(targetPath string, uid, gid int) error {
+	if uid == unsetOwner && gid == unsetOwner {
+		return nil
+	}
+	currentUID, currentGID, err := fileOwner(targetPath)
+	if err != nil {
+		return err
+	}
+	wantUID, wantGID := uid, gid
+	if uid == unsetOwner {
+		wantUID = currentUID
+	}
+	if gid == unsetOwner {
+		wantGID = currentGID
+	}
+	if currentUID == wantUID && currentGID == wantGID {
+		klog.V(2).Infof("skip chown on targetPath(%s) since owner is already %d:%d", targetPath, currentUID, currentGID)
+		return nil
+	}
+	klog.V(2).Infof("chown targetPath(%s, current %d:%d) to %d:%d", targetPath, currentUID, currentGID, wantUID, wantGID)
+	return chownPath(targetPath, wantUID, wantGID)
 }
 
 // getServerFromSource if server is IPv6, return [IPv6]
