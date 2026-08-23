@@ -68,15 +68,24 @@ func TestNodePublishVolume(t *testing.T) {
 	}
 
 	paramsWithOwner := map[string]string{
-		"server":  "server",
-		"share":   "share",
+		"server": "server",
+		"share":  "share",
 		paramUID: fmt.Sprintf("%d", os.Getuid()),
 		paramGID: fmt.Sprintf("%d", os.Getgid()),
 	}
 
+	paramsWithOwnerDynamic := map[string]string{
+		"server":                  "server",
+		"share":                   "share",
+		paramUID:                  fmt.Sprintf("%d", os.Getuid()),
+		paramGID:                  fmt.Sprintf("%d", os.Getgid()),
+		pvNameKey:                 "pvname",
+		csiProvisionerIdentityKey: "nfs.csi.k8s.io",
+	}
+
 	invalidUIDParams := map[string]string{
-		"server":  "server",
-		"share":   "share",
+		"server": "server",
+		"share":  "share",
 		paramUID: "abc",
 	}
 
@@ -196,6 +205,16 @@ func TestNodePublishVolume(t *testing.T) {
 			desc: "[Success] Valid request with uid and gid",
 			req: &csi.NodePublishVolumeRequest{
 				VolumeContext:    paramsWithOwner,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest,
+				Readonly:         true},
+			expectedErr: nil,
+		},
+		{
+			desc: "[Success] Valid request with uid and gid on dynamic volume skips node chown",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    paramsWithOwnerDynamic,
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:         "vol_1",
 				TargetPath:       targetTest,

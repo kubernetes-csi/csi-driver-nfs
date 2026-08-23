@@ -544,8 +544,8 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 		// don't set subDir, server, or share fields: only nfs-server:/share
 		// should be mounted via the volume's own values across all internal
 		// mount callers (CreateVolume, DeleteVolume, CreateSnapshot, etc.).
-		// uid/gid must also be omitted: NodePublishVolume would otherwise
-		// chown the NFS share root instead of the new subdirectory.
+		// uid/gid must also be omitted: NodePublishVolume still chowns
+		// static PVs and would otherwise chown the NFS share root.
 		switch strings.ToLower(k) {
 		case paramSubDir, paramServer, paramShare, paramUID, paramGID:
 			continue

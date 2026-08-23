@@ -205,6 +205,18 @@ func chmodIfPermissionMismatch(targetPath string, mode uint32) error {
 	return nil
 }
 
+// isDynamicallyProvisioned reports whether volumeContext belongs to a PV
+// created by the CSI provisioner (CreateVolume already applied uid/gid).
+func isDynamicallyProvisioned(volumeContext map[string]string) bool {
+	for k := range volumeContext {
+		switch strings.ToLower(k) {
+		case pvNameKey, strings.ToLower(csiProvisionerIdentityKey):
+			return true
+		}
+	}
+	return false
+}
+
 // parseOwnerID parses an optional numeric uid/gid StorageClass parameter.
 // An empty value means "leave this ID unchanged".
 func parseOwnerID(field, value string) (int, error) {

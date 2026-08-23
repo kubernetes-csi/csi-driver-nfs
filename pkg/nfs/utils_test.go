@@ -149,6 +149,41 @@ func TestParseOwnerID(t *testing.T) {
 	}
 }
 
+func TestIsDynamicallyProvisioned(t *testing.T) {
+	tests := []struct {
+		desc     string
+		ctx      map[string]string
+		expected bool
+	}{
+		{
+			desc:     "nil context",
+			expected: false,
+		},
+		{
+			desc:     "static PV attributes",
+			ctx:      map[string]string{"server": "nfs", "share": "/", paramUID: "243"},
+			expected: false,
+		},
+		{
+			desc:     "provisioner identity",
+			ctx:      map[string]string{csiProvisionerIdentityKey: "nfs.csi.k8s.io"},
+			expected: true,
+		},
+		{
+			desc:     "pv name injected by provisioner",
+			ctx:      map[string]string{pvNameKey: "pvc-123"},
+			expected: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			if got := isDynamicallyProvisioned(test.ctx); got != test.expected {
+				t.Errorf("got %v, want %v", got, test.expected)
+			}
+		})
+	}
+}
+
 func TestGetLogLevel(t *testing.T) {
 	tests := []struct {
 		method string

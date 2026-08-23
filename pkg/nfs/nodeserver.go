@@ -190,8 +190,16 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 		klog.V(2).Infof("skip chmod on targetPath(%s) since mountPermissions is set as 0", targetPath)
 	}
 
-	if err := chownIfOwnerMismatch(targetPath, uid, gid); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	// Dynamic volumes are chowned in CreateVolume. Re-applying here is
+	// redundant and, with fsGroupPolicy: File, kubelet still overwrites gid
+	// after this RPC if the pod sets fsGroup. Static PVs have no CreateVolume,
+	// so apply uid/gid once after mount.
+	if uid != unsetOwner || gid != unsetOwner {
+		if isDynamicallyProvisioned(req.GetVolumeContext()) {
+			klog.V(2).Infof("skip chown on targetPath(%s): uid/gid already applied in CreateVolume", targetPath)
+		} else if err := chownIfOwnerMismatch(targetPath, uid, gid); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 	klog.V(2).Infof("volume(%s) mount %s on %s succeeded", volumeID, source, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
