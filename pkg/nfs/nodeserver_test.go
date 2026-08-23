@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -70,15 +71,15 @@ func TestNodePublishVolume(t *testing.T) {
 	paramsWithOwner := map[string]string{
 		"server": "server",
 		"share":  "share",
-		paramUID: fmt.Sprintf("%d", os.Getuid()),
-		paramGID: fmt.Sprintf("%d", os.Getgid()),
+		paramUID: "243",
+		paramGID: "243",
 	}
 
 	paramsWithOwnerDynamic := map[string]string{
 		"server":                  "server",
 		"share":                   "share",
-		paramUID:                  fmt.Sprintf("%d", os.Getuid()),
-		paramGID:                  fmt.Sprintf("%d", os.Getgid()),
+		paramUID:                  "243",
+		paramGID:                  "243",
 		pvNameKey:                 "pvname",
 		csiProvisionerIdentityKey: "nfs.csi.k8s.io",
 	}
@@ -218,7 +219,8 @@ func TestNodePublishVolume(t *testing.T) {
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:         "vol_1",
 				TargetPath:       alreadyMountedTarget},
-			expectedErr: nil,
+			skipOnWindows: true,
+			expectedErr:   nil,
 		},
 		{
 			desc: "[Success] Valid request with uid and gid on dynamic volume skips node chown",
@@ -265,6 +267,9 @@ func TestNodePublishVolume(t *testing.T) {
 	_ = makeDir(targetTest)
 
 	for _, tc := range tests {
+		if runtime.GOOS == "windows" && tc.skipOnWindows {
+			continue
+		}
 		if tc.setup != nil {
 			tc.setup()
 		}

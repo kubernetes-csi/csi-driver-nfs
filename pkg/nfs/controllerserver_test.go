@@ -86,10 +86,12 @@ func TestMain(m *testing.M) {
 
 func TestCreateVolume(t *testing.T) {
 	cases := []struct {
-		name      string
-		req       *csi.CreateVolumeRequest
-		resp      *csi.CreateVolumeResponse
-		expectErr bool
+		name          string
+		req           *csi.CreateVolumeRequest
+		resp          *csi.CreateVolumeResponse
+		expectErr     bool
+		skipOnWindows bool
+		windowsOnly   bool
 	}{
 		{
 			name: "valid defaults",
@@ -233,8 +235,8 @@ func TestCreateVolume(t *testing.T) {
 				Parameters: map[string]string{
 					paramServer: testServer,
 					paramShare:  testBaseDir,
-					paramUID:    fmt.Sprintf("%d", os.Getuid()),
-					paramGID:    fmt.Sprintf("%d", os.Getgid()),
+					paramUID:    "243",
+					paramGID:    "243",
 				},
 			},
 			resp: &csi.CreateVolumeResponse{
@@ -244,11 +246,36 @@ func TestCreateVolume(t *testing.T) {
 						paramServer: testServer,
 						paramShare:  testBaseDir,
 						paramSubDir: testCSIVolume,
-						paramUID:    fmt.Sprintf("%d", os.Getuid()),
-						paramGID:    fmt.Sprintf("%d", os.Getgid()),
+						paramUID:    "243",
+						paramGID:    "243",
 					},
 				},
 			},
+			skipOnWindows: true,
+		},
+		{
+			name: "[Error] uid/gid not supported on Windows",
+			req: &csi.CreateVolumeRequest{
+				Name: testCSIVolume,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					paramServer: testServer,
+					paramShare:  testBaseDir,
+					paramUID:    "243",
+					paramGID:    "243",
+				},
+			},
+			expectErr:   true,
+			windowsOnly: true,
 		},
 		{
 			name: "[Error] invalid uid",
@@ -298,6 +325,12 @@ func TestCreateVolume(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" && test.skipOnWindows {
+				t.Skip("uid/gid chown is not supported on Windows")
+			}
+			if runtime.GOOS != "windows" && test.windowsOnly {
+				t.Skip("Windows-only")
+			}
 			// Setup
 			cs := initTestController(t)
 			// Run
