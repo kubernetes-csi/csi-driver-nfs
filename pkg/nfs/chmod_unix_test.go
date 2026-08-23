@@ -95,6 +95,9 @@ func TestChownIfOwnerMismatch(t *testing.T) {
 	uid := os.Getuid()
 	gid := os.Getgid()
 
+	// Same-owner call only exercises the skip path. Mutation and one-sided
+	// unsetOwner behavior are covered by TestChownIfOwnerMismatchInjected in utils_test.go
+	// (injected fileOwner/chownPath, no root required).
 	if err := chownIfOwnerMismatch(targetPath, uid, gid); err != nil {
 		t.Fatalf("chownIfOwnerMismatch to current owner failed: %v", err)
 	}

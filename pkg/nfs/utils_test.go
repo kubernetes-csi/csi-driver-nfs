@@ -149,6 +149,55 @@ func TestParseOwnerID(t *testing.T) {
 	}
 }
 
+func TestChownIfOwnerMismatchInjected(t *testing.T) {
+	origFileOwner, origChownPath := fileOwnerFn, chownPathFn
+	t.Cleanup(func() {
+		fileOwnerFn = origFileOwner
+		chownPathFn = origChownPath
+	})
+
+	t.Run("one-sided uid passes -1 gid through to chown", func(t *testing.T) {
+		var gotUID, gotGID int
+		called := false
+		fileOwnerFn = func(string) (int, int, error) { return 0, 0, nil }
+		chownPathFn = func(_ string, uid, gid int) error {
+			called = true
+			gotUID, gotGID = uid, gid
+			return nil
+		}
+		if err := chownIfOwnerMismatch("/tmp/x", 243, unsetOwner); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !called {
+			t.Fatal("expected chownPath to be called")
+		}
+		if gotUID != 243 || gotGID != unsetOwner {
+			t.Errorf("got %d:%d, want 243:%d", gotUID, gotGID, unsetOwner)
+		}
+	})
+
+	t.Run("matching owner skips chown", func(t *testing.T) {
+		fileOwnerFn = func(string) (int, int, error) { return 243, 243, nil }
+		chownPathFn = func(string, int, int) error {
+			t.Fatal("chownPath should not be called when owner already matches")
+			return nil
+		}
+		if err := chownIfOwnerMismatch("/tmp/x", 243, 243); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("both unset is a no-op", func(t *testing.T) {
+		chownPathFn = func(string, int, int) error {
+			t.Fatal("chownPath should not be called when both IDs are unset")
+			return nil
+		}
+		if err := chownIfOwnerMismatch("/tmp/x", unsetOwner, unsetOwner); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+}
+
 func TestIsDynamicallyProvisioned(t *testing.T) {
 	tests := []struct {
 		desc     string

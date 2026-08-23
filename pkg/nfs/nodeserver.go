@@ -161,6 +161,9 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 			}
 			// fall through to remount
 		} else {
+			if err := ns.applyUIDGID(targetPath, uid, gid, req.GetReadonly(), req.GetVolumeContext()); err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
 			return &csi.NodePublishVolumeResponse{}, nil
 		}
 	}
@@ -190,19 +193,29 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 		klog.V(2).Infof("skip chmod on targetPath(%s) since mountPermissions is set as 0", targetPath)
 	}
 
-	// Dynamic volumes are chowned in CreateVolume. Re-applying here is
-	// redundant and, with fsGroupPolicy: File, kubelet still overwrites gid
-	// after this RPC if the pod sets fsGroup. Static PVs have no CreateVolume,
-	// so apply uid/gid once after mount.
-	if uid != unsetOwner || gid != unsetOwner {
-		if isDynamicallyProvisioned(req.GetVolumeContext()) {
-			klog.V(2).Infof("skip chown on targetPath(%s): uid/gid already applied in CreateVolume", targetPath)
-		} else if err := chownIfOwnerMismatch(targetPath, uid, gid); err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+	if err := ns.applyUIDGID(targetPath, uid, gid, req.GetReadonly(), req.GetVolumeContext()); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	klog.V(2).Infof("volume(%s) mount %s on %s succeeded", volumeID, source, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
+}
+
+// applyUIDGID chowns static PVs after mount. Dynamic volumes are already
+// owned in CreateVolume. Skip read-only publishes: the mount is ro so chown
+// would fail.
+func (ns *NodeServer) applyUIDGID(targetPath string, uid, gid int, readonly bool, volumeContext map[string]string) error {
+	if uid == unsetOwner && gid == unsetOwner {
+		return nil
+	}
+	if readonly {
+		klog.V(2).Infof("skip chown on targetPath(%s): volume is read-only", targetPath)
+		return nil
+	}
+	if isDynamicallyProvisioned(volumeContext) {
+		klog.V(2).Infof("skip chown on targetPath(%s): uid/gid already applied in CreateVolume", targetPath)
+		return nil
+	}
+	return chownIfOwnerMismatch(targetPath, uid, gid)
 }
 
 // NodeUnpublishVolume unmount the volume

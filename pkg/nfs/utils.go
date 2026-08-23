@@ -48,6 +48,13 @@ const (
 
 var supportedOnDeleteValues = []string{"", delete, retain, archive}
 
+// fileOwnerFn and chownPathFn are overridden in tests to cover one-sided
+// uid/gid updates without requiring root.
+var (
+	fileOwnerFn = fileOwner
+	chownPathFn = chownPath
+)
+
 func validateOnDeleteValue(onDelete string) error {
 	for _, v := range supportedOnDeleteValues {
 		if strings.EqualFold(v, onDelete) {
@@ -237,7 +244,7 @@ func chownIfOwnerMismatch(targetPath string, uid, gid int) error {
 	if uid == unsetOwner && gid == unsetOwner {
 		return nil
 	}
-	currentUID, currentGID, err := fileOwner(targetPath)
+	currentUID, currentGID, err := fileOwnerFn(targetPath)
 	if err != nil {
 		return err
 	}
@@ -252,8 +259,10 @@ func chownIfOwnerMismatch(targetPath string, uid, gid int) error {
 		klog.V(2).Infof("skip chown on targetPath(%s) since owner is already %d:%d", targetPath, currentUID, currentGID)
 		return nil
 	}
-	klog.V(2).Infof("chown targetPath(%s, current %d:%d) to %d:%d", targetPath, currentUID, currentGID, wantUID, wantGID)
-	return chownPath(targetPath, wantUID, wantGID)
+	// Pass the original uid/gid (possibly unsetOwner / -1) so os.Chown
+	// leaves an omitted ID unchanged atomically.
+	klog.V(2).Infof("chown targetPath(%s, current %d:%d) to %d:%d", targetPath, currentUID, currentGID, uid, gid)
+	return chownPathFn(targetPath, uid, gid)
 }
 
 // getServerFromSource if server is IPv6, return [IPv6]

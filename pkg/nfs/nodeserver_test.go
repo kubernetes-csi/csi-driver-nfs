@@ -212,6 +212,15 @@ func TestNodePublishVolume(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
+			desc: "[Success] Already mounted static PV with uid and gid still applies owner",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    paramsWithOwner,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       alreadyMountedTarget},
+			expectedErr: nil,
+		},
+		{
 			desc: "[Success] Valid request with uid and gid on dynamic volume skips node chown",
 			req: &csi.NodePublishVolumeRequest{
 				VolumeContext:    paramsWithOwnerDynamic,

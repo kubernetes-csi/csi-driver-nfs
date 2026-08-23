@@ -19,7 +19,10 @@ limitations under the License.
 
 package nfs
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 // chmod falls back to os.Chmod on Windows, which does not support
 // setuid/setgid/sticky bits but avoids a build failure.
@@ -34,6 +37,9 @@ func fileOwner(path string) (int, int, error) {
 	return unsetOwner, unsetOwner, nil
 }
 
-func chownPath(_ string, _, _ int) error {
-	return nil
+func chownPath(_ string, uid, gid int) error {
+	if uid == unsetOwner && gid == unsetOwner {
+		return nil
+	}
+	return fmt.Errorf("uid/gid is not supported on Windows")
 }

@@ -210,14 +210,16 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}
 
-	if err := chownIfOwnerMismatch(internalVolumePath, uid, gid); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to chown subdirectory: %v", err)
-	}
-
 	if req.GetVolumeContentSource() != nil {
 		if err := cs.copyVolume(ctx, req, nfsVol); err != nil {
 			return nil, err
 		}
+	}
+
+	// Apply after copyVolume: cp -a / tar restore can overwrite the
+	// destination directory's owner with the source metadata.
+	if err := chownIfOwnerMismatch(internalVolumePath, uid, gid); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to chown subdirectory: %v", err)
 	}
 
 	setKeyValueInMap(parameters, paramSubDir, nfsVol.subDir)
