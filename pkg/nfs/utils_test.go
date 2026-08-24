@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -32,6 +33,16 @@ var (
 	invalidEndpoint = "invalid-endpoint"
 	emptyAddr       = "tcp://"
 )
+
+// testOwnerID is a uid/gid string parseOwnerID accepts. On Unix it is the
+// current process ID so chownIfOwnerMismatch is a no-op without root. On
+// Windows Getuid is -1 (invalid); tests that actually chown must skip.
+func testOwnerID() string {
+	if uid := os.Getuid(); uid >= 0 {
+		return strconv.Itoa(uid)
+	}
+	return "243"
+}
 
 func TestParseEndpoint(t *testing.T) {
 	cases := []struct {
