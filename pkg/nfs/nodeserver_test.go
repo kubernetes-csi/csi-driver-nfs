@@ -71,15 +71,15 @@ func TestNodePublishVolume(t *testing.T) {
 	paramsWithOwner := map[string]string{
 		"server": "server",
 		"share":  "share",
-		paramUID: testOwnerID(),
-		paramGID: testOwnerID(),
+		paramUID: testOwnerUID(),
+		paramGID: testOwnerGID(),
 	}
 
 	paramsWithOwnerDynamic := map[string]string{
 		"server":                  "server",
 		"share":                   "share",
-		paramUID:                  testOwnerID(),
-		paramGID:                  testOwnerID(),
+		paramUID:                  testOwnerUID(),
+		paramGID:                  testOwnerGID(),
 		pvNameKey:                 "pvname",
 		csiProvisionerIdentityKey: "nfs.csi.k8s.io",
 	}

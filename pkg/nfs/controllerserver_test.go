@@ -235,8 +235,8 @@ func TestCreateVolume(t *testing.T) {
 				Parameters: map[string]string{
 					paramServer: testServer,
 					paramShare:  testBaseDir,
-					paramUID:    testOwnerID(),
-					paramGID:    testOwnerID(),
+					paramUID:    testOwnerUID(),
+					paramGID:    testOwnerGID(),
 				},
 			},
 			resp: &csi.CreateVolumeResponse{
@@ -246,8 +246,8 @@ func TestCreateVolume(t *testing.T) {
 						paramServer: testServer,
 						paramShare:  testBaseDir,
 						paramSubDir: testCSIVolume,
-						paramUID:    testOwnerID(),
-						paramGID:    testOwnerID(),
+						paramUID:    testOwnerUID(),
+						paramGID:    testOwnerGID(),
 					},
 				},
 			},

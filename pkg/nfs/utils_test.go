@@ -34,12 +34,20 @@ var (
 	emptyAddr       = "tcp://"
 )
 
-// testOwnerID is a uid/gid string parseOwnerID accepts. On Unix it is the
-// current process ID so chownIfOwnerMismatch is a no-op without root. On
-// Windows Getuid is -1 (invalid); tests that actually chown must skip.
-func testOwnerID() string {
+// testOwnerUID/testOwnerGID are uid/gid strings parseOwnerID accepts.
+// On Unix they match the process so chownIfOwnerMismatch is a no-op without
+// root. Using uid for both would try to change the group (often EPERM).
+// On Windows Getuid/Getgid are -1 (invalid); tests that chown must skip.
+func testOwnerUID() string {
 	if uid := os.Getuid(); uid >= 0 {
 		return strconv.Itoa(uid)
+	}
+	return "243"
+}
+
+func testOwnerGID() string {
+	if gid := os.Getgid(); gid >= 0 {
+		return strconv.Itoa(gid)
 	}
 	return "243"
 }
