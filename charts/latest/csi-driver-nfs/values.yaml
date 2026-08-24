@@ -60,6 +60,9 @@ controller:
   enableSnapshotter: true
   useTarCommandInSnapshot: false
   enableSnapshotCompression: true
+  maxSnapshotArchiveSize: 0
+  maxSnapshotFileSize: 0
+  maxSnapshotFiles: 0
   livenessProbe:
     healthPort: 29652
   logLevel: 5

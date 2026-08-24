@@ -43,8 +43,13 @@ The following parameters can be set when deploying the driver:
 Name | Meaning | Available Value | Mandatory | Default value
 --- | --- | --- | --- | ---
 `--enable-snapshot-compression` | enable compression when creating volume snapshots | `true`, `false` | No | `true`
+`--max-snapshot-archive-size` | maximum snapshot archive file size in bytes. `0` means unlimited. | integer | No | `0`
+`--max-snapshot-file-size` | maximum uncompressed size in bytes of any file in a snapshot archive. `0` means unlimited. | integer | No | `0`
+`--max-snapshot-files` | maximum number of entries (files, directories, and symlinks) in a snapshot archive. `0` means unlimited. | integer | No | `0`
 
 > **Note:** When `--enable-snapshot-compression=false`, snapshots are stored without gzip compression (using `.tar` format instead of `.tar.gz`). This can significantly speed up snapshot creation and restoration for volumes containing already-compressed data. The driver automatically detects the archive format when restoring from a snapshot, ensuring backward compatibility with existing compressed snapshots.
+
+> **Note:** Snapshot archives are stored on the NFS server. Path traversal in those archives is rejected, and the size limits above optionally bound restore (and create) against a replaced, corrupted, or very large tarball. Archive size is the on-disk `.tar` / `.tar.gz` length. File size and file count are the main guards against tar bombs; a gzip bomb that expands far beyond the archive size is only bounded if `--max-snapshot-file-size` and/or `--max-snapshot-files` are set. If file-size or file-count limits are set, the driver uses the Go tar implementation even when `--use-tar-command-in-snapshot=true`.
 
 ### Tips
 #### When to set `mountPermissions`

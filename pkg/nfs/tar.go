@@ -30,9 +30,39 @@ import (
 	"time"
 )
 
-func TarPack(srcDirPath string, dstPath string, enableCompression bool) error {
+// TarLimits bounds snapshot archive packing and extraction.
+// A zero or negative value for a field means that limit is not enforced.
+type TarLimits struct {
+	// MaxArchiveSize is the maximum size of the archive file on disk, in bytes.
+	MaxArchiveSize int64
+	// MaxFileSize is the maximum uncompressed size of any regular file, in bytes.
+	MaxFileSize int64
+	// MaxFiles is the maximum number of archive entries, including directories
+	// and symlinks.
+	MaxFiles int64
+}
+
+func (l TarLimits) hasEntryLimits() bool {
+	return l.MaxFileSize > 0 || l.MaxFiles > 0
+}
+
+var (
+	// ErrArchiveTooLarge is returned when a snapshot archive exceeds MaxArchiveSize.
+	ErrArchiveTooLarge = errors.New("snapshot archive exceeds max size")
+	// ErrFileTooLarge is returned when a file in a snapshot archive exceeds MaxFileSize.
+	ErrFileTooLarge = errors.New("snapshot archive contains a file that exceeds max size")
+	// ErrTooManyFiles is returned when a snapshot archive exceeds MaxFiles entries.
+	ErrTooManyFiles = errors.New("snapshot archive exceeds max file count")
+)
+
+type tarPackState struct {
+	limits    TarLimits
+	fileCount int64
+}
+
+func TarPack(srcDirPath string, dstPath string, enableCompression bool, limits TarLimits) (err error) {
 	// normalize all paths to be absolute and clean
-	dstPath, err := filepath.Abs(dstPath)
+	dstPath, err = filepath.Abs(dstPath)
 	if err != nil {
 		return fmt.Errorf("normalizing destination path: %w", err)
 	}
@@ -51,6 +81,15 @@ func TarPack(srcDirPath string, dstPath string, enableCompression bool) error {
 		return fmt.Errorf("creating destination file: %w", err)
 	}
 	defer func() {
+		if err != nil || limits.MaxArchiveSize <= 0 {
+			return
+		}
+		if sizeErr := checkArchiveSize(dstPath, limits); sizeErr != nil {
+			_ = os.Remove(dstPath)
+			err = sizeErr
+		}
+	}()
+	defer func() {
 		err = errors.Join(err, closeAndWrapErr(tarFile, "closing destination file %s: %w", dstPath))
 	}()
 
@@ -68,11 +107,12 @@ func TarPack(srcDirPath string, dstPath string, enableCompression bool) error {
 		err = errors.Join(err, closeAndWrapErr(tarWriter, "closing tar writer"))
 	}()
 
+	state := &tarPackState{limits: limits}
 	// recursively visit every file and write it
 	if err = filepath.Walk(
 		srcDirPath,
 		func(srcSubPath string, fileInfo fs.FileInfo, walkErr error) error {
-			return tarVisitFileToPack(tarWriter, srcDirPath, srcSubPath, fileInfo, walkErr)
+			return tarVisitFileToPack(tarWriter, srcDirPath, srcSubPath, fileInfo, walkErr, state)
 		},
 	); err != nil {
 		return fmt.Errorf("walking source directory: %w", err)
@@ -87,9 +127,18 @@ func tarVisitFileToPack(
 	srcSubPath string,
 	fileInfo os.FileInfo,
 	walkErr error,
+	state *tarPackState,
 ) (err error) {
 	if walkErr != nil {
 		return walkErr
+	}
+
+	state.fileCount++
+	if state.limits.MaxFiles > 0 && state.fileCount > state.limits.MaxFiles {
+		return fmt.Errorf("%w: packed %d entries, max %d", ErrTooManyFiles, state.fileCount, state.limits.MaxFiles)
+	}
+	if fileInfo.Mode().IsRegular() && state.limits.MaxFileSize > 0 && fileInfo.Size() > state.limits.MaxFileSize {
+		return fmt.Errorf("%w: %s is %d bytes, max %d", ErrFileTooLarge, srcSubPath, fileInfo.Size(), state.limits.MaxFileSize)
 	}
 
 	linkTarget := ""
@@ -133,7 +182,7 @@ func tarVisitFileToPack(
 	return nil
 }
 
-func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
+func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLimits) (err error) {
 	// normalize all paths to be absolute and clean
 	srcPath, err = filepath.Abs(srcPath)
 	if err != nil {
@@ -163,6 +212,9 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 	defer func() {
 		err = errors.Join(err, closeAndWrapErr(tarFile, "closing archive %s: %w", srcPath))
 	}()
+	if err = checkArchiveSize(srcPath, limits); err != nil {
+		return err
+	}
 
 	var tarDst io.Reader = tarFile
 	if enableCompression {
@@ -188,6 +240,7 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		accTime time.Time
 	}
 	var dirTimestamps []dirTimestamp
+	var fileCount int64
 
 	for {
 		var tarHeader *tar.Header
@@ -199,7 +252,17 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 			return fmt.Errorf("reading tar header of %s: %w", srcPath, err)
 		}
 
+		fileCount++
+		if limits.MaxFiles > 0 && fileCount > limits.MaxFiles {
+			return fmt.Errorf("%w: archive %s exceeds max %d entries", ErrTooManyFiles, srcPath, limits.MaxFiles)
+		}
+
 		fileInfo := tarHeader.FileInfo()
+		if fileInfo.Mode().IsRegular() {
+			if tarHeader.Size < 0 || (limits.MaxFileSize > 0 && tarHeader.Size > limits.MaxFileSize) {
+				return fmt.Errorf("%w: %s is %d bytes, max %d", ErrFileTooLarge, tarHeader.Name, tarHeader.Size, limits.MaxFileSize)
+			}
+		}
 
 		filePath := filepath.Join(dstDirPath, tarHeader.Name)
 
@@ -276,7 +339,7 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 			}
 		}
 
-		if err = tarUnpackFile(filePath, tarReader, tarHeader); err != nil {
+		if err = tarUnpackFile(filePath, tarReader, tarHeader, limits.MaxFileSize); err != nil {
 			return fmt.Errorf("unpacking file %s: %w", filePath, err)
 		}
 	}
@@ -303,10 +366,10 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 	return nil
 }
 
-func tarUnpackFile(dstFileName string, src io.Reader, header *tar.Header) (err error) {
+func tarUnpackFile(dstFileName string, src io.Reader, header *tar.Header, maxFileSize int64) (err error) {
 	srcFileInfo := header.FileInfo()
 
-	if err = tarWriteFile(dstFileName, src, srcFileInfo); err != nil {
+	if err = tarWriteFile(dstFileName, src, srcFileInfo, maxFileSize); err != nil {
 		return err
 	}
 
@@ -326,7 +389,13 @@ func tarUnpackFile(dstFileName string, src io.Reader, header *tar.Header) (err e
 	return nil
 }
 
-func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (err error) {
+func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo, maxFileSize int64) (err error) {
+	if srcFileInfo.Mode().IsRegular() {
+		if srcFileInfo.Size() < 0 || (maxFileSize > 0 && srcFileInfo.Size() > maxFileSize) {
+			return fmt.Errorf("%w: %s is %d bytes, max %d", ErrFileTooLarge, dstFileName, srcFileInfo.Size(), maxFileSize)
+		}
+	}
+
 	var dstFile *os.File
 	dstFile, err = os.OpenFile(dstFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, srcFileInfo.Mode().Perm())
 	if err != nil {
@@ -336,7 +405,14 @@ func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (e
 		err = errors.Join(err, closeAndWrapErr(dstFile, "closing destination file %s: %w", dstFileName))
 	}()
 
-	n, err := io.Copy(dstFile, src)
+	var r io.Reader = src
+	if srcFileInfo.Mode().IsRegular() {
+		// Never copy more than the header claims so a truncated or lying
+		// stream cannot fill the destination filesystem.
+		r = io.LimitReader(src, srcFileInfo.Size())
+	}
+
+	n, err := io.Copy(dstFile, r)
 	if err != nil {
 		return fmt.Errorf("copying to destination file %s: %w", dstFileName, err)
 	}
@@ -345,6 +421,20 @@ func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (e
 		return fmt.Errorf("written size check failed for %s: wrote %d, want %d", dstFileName, n, srcFileInfo.Size())
 	}
 
+	return nil
+}
+
+func checkArchiveSize(path string, limits TarLimits) error {
+	if limits.MaxArchiveSize <= 0 {
+		return nil
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("stat archive %s: %w", path, err)
+	}
+	if fi.Size() > limits.MaxArchiveSize {
+		return fmt.Errorf("%w: %s is %d bytes, max %d", ErrArchiveTooLarge, path, fi.Size(), limits.MaxArchiveSize)
+	}
 	return nil
 }
 

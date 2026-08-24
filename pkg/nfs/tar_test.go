@@ -119,7 +119,7 @@ func produce(
 		switch {
 		case packing && ops[i] == code:
 			// packing from code
-			if err := TarPack(srcPath, dstPath, true); err != nil {
+			if err := TarPack(srcPath, dstPath, true, TarLimits{}); err != nil {
 				t.Fatalf("packing '%s' with TarPack into '%s': %v", srcPath, dstPath, err)
 			}
 		case packing && ops[i] == cli:
@@ -130,7 +130,7 @@ func produce(
 			}
 		case !packing && ops[i] == code:
 			// unpacking from code
-			if err := TarUnpack(srcPath, dstPath, true); err != nil {
+			if err := TarUnpack(srcPath, dstPath, true, TarLimits{}); err != nil {
 				t.Fatalf("unpacking '%s' with TarUnpack into '%s': %v", srcPath, dstPath, err)
 			}
 		case !packing && ops[i] == cli:
@@ -248,7 +248,7 @@ func TestUnpackZipSlip(t *testing.T) {
 
 	// Act & Assert: unpack nearby, expect error
 	var outputDir = filepath.Join(inputDir, "output")
-	if err := TarUnpack(mArchivePath, outputDir, true); err != nil {
+	if err := TarUnpack(mArchivePath, outputDir, true, TarLimits{}); err != nil {
 		if !errors.Is(err, tar.ErrInsecurePath) {
 			t.Fatalf("expected error tar.ErrInsecurePath, got: %v", err)
 		}
@@ -270,7 +270,7 @@ func TestUnpackZipSlip(t *testing.T) {
 func TestPackSameDir(t *testing.T) {
 	inputDir := t.TempDir()
 
-	err := TarPack(inputDir, filepath.Join(inputDir, "a.tar.gz"), false)
+	err := TarPack(inputDir, filepath.Join(inputDir, "a.tar.gz"), false, TarLimits{})
 
 	const expectedErr = "cannot be under source directory"
 	if err == nil {
@@ -309,12 +309,12 @@ func TestSymlinks(t *testing.T) {
 	outputDir := t.TempDir()
 
 	archivePath := filepath.Join(outputDir, "output.tar.gz")
-	if err := TarPack(inputDir, archivePath, true); err != nil {
+	if err := TarPack(inputDir, archivePath, true, TarLimits{}); err != nil {
 		t.Fatalf("packing %s to %s: %v", inputDir, archivePath, err)
 	}
 
 	unpackedPath := filepath.Join(outputDir, "output")
-	if err := TarUnpack(archivePath, unpackedPath, true); err != nil {
+	if err := TarUnpack(archivePath, unpackedPath, true, TarLimits{}); err != nil {
 		t.Fatalf("unpacking %s to %s: %v", archivePath, unpackedPath, err)
 	}
 
@@ -373,13 +373,13 @@ func TestTarUnpackPreservesTimestamps(t *testing.T) {
 
 	// Pack
 	archivePath := filepath.Join(t.TempDir(), "test.tar.gz")
-	if err := TarPack(srcDir, archivePath, true); err != nil {
+	if err := TarPack(srcDir, archivePath, true, TarLimits{}); err != nil {
 		t.Fatalf("TarPack failed: %v", err)
 	}
 
 	// Unpack
 	dstDir := t.TempDir()
-	if err := TarUnpack(archivePath, dstDir, true); err != nil {
+	if err := TarUnpack(archivePath, dstDir, true, TarLimits{}); err != nil {
 		t.Fatalf("TarUnpack failed: %v", err)
 	}
 
@@ -402,4 +402,118 @@ func TestTarUnpackPreservesTimestamps(t *testing.T) {
 	if diff := di.ModTime().Sub(knownTime); diff < -time.Second || diff > time.Second {
 		t.Errorf("dir mtime: got %v, want %v (diff %v)", di.ModTime(), knownTime, diff)
 	}
+}
+
+func TestUnpackLimits(t *testing.T) {
+	srcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("hello world"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "b.txt"), []byte("more data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	archivePath := filepath.Join(t.TempDir(), "snap.tar.gz")
+	if err := TarPack(srcDir, archivePath, true, TarLimits{}); err != nil {
+		t.Fatalf("TarPack failed: %v", err)
+	}
+	fi, err := os.Stat(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name    string
+		limits  TarLimits
+		wantErr error
+	}{
+		{
+			name:   "within limits",
+			limits: TarLimits{MaxArchiveSize: fi.Size(), MaxFileSize: 100, MaxFiles: 10},
+		},
+		{
+			name:    "archive too large",
+			limits:  TarLimits{MaxArchiveSize: fi.Size() - 1},
+			wantErr: ErrArchiveTooLarge,
+		},
+		{
+			name:    "file too large",
+			limits:  TarLimits{MaxFileSize: 4},
+			wantErr: ErrFileTooLarge,
+		},
+		{
+			name:    "too many files",
+			limits:  TarLimits{MaxFiles: 1},
+			wantErr: ErrTooManyFiles,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			dst := t.TempDir()
+			err := TarUnpack(archivePath, dst, true, test.limits)
+			if test.wantErr == nil {
+				if err != nil {
+					t.Fatalf("expected success, got: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected error %v, got success", test.wantErr)
+			}
+			if !errors.Is(err, test.wantErr) {
+				t.Fatalf("expected error %v, got: %v", test.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestPackLimits(t *testing.T) {
+	srcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("hello world"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "b.txt"), []byte("more data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("file too large", func(t *testing.T) {
+		err := TarPack(srcDir, filepath.Join(t.TempDir(), "snap.tar.gz"), true, TarLimits{MaxFileSize: 4})
+		if err == nil {
+			t.Fatal("expected error, got success")
+		}
+		if !errors.Is(err, ErrFileTooLarge) {
+			t.Fatalf("expected ErrFileTooLarge, got: %v", err)
+		}
+	})
+
+	t.Run("too many files", func(t *testing.T) {
+		err := TarPack(srcDir, filepath.Join(t.TempDir(), "snap.tar.gz"), true, TarLimits{MaxFiles: 1})
+		if err == nil {
+			t.Fatal("expected error, got success")
+		}
+		if !errors.Is(err, ErrTooManyFiles) {
+			t.Fatalf("expected ErrTooManyFiles, got: %v", err)
+		}
+	})
+
+	t.Run("archive too large", func(t *testing.T) {
+		dst := filepath.Join(t.TempDir(), "snap.tar.gz")
+		err := TarPack(srcDir, dst, true, TarLimits{MaxArchiveSize: 1})
+		if err == nil {
+			t.Fatal("expected error, got success")
+		}
+		if !errors.Is(err, ErrArchiveTooLarge) {
+			t.Fatalf("expected ErrArchiveTooLarge, got: %v", err)
+		}
+		if _, statErr := os.Stat(dst); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("expected oversized archive to be removed, stat: %v", statErr)
+		}
+	})
+
+	t.Run("within limits", func(t *testing.T) {
+		if err := TarPack(srcDir, filepath.Join(t.TempDir(), "snap.tar.gz"), true, TarLimits{MaxFileSize: 100, MaxFiles: 10, MaxArchiveSize: 1 << 20}); err != nil {
+			t.Fatalf("expected success, got: %v", err)
+		}
+	})
 }
