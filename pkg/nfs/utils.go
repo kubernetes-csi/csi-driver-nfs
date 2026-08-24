@@ -42,7 +42,7 @@ const (
 	retain                          = "retain"
 	archive                         = "archive"
 	volumeOperationAlreadyExistsFmt = "An operation with the given Volume ID %s already exists"
-	// unsetOwner is passed to os.Chown to leave uid or gid unchanged.
+	// unsetOwner is passed to os.Lchown to leave uid or gid unchanged.
 	unsetOwner = -1
 )
 
@@ -214,10 +214,11 @@ func chmodIfPermissionMismatch(targetPath string, mode uint32) error {
 
 // isDynamicallyProvisioned reports whether volumeContext belongs to a PV
 // created by the CSI provisioner (CreateVolume already applied uid/gid).
+// Only csiProvisionerIdentityKey is used: pvNameKey is also a documented
+// static PV attribute for ${pv.metadata.name} subDir substitution.
 func isDynamicallyProvisioned(volumeContext map[string]string) bool {
 	for k := range volumeContext {
-		switch strings.ToLower(k) {
-		case pvNameKey, strings.ToLower(csiProvisionerIdentityKey):
+		if strings.EqualFold(k, csiProvisionerIdentityKey) {
 			return true
 		}
 	}
@@ -239,7 +240,7 @@ func parseOwnerID(field, value string) (int, error) {
 
 // chownIfOwnerMismatch only performs chown when uid/gid are set and the
 // current owner does not already match. uid or gid may be unsetOwner (-1) to
-// leave that ID unchanged, matching os.Chown.
+// leave that ID unchanged, matching os.Lchown.
 func chownIfOwnerMismatch(targetPath string, uid, gid int) error {
 	if uid == unsetOwner && gid == unsetOwner {
 		return nil
@@ -259,7 +260,7 @@ func chownIfOwnerMismatch(targetPath string, uid, gid int) error {
 		klog.V(2).Infof("skip chown on targetPath(%s) since owner is already %d:%d", targetPath, currentUID, currentGID)
 		return nil
 	}
-	// Pass the original uid/gid (possibly unsetOwner / -1) so os.Chown
+	// Pass the original uid/gid (possibly unsetOwner / -1) so os.Lchown
 	// leaves an omitted ID unchanged atomically.
 	klog.V(2).Infof("chown targetPath(%s, current %d:%d) to %d:%d", targetPath, currentUID, currentGID, uid, gid)
 	return chownPathFn(targetPath, uid, gid)

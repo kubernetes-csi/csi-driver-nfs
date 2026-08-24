@@ -238,9 +238,9 @@ func TestIsDynamicallyProvisioned(t *testing.T) {
 			expected: true,
 		},
 		{
-			desc:     "pv name injected by provisioner",
-			ctx:      map[string]string{pvNameKey: "pvc-123"},
-			expected: true,
+			desc:     "pv name alone is not dynamic (static subDir metadata)",
+			ctx:      map[string]string{pvNameKey: "pvc-123", paramUID: "243"},
+			expected: false,
 		},
 	}
 	for _, test := range tests {

@@ -29,8 +29,8 @@ volumeHandle | Specify a value the driver can use to uniquely identify the share
 volumeAttributes.server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 volumeAttributes.share | NFS share path | `/` |  Yes  |
 volumeAttributes.mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount. See [When to set `mountPermissions`](#when-to-set-mountpermissions) below. |  | No |
-volumeAttributes.uid | numeric user ID to `chown` the mount directory to in `NodePublishVolume` (static PVs have no `CreateVolume`; Linux only). See [When to set `uid`/`gid`](#when-to-set-uidgid) below. | `"243"` | No |
-volumeAttributes.gid | numeric group ID to `chown` the mount directory to in `NodePublishVolume` (Linux only). See [When to set `uid`/`gid`](#when-to-set-uidgid) below. Kubelet `fsGroup` overwrites this GID at mount if the pod sets it. | `"243"` | No |
+volumeAttributes.uid | numeric user ID to `chown` the mount directory to in writable `NodePublishVolume` (static PVs have no `CreateVolume`; Linux only; read-only publishes skip `chown`). See [When to set `uid`/`gid`](#when-to-set-uidgid) below. | `"243"` | No |
+volumeAttributes.gid | numeric group ID to `chown` the mount directory to in writable `NodePublishVolume` (Linux only; read-only publishes skip `chown`). See [When to set `uid`/`gid`](#when-to-set-uidgid) below. Kubelet `fsGroup` overwrites this GID at mount if the pod sets it. | `"243"` | No |
 
 ### `VolumeSnapshotClass`
 
@@ -85,7 +85,7 @@ If your pods run as **non-root** and get `Permission denied` when writing to the
    > ⚠️ `mountPermissions: "0777"` makes the share world-writable and does not solve cross-GID isolation: any pod on the node can write. Do not use this on NFS servers shared across trust boundaries or multi-tenant clusters. Prefer option 1 (with a matching GID) or option 2 first.
 
 #### When to set `uid`/`gid`
-> Dynamically provisioned subdirectories are created by the controller as root. `mountPermissions` can change the mode, but not the owner. Optional `uid` / `gid` StorageClass parameters run `chown` on **that subdirectory only** (not the NFS share root) in `CreateVolume` after mkdir (and after clone/snapshot copy, so `cp -a` / tar cannot restore the source owner). `NodePublishVolume` does **not** repeat that `chown` for dynamic volumes. `uid`/`gid` are Linux-only; setting them on Windows returns an error.
+> Dynamically provisioned subdirectories are created by the controller as root. `mountPermissions` can change the mode, but not the owner. Optional `uid` / `gid` StorageClass parameters run `chown` on **that subdirectory only** (not the NFS share root) in `CreateVolume` after mkdir (and after clone/snapshot copy, so `cp -a` / tar cannot restore the source owner). `NodePublishVolume` does **not** repeat that `chown` for dynamic volumes. `uid`/`gid` are Linux-only: `CreateVolume` and writable static publishes return an error on Windows; read-only static publishes skip `chown` and succeed.
 
 For **static PVs** there is no `CreateVolume`, so the same keys on `volumeAttributes` are applied in `NodePublishVolume` after mount (including retries when the target is already mounted). Read-only publishes skip `chown`.
 

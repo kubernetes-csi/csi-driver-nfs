@@ -45,5 +45,7 @@ func fileOwner(path string) (int, int, error) {
 }
 
 func chownPath(path string, uid, gid int) error {
-	return os.Chown(path, uid, gid)
+	// Lchown matches fileOwner's Lstat: do not follow a symlink to a
+	// different inode than the path we inspected.
+	return os.Lchown(path, uid, gid)
 }

@@ -84,6 +84,14 @@ func TestNodePublishVolume(t *testing.T) {
 		csiProvisionerIdentityKey: "nfs.csi.k8s.io",
 	}
 
+	paramsWithOwnerStaticPVName := map[string]string{
+		"server":  "server",
+		"share":   "share",
+		paramUID:  testOwnerUID(),
+		paramGID:  testOwnerGID(),
+		pvNameKey: "pvname",
+	}
+
 	invalidUIDParams := map[string]string{
 		"server": "server",
 		"share":  "share",
@@ -231,6 +239,16 @@ func TestNodePublishVolume(t *testing.T) {
 				TargetPath:       targetTest,
 				Readonly:         true},
 			expectedErr: nil,
+		},
+		{
+			desc: "[Success] Static PV with pv name metadata still applies uid and gid",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    paramsWithOwnerStaticPVName,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       alreadyMountedTarget},
+			skipOnWindows: true,
+			expectedErr:   nil,
 		},
 		{
 			desc: "[Error] invalid uid",
