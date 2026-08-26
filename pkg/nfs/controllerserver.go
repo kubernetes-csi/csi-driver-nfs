@@ -567,14 +567,14 @@ func (cs *ControllerServer) internalUnmount(ctx context.Context, vol *nfsVolume)
 }
 
 // useTarCommandForSnapshot reports whether the external tar CLI should pack or
-// unpack a snapshot. File-size and file-count limits are only enforced by the
-// Go tar implementation, so a configured entry limit disables the CLI path.
+// unpack a snapshot. Size limits are only enforced by the Go tar implementation,
+// so any configured limit disables the CLI path.
 func (cs *ControllerServer) useTarCommandForSnapshot(limits TarLimits) bool {
 	if !cs.Driver.useTarCommandInSnapshot {
 		return false
 	}
-	if limits.hasEntryLimits() {
-		klog.V(2).Infof("ignoring --use-tar-command-in-snapshot because snapshot file/count limits are set")
+	if limits.hasLimits() {
+		klog.V(2).Infof("ignoring --use-tar-command-in-snapshot because snapshot size limits are set")
 		return false
 	}
 	return true

@@ -42,8 +42,8 @@ type TarLimits struct {
 	MaxFiles int64
 }
 
-func (l TarLimits) hasEntryLimits() bool {
-	return l.MaxFileSize > 0 || l.MaxFiles > 0
+func (l TarLimits) hasLimits() bool {
+	return l.MaxArchiveSize > 0 || l.MaxFileSize > 0 || l.MaxFiles > 0
 }
 
 var (
@@ -58,6 +58,38 @@ var (
 type tarPackState struct {
 	limits    TarLimits
 	fileCount int64
+}
+
+// limitedWriter stops writes once limit bytes have been written to the
+// underlying archive file (the on-disk .tar / .tar.gz size).
+type limitedWriter struct {
+	w     io.Writer
+	n     int64
+	limit int64
+}
+
+func (l *limitedWriter) Write(p []byte) (int, error) {
+	if l.limit <= 0 {
+		return l.w.Write(p)
+	}
+	remaining := l.limit - l.n
+	if remaining <= 0 {
+		return 0, fmt.Errorf("%w: wrote %d bytes, max %d", ErrArchiveTooLarge, l.n, l.limit)
+	}
+	truncated := false
+	if int64(len(p)) > remaining {
+		p = p[:remaining]
+		truncated = true
+	}
+	n, err := l.w.Write(p)
+	l.n += int64(n)
+	if err != nil {
+		return n, err
+	}
+	if truncated {
+		return n, fmt.Errorf("%w: wrote %d bytes, max %d", ErrArchiveTooLarge, l.n, l.limit)
+	}
+	return n, nil
 }
 
 func TarPack(srcDirPath string, dstPath string, enableCompression bool, limits TarLimits) (err error) {
@@ -80,8 +112,10 @@ func TarPack(srcDirPath string, dstPath string, enableCompression bool, limits T
 	if err != nil {
 		return fmt.Errorf("creating destination file: %w", err)
 	}
+	// Run last so writers are closed before we inspect or remove the file.
 	defer func() {
-		if err != nil || limits.MaxArchiveSize <= 0 {
+		if err != nil {
+			_ = os.Remove(dstPath)
 			return
 		}
 		if sizeErr := checkArchiveSize(dstPath, limits); sizeErr != nil {
@@ -94,8 +128,11 @@ func TarPack(srcDirPath string, dstPath string, enableCompression bool, limits T
 	}()
 
 	var tarDst io.Writer = tarFile
+	if limits.MaxArchiveSize > 0 {
+		tarDst = &limitedWriter{w: tarFile, limit: limits.MaxArchiveSize}
+	}
 	if enableCompression {
-		gzipWriter := gzip.NewWriter(tarFile)
+		gzipWriter := gzip.NewWriter(tarDst)
 		defer func() {
 			err = errors.Join(err, closeAndWrapErr(gzipWriter, "closing gzip writer"))
 		}()
@@ -212,7 +249,7 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 	defer func() {
 		err = errors.Join(err, closeAndWrapErr(tarFile, "closing archive %s: %w", srcPath))
 	}()
-	if err = checkArchiveSize(srcPath, limits); err != nil {
+	if err = checkArchiveFile(tarFile, srcPath, limits); err != nil {
 		return err
 	}
 
@@ -428,7 +465,21 @@ func checkArchiveSize(path string, limits TarLimits) error {
 	if limits.MaxArchiveSize <= 0 {
 		return nil
 	}
-	fi, err := os.Stat(path)
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("stat archive %s: %w", path, err)
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	return checkArchiveFile(f, path, limits)
+}
+
+func checkArchiveFile(f *os.File, path string, limits TarLimits) error {
+	if limits.MaxArchiveSize <= 0 {
+		return nil
+	}
+	fi, err := f.Stat()
 	if err != nil {
 		return fmt.Errorf("stat archive %s: %w", path, err)
 	}

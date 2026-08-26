@@ -478,23 +478,27 @@ func TestPackLimits(t *testing.T) {
 	}
 
 	t.Run("file too large", func(t *testing.T) {
-		err := TarPack(srcDir, filepath.Join(t.TempDir(), "snap.tar.gz"), true, TarLimits{MaxFileSize: 4})
+		dst := filepath.Join(t.TempDir(), "snap.tar.gz")
+		err := TarPack(srcDir, dst, true, TarLimits{MaxFileSize: 4})
 		if err == nil {
 			t.Fatal("expected error, got success")
 		}
 		if !errors.Is(err, ErrFileTooLarge) {
 			t.Fatalf("expected ErrFileTooLarge, got: %v", err)
 		}
+		assertArchiveRemoved(t, dst)
 	})
 
 	t.Run("too many files", func(t *testing.T) {
-		err := TarPack(srcDir, filepath.Join(t.TempDir(), "snap.tar.gz"), true, TarLimits{MaxFiles: 1})
+		dst := filepath.Join(t.TempDir(), "snap.tar.gz")
+		err := TarPack(srcDir, dst, true, TarLimits{MaxFiles: 1})
 		if err == nil {
 			t.Fatal("expected error, got success")
 		}
 		if !errors.Is(err, ErrTooManyFiles) {
 			t.Fatalf("expected ErrTooManyFiles, got: %v", err)
 		}
+		assertArchiveRemoved(t, dst)
 	})
 
 	t.Run("archive too large", func(t *testing.T) {
@@ -506,9 +510,7 @@ func TestPackLimits(t *testing.T) {
 		if !errors.Is(err, ErrArchiveTooLarge) {
 			t.Fatalf("expected ErrArchiveTooLarge, got: %v", err)
 		}
-		if _, statErr := os.Stat(dst); !errors.Is(statErr, os.ErrNotExist) {
-			t.Fatalf("expected oversized archive to be removed, stat: %v", statErr)
-		}
+		assertArchiveRemoved(t, dst)
 	})
 
 	t.Run("within limits", func(t *testing.T) {
@@ -516,4 +518,29 @@ func TestPackLimits(t *testing.T) {
 			t.Fatalf("expected success, got: %v", err)
 		}
 	})
+}
+
+func TestPackStopsWhenArchiveSizeExceeded(t *testing.T) {
+	srcDir := t.TempDir()
+	payload := bytes.Repeat([]byte("x"), 64*1024)
+	if err := os.WriteFile(filepath.Join(srcDir, "big.bin"), payload, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	dst := filepath.Join(t.TempDir(), "snap.tar")
+	err := TarPack(srcDir, dst, false, TarLimits{MaxArchiveSize: 1024})
+	if err == nil {
+		t.Fatal("expected error, got success")
+	}
+	if !errors.Is(err, ErrArchiveTooLarge) {
+		t.Fatalf("expected ErrArchiveTooLarge, got: %v", err)
+	}
+	assertArchiveRemoved(t, dst)
+}
+
+func assertArchiveRemoved(t *testing.T, path string) {
+	t.Helper()
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected archive %s to be removed, stat: %v", path, err)
+	}
 }
