@@ -142,11 +142,11 @@ func NewDriver(options *DriverOptions) *Driver {
 	return n
 }
 
-func (d *Driver) snapshotTarLimits() TarLimits {
+func (n *Driver) snapshotTarLimits() TarLimits {
 	return TarLimits{
-		MaxArchiveSize: d.maxSnapshotArchiveSize,
-		MaxFileSize:    d.maxSnapshotFileSize,
-		MaxFiles:       d.maxSnapshotFiles,
+		MaxArchiveSize: n.maxSnapshotArchiveSize,
+		MaxFileSize:    n.maxSnapshotFileSize,
+		MaxFiles:       n.maxSnapshotFiles,
 	}
 }
 
