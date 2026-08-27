@@ -131,8 +131,7 @@ endif
 .PHONY: install-nfs-server
 install-nfs-server:
 	kubectl apply -f ./deploy/example/nfs-provisioner/nfs-server.yaml
-	kubectl delete secret mount-options -n default --ignore-not-found
-	kubectl create secret generic mount-options --from-literal mountOptions="nfsvers=4.1" -n default
+	./test/utils/setup-krb.sh
 
 .PHONY: install-helm
 install-helm:

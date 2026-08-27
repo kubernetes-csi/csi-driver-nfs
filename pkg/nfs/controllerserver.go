@@ -142,6 +142,9 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		case pvcNamespaceKey:
 		case pvcNameKey:
 		case pvNameKey:
+		case paramKrbPrincipal:
+		case paramKrbKeytab:
+		case paramKrbConf:
 			// no op
 		case mountPermissionsField:
 			if v != "" {
@@ -170,7 +173,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		volCap = req.GetVolumeCapabilities()[0]
 	}
 	// Mount nfs base share so we can create a subdirectory
-	if err = cs.internalMount(ctx, nfsVol, parameters, volCap); err != nil {
+	if err = cs.internalMount(ctx, nfsVol, parameters, volCap, req.GetSecrets()); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err)
 	}
 	defer func() {
@@ -246,7 +249,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		}
 		// mount nfs base share so we can delete the subdirectory
 		volCap := getVolumeCapabilityFromSecret(volumeID, req.GetSecrets())
-		if err = cs.internalMount(ctx, nfsVol, nil, volCap); err != nil {
+		if err = cs.internalMount(ctx, nfsVol, nil, volCap, req.GetSecrets()); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err)
 		}
 		defer func() {
@@ -377,7 +380,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 	snapVol := volumeFromSnapshot(snapshot)
 	volCap := getVolumeCapabilityFromSecret(req.GetSourceVolumeId(), req.GetSecrets())
-	if err = cs.internalMount(ctx, snapVol, req.GetParameters(), volCap); err != nil {
+	if err = cs.internalMount(ctx, snapVol, req.GetParameters(), volCap, req.GetSecrets()); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount snapshot nfs server: %v", err)
 	}
 	defer func() {
@@ -396,7 +399,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, err
 	}
 
-	if err = cs.internalMount(ctx, srcVol, req.GetParameters(), volCap); err != nil {
+	if err = cs.internalMount(ctx, srcVol, req.GetParameters(), volCap, req.GetSecrets()); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount src nfs server: %v", err)
 	}
 	defer func() {
@@ -460,7 +463,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 	volCap := getVolumeCapabilityFromSecret(req.SnapshotId, req.GetSecrets())
 	vol := volumeFromSnapshot(snap)
-	if err = cs.internalMount(ctx, vol, nil, volCap); err != nil {
+	if err = cs.internalMount(ctx, vol, nil, volCap, req.GetSecrets()); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount nfs server for snapshot deletion: %v", err)
 	}
 	defer func() {
@@ -502,7 +505,7 @@ func (cs *ControllerServer) ControllerExpandVolume(_ context.Context, req *csi.C
 }
 
 // Mount nfs server at base-dir
-func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, volumeContext map[string]string, volCap *csi.VolumeCapability) error {
+func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, volumeContext map[string]string, volCap *csi.VolumeCapability, secrets map[string]string) error {
 	if volCap == nil {
 		volCap = &csi.VolumeCapability{
 			AccessType: &csi.VolumeCapability_Mount{
@@ -525,8 +528,17 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 		// don't set subDir, server, or share fields: only nfs-server:/share
 		// should be mounted via the volume's own values across all internal
 		// mount callers (CreateVolume, DeleteVolume, CreateSnapshot, etc.)
+		//
+		// Also drop mountPermissions: the internal mount is only used by the
+		// controller to MkdirAll a subdirectory under the base share. Passing
+		// mountPermissions here makes NodePublishVolume run chmod on the mount
+		// root itself, which is rejected by root_squash'd NFS servers (and by
+		// Kerberos exports where the client is authenticated as a non-owner)
+		// with EPERM even though the mount itself succeeded. The subdirectory
+		// permissions are handled separately via chmodIfPermissionMismatch on
+		// internalVolumePath in CreateVolume.
 		switch strings.ToLower(k) {
-		case paramSubDir, paramServer, paramShare:
+		case paramSubDir, paramServer, paramShare, mountPermissionsField:
 			continue
 		default:
 			volContext[k] = v
@@ -539,6 +551,7 @@ func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, v
 		VolumeContext:    volContext,
 		VolumeCapability: volCap,
 		VolumeId:         vol.id,
+		Secrets:          secrets,
 	})
 	return err
 }
@@ -571,7 +584,7 @@ func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.Creat
 		volCap = req.GetVolumeCapabilities()[0]
 	}
 
-	if err = cs.internalMount(ctx, snapVol, nil, volCap); err != nil {
+	if err = cs.internalMount(ctx, snapVol, nil, volCap, req.GetSecrets()); err != nil {
 		return status.Errorf(codes.Internal, "failed to mount src nfs server for snapshot volume copy: %v", err)
 	}
 	defer func() {
@@ -579,7 +592,7 @@ func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.Creat
 			klog.Warningf("failed to unmount src nfs server after snapshot volume copy: %v", err)
 		}
 	}()
-	if err = cs.internalMount(ctx, dstVol, nil, volCap); err != nil {
+	if err = cs.internalMount(ctx, dstVol, nil, volCap, req.GetSecrets()); err != nil {
 		return status.Errorf(codes.Internal, "failed to mount dst nfs server for snapshot volume copy: %v", err)
 	}
 	defer func() {
@@ -647,7 +660,7 @@ func (cs *ControllerServer) copyFromVolume(ctx context.Context, req *csi.CreateV
 	if len(req.GetVolumeCapabilities()) > 0 {
 		volCap = req.GetVolumeCapabilities()[0]
 	}
-	if err = cs.internalMount(ctx, srcVol, nil, volCap); err != nil {
+	if err = cs.internalMount(ctx, srcVol, nil, volCap, req.GetSecrets()); err != nil {
 		return status.Errorf(codes.Internal, "failed to mount src nfs server: %v", err)
 	}
 	defer func() {
@@ -655,7 +668,7 @@ func (cs *ControllerServer) copyFromVolume(ctx context.Context, req *csi.CreateV
 			klog.Warningf("failed to unmount nfs server: %v", err)
 		}
 	}()
-	if err = cs.internalMount(ctx, dstVol, nil, volCap); err != nil {
+	if err = cs.internalMount(ctx, dstVol, nil, volCap, req.GetSecrets()); err != nil {
 		return status.Errorf(codes.Internal, "failed to mount dst nfs server: %v", err)
 	}
 	defer func() {
