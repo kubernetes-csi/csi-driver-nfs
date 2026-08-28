@@ -78,12 +78,17 @@ const (
 	paramOnDelete         = "ondelete"
 	mountOptionsField     = "mountoptions"
 	mountPermissionsField = "mountpermissions"
+	paramUID              = "uid"
+	paramGID              = "gid"
 	pvcNameKey            = "csi.storage.k8s.io/pvc/name"
 	pvcNamespaceKey       = "csi.storage.k8s.io/pvc/namespace"
 	pvNameKey             = "csi.storage.k8s.io/pv/name"
-	pvcNameMetadata       = "${pvc.metadata.name}"
-	pvcNamespaceMetadata  = "${pvc.metadata.namespace}"
-	pvNameMetadata        = "${pv.metadata.name}"
+	// csiProvisionerIdentityKey is added to dynamically provisioned PVs by
+	// external-provisioner. Presence means CreateVolume already ran.
+	csiProvisionerIdentityKey = "storage.kubernetes.io/csiProvisionerIdentity"
+	pvcNameMetadata           = "${pvc.metadata.name}"
+	pvcNamespaceMetadata      = "${pvc.metadata.namespace}"
+	pvNameMetadata            = "${pv.metadata.name}"
 )
 
 func NewDriver(options *DriverOptions) *Driver {

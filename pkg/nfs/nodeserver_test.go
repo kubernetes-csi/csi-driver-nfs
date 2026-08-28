@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -65,6 +66,36 @@ func TestNodePublishVolume(t *testing.T) {
 		"server":              "server",
 		"share":               "share",
 		mountPermissionsField: "07ab",
+	}
+
+	paramsWithOwner := map[string]string{
+		"server": "server",
+		"share":  "share",
+		paramUID: testOwnerUID(),
+		paramGID: testOwnerGID(),
+	}
+
+	paramsWithOwnerDynamic := map[string]string{
+		"server":                  "server",
+		"share":                   "share",
+		paramUID:                  testOwnerUID(),
+		paramGID:                  testOwnerGID(),
+		pvNameKey:                 "pvname",
+		csiProvisionerIdentityKey: "nfs.csi.k8s.io",
+	}
+
+	paramsWithOwnerStaticPVName := map[string]string{
+		"server":  "server",
+		"share":   "share",
+		paramUID:  testOwnerUID(),
+		paramGID:  testOwnerGID(),
+		pvNameKey: "pvname",
+	}
+
+	invalidUIDParams := map[string]string{
+		"server": "server",
+		"share":  "share",
+		paramUID: "abc",
 	}
 
 	volumeCap := csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER}
@@ -180,6 +211,71 @@ func TestNodePublishVolume(t *testing.T) {
 			expectedErr: status.Error(codes.InvalidArgument, "invalid mountPermissions 07ab"),
 		},
 		{
+			desc: "[Success] Valid request with uid and gid",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    paramsWithOwner,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest,
+				Readonly:         true},
+			expectedErr: nil,
+		},
+		{
+			desc: "[Success] Already mounted static PV with uid and gid still applies owner",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    paramsWithOwner,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       alreadyMountedTarget},
+			skipOnWindows: true,
+			expectedErr:   nil,
+		},
+		{
+			desc: "[Success] Valid request with uid and gid on dynamic volume skips node chown",
+			setup: func() {
+				// Force any owner-lookup or chown attempt to fail. This test
+				// only passes if applyUIDGID returns via the dynamic-volume
+				// short-circuit before reaching chownIfOwnerMismatch.
+				fileOwnerFn = func(string) (int, int, error) {
+					return 0, 0, fmt.Errorf("fileOwnerFn should not be called for dynamic volumes")
+				}
+				chownPathFn = func(string, int, int) error {
+					return fmt.Errorf("chownPathFn should not be called for dynamic volumes")
+				}
+			},
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    paramsWithOwnerDynamic,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest},
+			skipOnWindows: true,
+			expectedErr:   nil,
+			cleanup: func() {
+				fileOwnerFn = fileOwner
+				chownPathFn = chownPath
+			},
+		},
+		{
+			desc: "[Success] Static PV with pv name metadata still applies uid and gid",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    paramsWithOwnerStaticPVName,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       alreadyMountedTarget},
+			skipOnWindows: true,
+			expectedErr:   nil,
+		},
+		{
+			desc: "[Error] invalid uid",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext:    invalidUIDParams,
+				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
+				VolumeId:         "vol_1",
+				TargetPath:       targetTest,
+				Readonly:         true},
+			expectedErr: status.Error(codes.InvalidArgument, "invalid uid abc"),
+		},
+		{
 			desc: "[Success] Stale mount detected and remounted",
 			setup: func() {
 				lstatFunc = func(name string) (os.FileInfo, error) {
@@ -204,6 +300,9 @@ func TestNodePublishVolume(t *testing.T) {
 	_ = makeDir(targetTest)
 
 	for _, tc := range tests {
+		if runtime.GOOS == "windows" && tc.skipOnWindows {
+			continue
+		}
 		if tc.setup != nil {
 			tc.setup()
 		}
