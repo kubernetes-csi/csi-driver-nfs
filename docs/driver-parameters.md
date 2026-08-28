@@ -10,6 +10,8 @@ server | NFS Server address | domain name `nfs-server.default.svc.cluster.local`
 share | NFS share path | `/` | Yes |
 subDir | sub directory under nfs share |  | No | if sub directory does not exist, this driver would create a new one
 mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount. See [When to set `mountPermissions`](#when-to-set-mountpermissions) below. |  | No |
+uid | numeric user ID to `chown` the newly created subdirectory to in `CreateVolume` (Linux only). Omit to leave ownership unchanged (typically root, subject to NFS squash). See [When to set `uid`/`gid`](#when-to-set-uidgid) below. | `"243"` | No |
+gid | numeric group ID to `chown` the newly created subdirectory to in `CreateVolume` (Linux only). Omit to leave group unchanged. See [When to set `uid`/`gid`](#when-to-set-uidgid) below. Kubelet `fsGroup` overwrites this GID at mount if the pod sets it. | `"243"` | No |
 onDelete | when volume is deleted, keep the directory if it's `retain` | `delete`(default), `retain`, `archive`  | No | `delete`
 
  - VolumeID(`volumeHandle`) is the identifier of the volume handled by the driver, format of VolumeID:
@@ -27,6 +29,8 @@ volumeHandle | Specify a value the driver can use to uniquely identify the share
 volumeAttributes.server | NFS Server address | domain name `nfs-server.default.svc.cluster.local` <br>or IP address `127.0.0.1` | Yes |
 volumeAttributes.share | NFS share path | `/` |  Yes  |
 volumeAttributes.mountPermissions | mounted folder permissions. The default is `0`, if set as non-zero, driver will perform `chmod` after mount. See [When to set `mountPermissions`](#when-to-set-mountpermissions) below. |  | No |
+volumeAttributes.uid | numeric user ID to `chown` the mount directory to in writable `NodePublishVolume` (static PVs have no `CreateVolume`; Linux only; read-only publishes skip `chown`). See [When to set `uid`/`gid`](#when-to-set-uidgid) below. | `"243"` | No |
+volumeAttributes.gid | numeric group ID to `chown` the mount directory to in writable `NodePublishVolume` (Linux only; read-only publishes skip `chown`). See [When to set `uid`/`gid`](#when-to-set-uidgid) below. Kubelet `fsGroup` overwrites this GID at mount if the pod sets it. | `"243"` | No |
 
 ### `VolumeSnapshotClass`
 
@@ -79,6 +83,34 @@ If your pods run as **non-root** and get `Permission denied` when writing to the
            mountPermissions: "0777"
      ```
    > ⚠️ `mountPermissions: "0777"` makes the share world-writable and does not solve cross-GID isolation: any pod on the node can write. Do not use this on NFS servers shared across trust boundaries or multi-tenant clusters. Prefer option 1 (with a matching GID) or option 2 first.
+
+#### When to set `uid`/`gid`
+> Dynamically provisioned subdirectories are created by the controller as root. `mountPermissions` can change the mode, but not the owner. Optional `uid` / `gid` StorageClass parameters run `chown` on **that subdirectory only** (not the NFS share root) in `CreateVolume` after mkdir (and after clone/snapshot copy, so `cp -a` / tar cannot restore the source owner). `NodePublishVolume` does **not** repeat that `chown` for dynamic volumes. `uid`/`gid` are Linux-only: `CreateVolume` and writable static publishes return an error on Windows; read-only static publishes skip `chown` and succeed.
+
+For **static PVs** there is no `CreateVolume`, so the same keys on `volumeAttributes` are applied in `NodePublishVolume` after mount (including retries when the target is already mounted). Read-only publishes skip `chown`.
+
+This driver ships `fsGroupPolicy: File`. After `NodePublishVolume` returns, kubelet applies `pod.spec.securityContext.fsGroup` when it is set:
+
+- kubelet runs `chown(-1, fsGroup)` recursively: **UID is left unchanged, GID is replaced**, and the setgid bit is set
+- a pod `fsGroup` therefore **overwrites StorageClass/PV `gid`**. If you need the StorageClass `gid` to remain the group on disk, omit `fsGroup`, or set it to the same GID
+- StorageClass `uid` is not overwritten by `fsGroup`
+
+Use `uid`/`gid` when the volume directory should be owned at provision time (or at first mount for static PVs), including for pods that do not set `fsGroup`. Use `fsGroup` when kubelet should grant the pod's group write access at mount time. Do not combine them with **different** GIDs.
+
+NFS has no portable `uid=` / `gid=` mount options (unlike SMB/CIFS). This is an explicit `chown`, so the NFS export must allow it (`no_root_squash`, or a squash uid that is allowed to own the path). Root-squashed exports typically leave the directory owned by `nobody` and provisioning or mount will fail if `uid`/`gid` cannot be applied.
+
+```yaml
+parameters:
+  server: nfs-server.default.svc.cluster.local
+  share: /
+  mountPermissions: "0770"
+  uid: "243"
+  gid: "243"
+```
+
+Either parameter may be omitted to leave that ID unchanged. Values must be non-negative decimal integers.
+
+These are StorageClass (or static PV `volumeAttributes`) parameters. The PVC API has no owner fields; CSI only forwards StorageClass parameters. One StorageClass per tenant uid is the supported pattern today.
 
 #### `subDir` parameter supports following pv/pvc metadata conversion
 > if `subDir` value contains following strings, it would be converted into corresponding pv/pvc name or namespace

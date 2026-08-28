@@ -86,10 +86,12 @@ func TestMain(m *testing.M) {
 
 func TestCreateVolume(t *testing.T) {
 	cases := []struct {
-		name      string
-		req       *csi.CreateVolumeRequest
-		resp      *csi.CreateVolumeResponse
-		expectErr bool
+		name          string
+		req           *csi.CreateVolumeRequest
+		resp          *csi.CreateVolumeResponse
+		expectErr     bool
+		skipOnWindows bool
+		windowsOnly   bool
 	}{
 		{
 			name: "valid defaults",
@@ -216,10 +218,119 @@ func TestCreateVolume(t *testing.T) {
 			},
 			expectErr: true,
 		},
+		{
+			name: "valid uid and gid",
+			req: &csi.CreateVolumeRequest{
+				Name: testCSIVolume,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					paramServer: testServer,
+					paramShare:  testBaseDir,
+					paramUID:    testOwnerUID(),
+					paramGID:    testOwnerGID(),
+				},
+			},
+			resp: &csi.CreateVolumeResponse{
+				Volume: &csi.Volume{
+					VolumeId: newTestVolumeID,
+					VolumeContext: map[string]string{
+						paramServer: testServer,
+						paramShare:  testBaseDir,
+						paramSubDir: testCSIVolume,
+						paramUID:    testOwnerUID(),
+						paramGID:    testOwnerGID(),
+					},
+				},
+			},
+			skipOnWindows: true,
+		},
+		{
+			name: "[Error] uid/gid not supported on Windows",
+			req: &csi.CreateVolumeRequest{
+				Name: testCSIVolume,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					paramServer: testServer,
+					paramShare:  testBaseDir,
+					paramUID:    "243",
+					paramGID:    "243",
+				},
+			},
+			expectErr:   true,
+			windowsOnly: true,
+		},
+		{
+			name: "[Error] invalid uid",
+			req: &csi.CreateVolumeRequest{
+				Name: testCSIVolume,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					paramServer: testServer,
+					paramShare:  testBaseDir,
+					paramUID:    "abc",
+				},
+			},
+			expectErr: true,
+		},
+		{
+			name: "[Error] invalid gid",
+			req: &csi.CreateVolumeRequest{
+				Name: testCSIVolume,
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					paramServer: testServer,
+					paramShare:  testBaseDir,
+					paramGID:    "-1",
+				},
+			},
+			expectErr: true,
+		},
 	}
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" && test.skipOnWindows {
+				t.Skip("uid/gid chown is not supported on Windows")
+			}
+			if runtime.GOOS != "windows" && test.windowsOnly {
+				t.Skip("Windows-only")
+			}
 			// Setup
 			cs := initTestController(t)
 			// Run
