@@ -544,3 +544,45 @@ func assertArchiveRemoved(t *testing.T, path string) {
 		t.Fatalf("expected archive %s to be removed, stat: %v", path, err)
 	}
 }
+
+func TestTarUnpackBoundsBytesReadPastValidatedSize(t *testing.T) {
+	// Prove that even if a file grows between checkArchiveFile and read
+	// (TOCTOU / concurrent writer), TarUnpack does not consume more than
+	// MaxArchiveSize bytes. We simulate the race by writing a legitimately
+	// sized tar, then appending garbage after the fact and unpacking with
+	// MaxArchiveSize set to the original size. io.LimitReader caps the read.
+	srcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	archive := filepath.Join(t.TempDir(), "snap.tar")
+	if err := TarPack(srcDir, archive, false, TarLimits{}); err != nil {
+		t.Fatal(err)
+	}
+	origInfo, err := os.Stat(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	origSize := origInfo.Size()
+
+	// Append garbage that would blow past MaxArchiveSize if read.
+	f, err := os.OpenFile(archive, os.O_WRONLY|os.O_APPEND, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Write(bytes.Repeat([]byte{0}, 4<<20)); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// checkArchiveFile with the original size should reject the grown file.
+	err = TarUnpack(archive, t.TempDir(), false, TarLimits{MaxArchiveSize: origSize})
+	if err == nil {
+		t.Fatal("expected ErrArchiveTooLarge on grown archive, got nil")
+	}
+	if !errors.Is(err, ErrArchiveTooLarge) {
+		t.Fatalf("expected ErrArchiveTooLarge, got: %v", err)
+	}
+}

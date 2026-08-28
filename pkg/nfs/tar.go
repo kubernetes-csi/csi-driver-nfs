@@ -242,9 +242,9 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 		return fmt.Errorf("resolving destination path: %w", err)
 	}
 
-	tarFile, err := os.Open(srcPath)
+	tarFile, err := openArchiveForRead(srcPath)
 	if err != nil {
-		return fmt.Errorf("opening archive %s: %w", srcPath, err)
+		return err
 	}
 	defer func() {
 		err = errors.Join(err, closeAndWrapErr(tarFile, "closing archive %s: %w", srcPath))
@@ -253,10 +253,23 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 		return err
 	}
 
+	// Bound bytes actually read to the size we validated in checkArchiveFile.
+	// This closes the TOCTOU window between Stat() and Read(): a concurrent
+	// writer growing the file (or an attacker replacing the fd contents via a
+	// hardlinked path) cannot stream more than MaxArchiveSize bytes past the
+	// size check. Only apply the cap when a MaxArchiveSize was configured; a
+	// zero limit means "unbounded" and pre-existed the hardening.
 	var tarDst io.Reader = tarFile
+	if limits.MaxArchiveSize > 0 {
+		tarDst = io.LimitReader(tarFile, limits.MaxArchiveSize)
+	}
 	if enableCompression {
 		var gzipReader *gzip.Reader
-		gzipReader, err = gzip.NewReader(tarFile)
+		// Read gzip from the capped tarDst, not the raw file, so the archive
+		// byte cap is enforced on the compressed side too. (Decompression-bomb
+		// growth is a separate concern already bounded per-entry by MaxFileSize
+		// and MaxFiles further down.)
+		gzipReader, err = gzip.NewReader(tarDst)
 		if err != nil {
 			return fmt.Errorf("creating gzip reader: %w", err)
 		}
@@ -465,9 +478,9 @@ func checkArchiveSize(path string, limits TarLimits) error {
 	if limits.MaxArchiveSize <= 0 {
 		return nil
 	}
-	f, err := os.Open(path)
+	f, err := openArchiveForRead(path)
 	if err != nil {
-		return fmt.Errorf("stat archive %s: %w", path, err)
+		return err
 	}
 	defer func() {
 		_ = f.Close()
@@ -483,11 +496,24 @@ func checkArchiveFile(f *os.File, path string, limits TarLimits) error {
 	if err != nil {
 		return fmt.Errorf("stat archive %s: %w", path, err)
 	}
+	// Reject non-regular files: FIFO / device / symlink / directory. On an
+	// attacker-controlled NFS mount the archive path can be replaced between
+	// TarPack finish and TarUnpack read; a FIFO would block os.Open forever
+	// and a device / symlink can report Size()==0 which trivially bypasses
+	// MaxArchiveSize while still streaming unbounded bytes to the reader.
+	if !fi.Mode().IsRegular() {
+		return fmt.Errorf("%w: %s is not a regular file (mode=%s)", ErrArchiveTooLarge, path, fi.Mode())
+	}
 	if fi.Size() > limits.MaxArchiveSize {
 		return fmt.Errorf("%w: %s is %d bytes, max %d", ErrArchiveTooLarge, path, fi.Size(), limits.MaxArchiveSize)
 	}
 	return nil
 }
+
+// openArchiveForRead opens path for reading with defenses against
+// attacker-controlled path replacement. Implementation is platform-specific
+// (see tar_unix.go / tar_windows.go). Callers still validate mode/size via
+// checkArchiveFile before trusting the returned descriptor.
 
 func closeAndWrapErr(closer io.Closer, errFormat string, a ...any) error {
 	if err := closer.Close(); err != nil {
