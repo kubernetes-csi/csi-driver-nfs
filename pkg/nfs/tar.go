@@ -256,7 +256,7 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 	// Bound bytes actually read to the size we validated in checkArchiveFile.
 	// This closes the TOCTOU window between Stat() and Read(): a concurrent
 	// writer growing the file (or an attacker replacing the fd contents via a
-	// hardlinked path) cannot stream more than MaxArchiveSize bytes past the
+	// hard-linked path) cannot stream more than MaxArchiveSize bytes past the
 	// size check. Only apply the cap when a MaxArchiveSize was configured; a
 	// zero limit means "unbounded" and pre-existed the hardening.
 	var tarDst io.Reader = tarFile
