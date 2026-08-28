@@ -232,6 +232,17 @@ func TestNodePublishVolume(t *testing.T) {
 		},
 		{
 			desc: "[Success] Valid request with uid and gid on dynamic volume skips node chown",
+			setup: func() {
+				// Force any owner-lookup or chown attempt to fail. This test
+				// only passes if applyUIDGID returns via the dynamic-volume
+				// short-circuit before reaching chownIfOwnerMismatch.
+				fileOwnerFn = func(string) (int, int, error) {
+					return 0, 0, fmt.Errorf("fileOwnerFn should not be called for dynamic volumes")
+				}
+				chownPathFn = func(string, int, int) error {
+					return fmt.Errorf("chownPathFn should not be called for dynamic volumes")
+				}
+			},
 			req: &csi.NodePublishVolumeRequest{
 				VolumeContext:    paramsWithOwnerDynamic,
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
@@ -239,6 +250,10 @@ func TestNodePublishVolume(t *testing.T) {
 				TargetPath:       targetTest},
 			skipOnWindows: true,
 			expectedErr:   nil,
+			cleanup: func() {
+				fileOwnerFn = fileOwner
+				chownPathFn = chownPath
+			},
 		},
 		{
 			desc: "[Success] Static PV with pv name metadata still applies uid and gid",
