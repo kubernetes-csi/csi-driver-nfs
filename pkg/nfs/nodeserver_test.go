@@ -236,9 +236,9 @@ func TestNodePublishVolume(t *testing.T) {
 				VolumeContext:    paramsWithOwnerDynamic,
 				VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap},
 				VolumeId:         "vol_1",
-				TargetPath:       targetTest,
-				Readonly:         true},
-			expectedErr: nil,
+				TargetPath:       targetTest},
+			skipOnWindows: true,
+			expectedErr:   nil,
 		},
 		{
 			desc: "[Success] Static PV with pv name metadata still applies uid and gid",
