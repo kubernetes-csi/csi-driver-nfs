@@ -1574,6 +1574,61 @@ func TestCopyFromSnapshotEnforcesFileSizeLimit(t *testing.T) {
 	}
 }
 
+func TestUseTarCommandForSnapshot(t *testing.T) {
+	tests := []struct {
+		name                    string
+		useTarCommandInSnapshot bool
+		limits                  TarLimits
+		want                    bool
+	}{
+		{
+			name: "cli disabled, no limits -> false",
+			want: false,
+		},
+		{
+			name:                    "cli enabled, no limits -> true",
+			useTarCommandInSnapshot: true,
+			want:                    true,
+		},
+		{
+			name:                    "cli enabled, archive size limit -> false (limits force Go tar)",
+			useTarCommandInSnapshot: true,
+			limits:                  TarLimits{MaxArchiveSize: 1024},
+			want:                    false,
+		},
+		{
+			name:                    "cli enabled, file size limit -> false",
+			useTarCommandInSnapshot: true,
+			limits:                  TarLimits{MaxFileSize: 512},
+			want:                    false,
+		},
+		{
+			name:                    "cli enabled, file count limit -> false",
+			useTarCommandInSnapshot: true,
+			limits:                  TarLimits{MaxFiles: 8},
+			want:                    false,
+		},
+		{
+			name:   "cli disabled, limits set -> false",
+			limits: TarLimits{MaxFiles: 8},
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cs := initTestControllerWithOptions(&DriverOptions{
+				WorkingMountDir:         "/tmp",
+				UseTarCommandInSnapshot: tt.useTarCommandInSnapshot,
+			})
+			if got := cs.useTarCommandForSnapshot(tt.limits); got != tt.want {
+				t.Fatalf("useTarCommandForSnapshot(%+v) with UseTarCommandInSnapshot=%v = %v, want %v",
+					tt.limits, tt.useTarCommandInSnapshot, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestArchiveNameWithCompression(t *testing.T) {
 	snap := nfsSnapshot{
 		src: "test-volume",

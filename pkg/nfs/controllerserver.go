@@ -428,6 +428,10 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			return nil, status.Errorf(codes.Internal, "failed to create archive for snapshot: %v", err)
 		}
 	}
+	// Defense-in-depth: TarPack already enforces MaxArchiveSize on the Go path
+	// via its deferred size check + cleanup, and useTarCommandForSnapshot disables
+	// the external tar CLI whenever any limit is set. Keep this check so that if
+	// either invariant is ever relaxed, limits still gate the CLI path here.
 	if err := checkArchiveSize(dstPath, limits); err != nil {
 		if rmErr := os.Remove(dstPath); rmErr != nil {
 			klog.Warningf("failed to remove oversized snapshot archive %s: %v", dstPath, rmErr)
@@ -629,6 +633,11 @@ func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.Creat
 	klog.V(2).Infof("copy volume from snapshot %v -> %v", snapPath, dstPath)
 
 	limits := cs.Driver.snapshotTarLimits()
+	// Defense-in-depth: TarUnpack already enforces MaxArchiveSize on the Go path
+	// (via checkArchiveFile), and useTarCommandForSnapshot disables the external
+	// tar CLI whenever any limit is set. Keep this pre-check so that if either
+	// invariant is ever relaxed, an oversized archive is still rejected before
+	// the CLI path extracts it.
 	if err := checkArchiveSize(snapPath, limits); err != nil {
 		return status.Errorf(codes.Internal, "failed to copy volume for snapshot: %v", err)
 	}
