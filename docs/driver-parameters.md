@@ -108,7 +108,7 @@ parameters:
   gid: "243"
 ```
 
-Either parameter may be omitted to leave that ID unchanged. Values must be non-negative decimal integers.
+Either parameter may be omitted to leave that ID unchanged. Values must be non-negative decimal integers in the range `0`–`2147483647` (the driver parses uid/gid as signed 32-bit ints; values above `math.MaxInt32` are rejected).
 
 These are StorageClass (or static PV `volumeAttributes`) parameters. The PVC API has no owner fields; CSI only forwards StorageClass parameters. One StorageClass per tenant uid is the supported pattern today.
 
