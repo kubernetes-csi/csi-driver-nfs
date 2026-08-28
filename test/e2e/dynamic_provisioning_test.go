@@ -98,6 +98,36 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 		test.Run(ctx, cs, ns)
 	})
 
+	ginkgo.It("should create a volume on demand with uid/gid StorageClass parameters", func(ctx ginkgo.SpecContext) {
+		if isWindowsCluster {
+			ginkgo.Skip("uid/gid chown is not supported on Windows")
+		}
+		// StorageClass sets uid=1001 gid=1002; verify the CreateVolume
+		// chown landed on the subdirectory owner as observed from a pod.
+		// The pod runs as root and does not set fsGroup, so kubelet will
+		// not overwrite the GID after NodePublishVolume.
+		pods := []testsuites.PodDetails{
+			{
+				Cmd: "owner=$(stat -c '%u:%g' /mnt/test-1) && echo \"owner=$owner\" && [ \"$owner\" = \"1001:1002\" ]",
+				Volumes: []testsuites.VolumeDetails{
+					{
+						ClaimSize: "10Gi",
+						VolumeMount: testsuites.VolumeMountDetails{
+							NameGenerate:      "test-volume-",
+							MountPathGenerate: "/mnt/test-",
+						},
+					},
+				},
+			},
+		}
+		test := testsuites.DynamicallyProvisionedCmdVolumeTest{
+			CSIDriver:              testDriver,
+			Pods:                   pods,
+			StorageClassParameters: storageClassParametersWithUIDGID,
+		}
+		test.Run(ctx, cs, ns)
+	})
+
 	ginkgo.It("should create multiple PV objects, bind to PVCs and attach all to different pods on the same node", func(ctx ginkgo.SpecContext) {
 		pods := []testsuites.PodDetails{
 			{
