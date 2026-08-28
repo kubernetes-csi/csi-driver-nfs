@@ -76,6 +76,7 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	subDirReplaceMap := map[string]string{}
 
 	mountPermissions := ns.Driver.mountPermissions
+	uid, gid := unsetOwner, unsetOwner
 	for k, v := range req.GetVolumeContext() {
 		switch strings.ToLower(k) {
 		case paramServer:
@@ -99,6 +100,20 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 				var err error
 				if mountPermissions, err = strconv.ParseUint(v, 8, 32); err != nil {
 					return nil, status.Errorf(codes.InvalidArgument, "invalid mountPermissions %s", v)
+				}
+			}
+		case paramUID:
+			{
+				var err error
+				if uid, err = parseOwnerID(paramUID, v); err != nil {
+					return nil, status.Error(codes.InvalidArgument, err.Error())
+				}
+			}
+		case paramGID:
+			{
+				var err error
+				if gid, err = parseOwnerID(paramGID, v); err != nil {
+					return nil, status.Error(codes.InvalidArgument, err.Error())
 				}
 			}
 		}
@@ -146,6 +161,9 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 			}
 			// fall through to remount
 		} else {
+			if err := ns.applyUIDGID(targetPath, uid, gid, req.GetReadonly(), req.GetVolumeContext()); err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
 			return &csi.NodePublishVolumeResponse{}, nil
 		}
 	}
@@ -174,8 +192,30 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	} else {
 		klog.V(2).Infof("skip chmod on targetPath(%s) since mountPermissions is set as 0", targetPath)
 	}
+
+	if err := ns.applyUIDGID(targetPath, uid, gid, req.GetReadonly(), req.GetVolumeContext()); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 	klog.V(2).Infof("volume(%s) mount %s on %s succeeded", volumeID, source, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
+}
+
+// applyUIDGID chowns static PVs after mount. Dynamic volumes are already
+// owned in CreateVolume. Skip read-only publishes: the mount is ro so chown
+// would fail.
+func (ns *NodeServer) applyUIDGID(targetPath string, uid, gid int, readonly bool, volumeContext map[string]string) error {
+	if uid == unsetOwner && gid == unsetOwner {
+		return nil
+	}
+	if readonly {
+		klog.V(2).Infof("skip chown on targetPath(%s): volume is read-only", targetPath)
+		return nil
+	}
+	if isDynamicallyProvisioned(volumeContext) {
+		klog.V(2).Infof("skip chown on targetPath(%s): uid/gid already applied in CreateVolume", targetPath)
+		return nil
+	}
+	return chownIfOwnerMismatch(targetPath, uid, gid)
 }
 
 // NodeUnpublishVolume unmount the volume

@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -39,6 +40,24 @@ var (
 	invalidEndpoint = "invalid-endpoint"
 	emptyAddr       = "tcp://"
 )
+
+// testOwnerUID/testOwnerGID are uid/gid strings parseOwnerID accepts.
+// On Unix they match the process so chownIfOwnerMismatch is a no-op without
+// root. Using uid for both would try to change the group (often EPERM).
+// On Windows Getuid/Getgid are -1 (invalid); tests that chown must skip.
+func testOwnerUID() string {
+	if uid := os.Getuid(); uid >= 0 {
+		return strconv.Itoa(uid)
+	}
+	return "243"
+}
+
+func testOwnerGID() string {
+	if gid := os.Getgid(); gid >= 0 {
+		return strconv.Itoa(gid)
+	}
+	return "243"
+}
 
 func TestParseEndpoint(t *testing.T) {
 	cases := []struct {
@@ -92,6 +111,149 @@ func TestParseEndpoint(t *testing.T) {
 				if test.respaddr != addr {
 					t.Errorf("test %q failed; expected addr %v, got addr %v", test.desc, test.respaddr, addr)
 				}
+			}
+		})
+	}
+}
+
+func TestParseOwnerID(t *testing.T) {
+	tests := []struct {
+		desc        string
+		field       string
+		value       string
+		expectedID  int
+		expectedErr string
+	}{
+		{
+			desc:       "empty value is unset",
+			field:      paramUID,
+			value:      "",
+			expectedID: unsetOwner,
+		},
+		{
+			desc:       "valid uid",
+			field:      paramUID,
+			value:      "243",
+			expectedID: 243,
+		},
+		{
+			desc:       "zero is valid",
+			field:      paramGID,
+			value:      "0",
+			expectedID: 0,
+		},
+		{
+			desc:        "non-numeric",
+			field:       paramUID,
+			value:       "abc",
+			expectedErr: "invalid uid abc",
+		},
+		{
+			desc:        "negative",
+			field:       paramGID,
+			value:       "-1",
+			expectedErr: "invalid gid -1",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			id, err := parseOwnerID(test.field, test.value)
+			if test.expectedErr != "" {
+				if err == nil || err.Error() != test.expectedErr {
+					t.Errorf("expected error %q, got %v", test.expectedErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if id != test.expectedID {
+				t.Errorf("expected id %d, got %d", test.expectedID, id)
+			}
+		})
+	}
+}
+
+func TestChownIfOwnerMismatchInjected(t *testing.T) {
+	origFileOwner, origChownPath := fileOwnerFn, chownPathFn
+	t.Cleanup(func() {
+		fileOwnerFn = origFileOwner
+		chownPathFn = origChownPath
+	})
+
+	t.Run("one-sided uid passes -1 gid through to chown", func(t *testing.T) {
+		var gotUID, gotGID int
+		called := false
+		fileOwnerFn = func(string) (int, int, error) { return 0, 0, nil }
+		chownPathFn = func(_ string, uid, gid int) error {
+			called = true
+			gotUID, gotGID = uid, gid
+			return nil
+		}
+		if err := chownIfOwnerMismatch("/tmp/x", 243, unsetOwner); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !called {
+			t.Fatal("expected chownPath to be called")
+		}
+		if gotUID != 243 || gotGID != unsetOwner {
+			t.Errorf("got %d:%d, want 243:%d", gotUID, gotGID, unsetOwner)
+		}
+	})
+
+	t.Run("matching owner skips chown", func(t *testing.T) {
+		fileOwnerFn = func(string) (int, int, error) { return 243, 243, nil }
+		chownPathFn = func(string, int, int) error {
+			t.Fatal("chownPath should not be called when owner already matches")
+			return nil
+		}
+		if err := chownIfOwnerMismatch("/tmp/x", 243, 243); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("both unset is a no-op", func(t *testing.T) {
+		chownPathFn = func(string, int, int) error {
+			t.Fatal("chownPath should not be called when both IDs are unset")
+			return nil
+		}
+		if err := chownIfOwnerMismatch("/tmp/x", unsetOwner, unsetOwner); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+}
+
+func TestIsDynamicallyProvisioned(t *testing.T) {
+	tests := []struct {
+		desc     string
+		ctx      map[string]string
+		expected bool
+	}{
+		{
+			desc:     "nil context",
+			expected: false,
+		},
+		{
+			desc:     "static PV attributes",
+			ctx:      map[string]string{"server": "nfs", "share": "/", paramUID: "243"},
+			expected: false,
+		},
+		{
+			desc:     "provisioner identity",
+			ctx:      map[string]string{csiProvisionerIdentityKey: "nfs.csi.k8s.io"},
+			expected: true,
+		},
+		{
+			desc:     "pv name alone is not dynamic (static subDir metadata)",
+			ctx:      map[string]string{pvNameKey: "pvc-123", paramUID: "243"},
+			expected: false,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			if got := isDynamicallyProvisioned(test.ctx); got != test.expected {
+				t.Errorf("got %v, want %v", got, test.expected)
 			}
 		})
 	}
