@@ -259,10 +259,7 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 	// hard-linked path) cannot stream more than MaxArchiveSize bytes past the
 	// size check. Only apply the cap when a MaxArchiveSize was configured; a
 	// zero limit means "unbounded" and pre-existed the hardening.
-	var tarDst io.Reader = tarFile
-	if limits.MaxArchiveSize > 0 {
-		tarDst = io.LimitReader(tarFile, limits.MaxArchiveSize)
-	}
+	tarDst := boundedArchiveReader(tarFile, limits.MaxArchiveSize)
 	if enableCompression {
 		var gzipReader *gzip.Reader
 		// Read gzip from the capped tarDst, not the raw file, so the archive
@@ -308,7 +305,20 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 		}
 
 		fileInfo := tarHeader.FileInfo()
-		if fileInfo.Mode().IsRegular() {
+		mode := fileInfo.Mode()
+		// Only three entry shapes are ever materialized below (directory,
+		// symlink, regular file). Reject anything else — including tar
+		// entries whose Typeflag maps to an irregular Mode (extension
+		// headers, GNU/character/block/FIFO/socket types, or reserved flags)
+		// — up front. Without this gate an irregular entry would skip the
+		// header MaxFileSize check just below and reach tarUnpackFile /
+		// tarWriteFile, which also short-circuits its per-file io.LimitReader
+		// on !IsRegular(), so a hostile archive could stream unbounded bytes
+		// into an oversized ordinary file on disk.
+		if !mode.IsDir() && mode&fs.ModeSymlink == 0 && !mode.IsRegular() {
+			return fmt.Errorf("unsupported tar entry %s: type %q / mode %s", tarHeader.Name, string(tarHeader.Typeflag), mode)
+		}
+		if mode.IsRegular() {
 			if tarHeader.Size < 0 || (limits.MaxFileSize > 0 && tarHeader.Size > limits.MaxFileSize) {
 				return fmt.Errorf("%w: %s is %d bytes, max %d", ErrFileTooLarge, tarHeader.Name, tarHeader.Size, limits.MaxFileSize)
 			}
@@ -472,6 +482,20 @@ func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo, ma
 	}
 
 	return nil
+}
+
+// boundedArchiveReader wraps the archive file with an io.LimitReader when a
+// positive MaxArchiveSize is configured, otherwise returns the file directly.
+// Exposed as a small helper so tests can exercise the exact cap that TarUnpack
+// applies without having to stand up a whole tar archive and rely on the
+// pre-read checkArchiveFile Stat pass (which would reject a grown file before
+// this reader ever runs). A zero limit means "unbounded" and pre-existed the
+// hardening.
+func boundedArchiveReader(r io.Reader, maxArchiveSize int64) io.Reader {
+	if maxArchiveSize <= 0 {
+		return r
+	}
+	return io.LimitReader(r, maxArchiveSize)
 }
 
 func checkArchiveSize(path string, limits TarLimits) error {

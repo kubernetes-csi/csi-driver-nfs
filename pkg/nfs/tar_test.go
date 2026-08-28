@@ -22,6 +22,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"math"
 	"os"
@@ -545,12 +546,55 @@ func assertArchiveRemoved(t *testing.T, path string) {
 	}
 }
 
+// TestTarUnpackRejectsUnsupportedTypeflag proves that an entry whose
+// FileInfo().Mode() reports irregular (not dir, symlink, or regular file)
+// is rejected at the top of the extraction loop. Without this gate the
+// MaxFileSize check and the per-file io.LimitReader would both be
+// short-circuited (they only fire on IsRegular()), letting the entry
+// stream unbounded bytes into an ordinary file on disk.
+func TestTarUnpackRejectsUnsupportedTypeflag(t *testing.T) {
+	archive := filepath.Join(t.TempDir(), "weird.tar")
+	f, err := os.Create(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tw := tar.NewWriter(f)
+	// TypeChar (character device) maps to os.ModeDevice|os.ModeCharDevice,
+	// which is neither IsDir, IsRegular, nor a symlink bit. It is a stand-in
+	// for the general "tar entry with a payload but non-regular mode"
+	// hazard (extension headers, block devices, FIFOs, sockets, or reserved
+	// typeflags): the extractor is not equipped to safely materialize them.
+	if err := tw.WriteHeader(&tar.Header{
+		Name:     "dev/weird",
+		Mode:     0o600,
+		Size:     0,
+		Typeflag: tar.TypeChar,
+		Devmajor: 1,
+		Devminor: 3,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := TarUnpack(archive, t.TempDir(), false, TarLimits{}); err == nil {
+		t.Fatal("expected TarUnpack to reject unsupported tar entry type, got nil")
+	} else if !strings.Contains(err.Error(), "unsupported tar entry") {
+		t.Fatalf("expected 'unsupported tar entry' error, got: %v", err)
+	}
+}
+
 func TestTarUnpackBoundsBytesReadPastValidatedSize(t *testing.T) {
-	// Prove that even if a file grows between checkArchiveFile and read
-	// (TOCTOU / concurrent writer), TarUnpack does not consume more than
-	// MaxArchiveSize bytes. We simulate the race by writing a legitimately
-	// sized tar, then appending garbage after the fact and unpacking with
-	// MaxArchiveSize set to the original size. io.LimitReader caps the read.
+	// End-to-end path: an archive that grows between initial write and
+	// TarUnpack must be rejected. Note that in this shape checkArchiveFile
+	// runs Stat *after* the append and observes the grown size, so it is
+	// checkArchiveFile — not the io.LimitReader cap — that fires here.
+	// The direct-reader test below (TestBoundedArchiveReaderCapsPostValidationGrowth)
+	// exercises the LimitReader cap in isolation so a regression in the
+	// TOCTOU protection is detected even if checkArchiveFile passes.
 	srcDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
@@ -584,5 +628,50 @@ func TestTarUnpackBoundsBytesReadPastValidatedSize(t *testing.T) {
 	}
 	if !errors.Is(err, ErrArchiveTooLarge) {
 		t.Fatalf("expected ErrArchiveTooLarge, got: %v", err)
+	}
+}
+
+// TestBoundedArchiveReaderCapsPostValidationGrowth focuses on the exact
+// reader TarUnpack wraps around the archive file after checkArchiveFile
+// returns. It models the case where the file grows AFTER the Stat/size
+// check has already passed — the checkArchiveFile Stat pass in the
+// end-to-end test above would not catch this because it inspects the
+// current size at call time. If the io.LimitReader cap in TarUnpack were
+// removed or set to zero for a positive MaxArchiveSize, this test would
+// read all 100 bytes instead of the 10-byte cap and fail.
+func TestBoundedArchiveReaderCapsPostValidationGrowth(t *testing.T) {
+	src := bytes.NewReader(bytes.Repeat([]byte{'x'}, 100))
+	r := boundedArchiveReader(src, 10)
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+	if len(got) != 10 {
+		t.Fatalf("boundedArchiveReader read %d bytes, want capped at 10", len(got))
+	}
+
+	// Zero limit means "unbounded" (pre-existing behavior); ensure the helper
+	// preserves that semantic and does not accidentally wrap in a 0-byte cap.
+	src = bytes.NewReader(bytes.Repeat([]byte{'x'}, 100))
+	r = boundedArchiveReader(src, 0)
+	got, err = io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll (unbounded): %v", err)
+	}
+	if len(got) != 100 {
+		t.Fatalf("boundedArchiveReader with MaxArchiveSize=0 read %d bytes, want unbounded (100)", len(got))
+	}
+
+	// Negative limit is equivalent to "unbounded" per boundedArchiveReader's
+	// contract (matches how checkArchiveSize treats it). Guard against a
+	// future refactor that starts passing io.LimitReader a negative n.
+	src = bytes.NewReader(bytes.Repeat([]byte{'x'}, 100))
+	r = boundedArchiveReader(src, -1)
+	got, err = io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll (negative): %v", err)
+	}
+	if len(got) != 100 {
+		t.Fatalf("boundedArchiveReader with MaxArchiveSize=-1 read %d bytes, want unbounded (100)", len(got))
 	}
 }
