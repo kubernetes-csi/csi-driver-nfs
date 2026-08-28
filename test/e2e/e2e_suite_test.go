@@ -59,6 +59,15 @@ var (
 		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
 		"mountPermissions": "0",
 	}
+	storageClassParametersWithUIDGID = map[string]string{
+		"server": nfsServerAddress,
+		"share":  nfsShare,
+		"csi.storage.k8s.io/provisioner-secret-name":      "mount-options",
+		"csi.storage.k8s.io/provisioner-secret-namespace": "default",
+		"mountPermissions": "0770",
+		"uid":              "1001",
+		"gid":              "1002",
+	}
 	subDirStorageClassParameters = map[string]string{
 		"server": nfsServerAddress,
 		"share":  nfsShare,
