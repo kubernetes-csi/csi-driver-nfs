@@ -42,6 +42,28 @@ type TarLimits struct {
 	MaxFiles int64
 }
 
+// hasTraversalComponent reports whether the archive entry name contains a
+// literal ".." path component after normalizing backslashes to forward
+// slashes. It matches validatePath's segment-based check (see utils.go): only
+// entries whose path segments are exactly ".." are rejected, so legitimate
+// names such as "report..txt" or "..." are preserved. Backslashes are
+// normalized so Windows-style traversal (e.g. "..\\etc\\passwd") is caught
+// on Linux too, matching the rationale documented on validatePath.
+//
+// Placed alongside the tar entry sanitizer (see TarUnpack) rather than in
+// utils.go to keep the CodeQL go/zipslip sanitizer visible next to its
+// consumer; the check runs immediately after tarReader.Next() before
+// tarHeader.Name is passed to filepath.Join.
+func hasTraversalComponent(name string) bool {
+	normalized := strings.ReplaceAll(name, "\\", "/")
+	for _, segment := range strings.Split(normalized, "/") {
+		if segment == ".." {
+			return true
+		}
+	}
+	return false
+}
+
 func (l TarLimits) hasLimits() bool {
 	return l.MaxArchiveSize > 0 || l.MaxFileSize > 0 || l.MaxFiles > 0
 }
@@ -327,9 +349,15 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 		// Sanitize the archive entry name immediately to prevent directory
 		// traversal ("Zip Slip", CWE-22). This check must happen before
 		// tarHeader.Name is used in any filepath operation. CodeQL go/zipslip
-		// recognizes strings.Contains("..") and filepath.IsLocal as sanitizers
-		// only when they guard the header name before filepath.Join.
-		if strings.Contains(tarHeader.Name, "..") || !filepath.IsLocal(tarHeader.Name) {
+		// recognizes an explicit ".." component guard and filepath.IsLocal as
+		// sanitizers only when they guard the header name before filepath.Join.
+		//
+		// Match validatePath's semantics: reject only entries whose path has
+		// a literal ".." segment (after normalizing backslashes so Windows-
+		// style separators are also caught on Linux). Substring-matching
+		// against ".." would incorrectly reject legitimate names such as
+		// "report..txt" that TarPack is free to produce.
+		if !filepath.IsLocal(tarHeader.Name) || hasTraversalComponent(tarHeader.Name) {
 			return tar.ErrInsecurePath
 		}
 
@@ -437,7 +465,7 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 		// destination are within the extraction directory; reject
 		// otherwise.
 		if tarHeader.Typeflag == tar.TypeLink {
-			if strings.Contains(tarHeader.Linkname, "..") || !filepath.IsLocal(tarHeader.Linkname) {
+			if !filepath.IsLocal(tarHeader.Linkname) || hasTraversalComponent(tarHeader.Linkname) {
 				return tar.ErrInsecurePath
 			}
 			linkTarget := filepath.Join(dstDirPath, tarHeader.Linkname)

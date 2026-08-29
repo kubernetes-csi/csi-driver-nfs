@@ -296,6 +296,50 @@ func TestUnpackZipSlipAbsoluteName(t *testing.T) {
 	}
 }
 
+// TestUnpackAllowsDoubleDotInFilename asserts the tar unpack sanitizer does
+// not over-reject: names that merely contain ".." as a substring (e.g.
+// "report..txt") are legitimate outputs of TarPack and must round-trip. The
+// segment-based check should treat ".." only as a path component, never as
+// an arbitrary substring. Regression guard for review comment on PR #1255.
+func TestUnpackAllowsDoubleDotInFilename(t *testing.T) {
+	const fileName = "report..txt"
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	content := []byte("hello")
+	if err := tw.WriteHeader(&tar.Header{
+		Name: fileName,
+		Size: int64(len(content)),
+		Mode: 0600,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write(content); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	archive := filepath.Join(t.TempDir(), "double-dot.tar")
+	if err := os.WriteFile(archive, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dst := t.TempDir()
+	if err := TarUnpack(archive, dst, false, TarLimits{}); err != nil {
+		t.Fatalf("unexpected error for legitimate double-dot filename %q: %v", fileName, err)
+	}
+
+	extracted := filepath.Join(dst, fileName)
+	got, err := os.ReadFile(extracted)
+	if err != nil {
+		t.Fatalf("failed to read extracted file: %v", err)
+	}
+	if string(got) != string(content) {
+		t.Fatalf("content mismatch: got %q, want %q", got, content)
+	}
+}
+
 func TestPackSameDir(t *testing.T) {
 	inputDir := t.TempDir()
 
