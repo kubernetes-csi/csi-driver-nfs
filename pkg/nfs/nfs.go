@@ -38,6 +38,9 @@ type DriverOptions struct {
 	RemoveArchivedVolumePath     bool
 	UseTarCommandInSnapshot      bool
 	EnableSnapshotCompression    bool
+	MaxSnapshotArchiveSize       int64
+	MaxSnapshotFileSize          int64
+	MaxSnapshotFiles             int64
 }
 
 type Driver struct {
@@ -51,6 +54,9 @@ type Driver struct {
 	removeArchivedVolumePath  bool
 	useTarCommandInSnapshot   bool
 	enableSnapshotCompression bool
+	maxSnapshotArchiveSize    int64
+	maxSnapshotFileSize       int64
+	maxSnapshotFiles          int64
 
 	//ids *identityServer
 	ns          *NodeServer
@@ -105,6 +111,9 @@ func NewDriver(options *DriverOptions) *Driver {
 		removeArchivedVolumePath:     options.RemoveArchivedVolumePath,
 		useTarCommandInSnapshot:      options.UseTarCommandInSnapshot,
 		enableSnapshotCompression:    options.EnableSnapshotCompression,
+		maxSnapshotArchiveSize:       options.MaxSnapshotArchiveSize,
+		maxSnapshotFileSize:          options.MaxSnapshotFileSize,
+		maxSnapshotFiles:             options.MaxSnapshotFiles,
 		defaultOnDeletePolicy:        options.DefaultOnDeletePolicy,
 	}
 
@@ -136,6 +145,14 @@ func NewDriver(options *DriverOptions) *Driver {
 		klog.Fatalf("%v", err)
 	}
 	return n
+}
+
+func (n *Driver) snapshotTarLimits() TarLimits {
+	return TarLimits{
+		MaxArchiveSize: n.maxSnapshotArchiveSize,
+		MaxFileSize:    n.maxSnapshotFileSize,
+		MaxFiles:       n.maxSnapshotFiles,
+	}
 }
 
 func NewNodeServer(n *Driver, mounter mount.Interface) *NodeServer {
