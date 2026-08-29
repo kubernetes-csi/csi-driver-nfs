@@ -268,6 +268,34 @@ func TestUnpackZipSlip(t *testing.T) {
 	}
 }
 
+func TestUnpackZipSlipAbsoluteName(t *testing.T) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	if err := tw.WriteHeader(&tar.Header{
+		Name: "/etc/passwd",
+		Size: 4,
+		Mode: 0600,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write([]byte("root")); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	archive := filepath.Join(t.TempDir(), "abs.tar")
+	if err := os.WriteFile(archive, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := TarUnpack(archive, t.TempDir(), false, TarLimits{})
+	if !errors.Is(err, tar.ErrInsecurePath) {
+		t.Fatalf("expected tar.ErrInsecurePath for absolute entry name, got: %v", err)
+	}
+}
+
 func TestPackSameDir(t *testing.T) {
 	inputDir := t.TempDir()
 

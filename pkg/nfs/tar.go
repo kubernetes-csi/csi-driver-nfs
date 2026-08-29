@@ -326,8 +326,10 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 
 		// Sanitize the archive entry name immediately to prevent directory
 		// traversal ("Zip Slip", CWE-22). This check must happen before
-		// tarHeader.Name is used in any filepath operation.
-		if strings.Contains(tarHeader.Name, "..") {
+		// tarHeader.Name is used in any filepath operation. CodeQL go/zipslip
+		// recognizes strings.Contains("..") and filepath.IsLocal as sanitizers
+		// only when they guard the header name before filepath.Join.
+		if strings.Contains(tarHeader.Name, "..") || !filepath.IsLocal(tarHeader.Name) {
 			return tar.ErrInsecurePath
 		}
 
@@ -435,6 +437,9 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 		// destination are within the extraction directory; reject
 		// otherwise.
 		if tarHeader.Typeflag == tar.TypeLink {
+			if strings.Contains(tarHeader.Linkname, "..") || !filepath.IsLocal(tarHeader.Linkname) {
+				return tar.ErrInsecurePath
+			}
 			linkTarget := filepath.Join(dstDirPath, tarHeader.Linkname)
 			if !isPathWithinBase(dstDirPath, linkTarget) {
 				return fmt.Errorf("hard link %s -> %s escapes extraction directory", tarHeader.Name, tarHeader.Linkname)
