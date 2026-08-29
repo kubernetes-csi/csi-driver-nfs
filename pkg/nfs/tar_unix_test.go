@@ -60,3 +60,42 @@ func TestTarUnpackRejectsFIFOArchive(t *testing.T) {
 		t.Fatalf("expected non-EOF error rejecting FIFO, got: %v", err)
 	}
 }
+
+// TestTarUnpackRejectsFIFOArchiveWithoutMaxArchiveSize covers the case where
+// only MaxFileSize / MaxFiles are configured (MaxArchiveSize left at zero).
+// The previous checkArchiveFile fast-returned in that shape and never stat'd
+// the descriptor, so a FIFO opened with O_NONBLOCK could be observed as EOF
+// and accepted as an "empty archive". The regular-file gate now fires
+// regardless of MaxArchiveSize.
+func TestTarUnpackRejectsFIFOArchiveWithoutMaxArchiveSize(t *testing.T) {
+	dir := t.TempDir()
+	archive := filepath.Join(dir, "snap.tar")
+	if err := syscall.Mkfifo(archive, 0o644); err != nil {
+		t.Skipf("cannot create FIFO in test tmpdir: %v", err)
+	}
+	err := TarUnpack(archive, t.TempDir(), false, TarLimits{MaxFileSize: 1 << 20, MaxFiles: 100})
+	if err == nil {
+		t.Fatal("expected error unpacking FIFO archive (no MaxArchiveSize), got nil")
+	}
+	if errors.Is(err, io.EOF) {
+		t.Fatalf("expected non-EOF error rejecting FIFO with no MaxArchiveSize, got: %v", err)
+	}
+}
+
+// TestTarPackRejectsFIFOSource proves that CreateSnapshot fails loudly at
+// pack time when the source volume contains a mode the extractor cannot
+// safely materialize (FIFO / device / socket). Without this gate
+// tar.FileInfoHeader would happily serialize a FIFO header, ship a
+// snapshot that TarUnpack later refuses, and only surface the problem at
+// restore time.
+func TestTarPackRejectsFIFOSource(t *testing.T) {
+	src := t.TempDir()
+	if err := syscall.Mkfifo(filepath.Join(src, "weird"), 0o644); err != nil {
+		t.Skipf("cannot create FIFO in test tmpdir: %v", err)
+	}
+	archive := filepath.Join(t.TempDir(), "snap.tar")
+	err := TarPack(src, archive, false, TarLimits{})
+	if err == nil {
+		t.Fatal("expected TarPack to reject FIFO source entry, got nil")
+	}
+}

@@ -174,7 +174,16 @@ func tarVisitFileToPack(
 	if state.limits.MaxFiles > 0 && state.fileCount > state.limits.MaxFiles {
 		return fmt.Errorf("%w: packed %d entries, max %d", ErrTooManyFiles, state.fileCount, state.limits.MaxFiles)
 	}
-	if fileInfo.Mode().IsRegular() && state.limits.MaxFileSize > 0 && fileInfo.Size() > state.limits.MaxFileSize {
+	// Reject source entry modes the extractor is not equipped to materialize,
+	// so CreateSnapshot fails loudly here instead of shipping a ready snapshot
+	// that TarUnpack later refuses. tar.FileInfoHeader is happy to serialize
+	// FIFOs / devices / sockets from the source volume, but the extractor
+	// only ever writes directories, symlinks, and regular files.
+	mode := fileInfo.Mode()
+	if !mode.IsDir() && mode&fs.ModeSymlink == 0 && !mode.IsRegular() {
+		return fmt.Errorf("unsupported source entry %s: mode %s", srcSubPath, mode)
+	}
+	if mode.IsRegular() && state.limits.MaxFileSize > 0 && fileInfo.Size() > state.limits.MaxFileSize {
 		return fmt.Errorf("%w: %s is %d bytes, max %d", ErrFileTooLarge, srcSubPath, fileInfo.Size(), state.limits.MaxFileSize)
 	}
 
@@ -513,9 +522,6 @@ func checkArchiveSize(path string, limits TarLimits) error {
 }
 
 func checkArchiveFile(f *os.File, path string, limits TarLimits) error {
-	if limits.MaxArchiveSize <= 0 {
-		return nil
-	}
 	fi, err := f.Stat()
 	if err != nil {
 		return fmt.Errorf("stat archive %s: %w", path, err)
@@ -523,12 +529,15 @@ func checkArchiveFile(f *os.File, path string, limits TarLimits) error {
 	// Reject non-regular files: FIFO / device / symlink / directory. On an
 	// attacker-controlled NFS mount the archive path can be replaced between
 	// TarPack finish and TarUnpack read; a FIFO would block os.Open forever
+	// (or, opened O_NONBLOCK, report EOF and be accepted as an empty archive)
 	// and a device / symlink can report Size()==0 which trivially bypasses
 	// MaxArchiveSize while still streaming unbounded bytes to the reader.
+	// This check runs regardless of MaxArchiveSize — configurations that only
+	// set MaxFileSize / MaxFiles still need the descriptor to be a real file.
 	if !fi.Mode().IsRegular() {
 		return fmt.Errorf("%w: %s is not a regular file (mode=%s)", ErrArchiveTooLarge, path, fi.Mode())
 	}
-	if fi.Size() > limits.MaxArchiveSize {
+	if limits.MaxArchiveSize > 0 && fi.Size() > limits.MaxArchiveSize {
 		return fmt.Errorf("%w: %s is %d bytes, max %d", ErrArchiveTooLarge, path, fi.Size(), limits.MaxArchiveSize)
 	}
 	return nil
