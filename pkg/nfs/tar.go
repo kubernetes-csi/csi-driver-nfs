@@ -324,6 +324,13 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 			return fmt.Errorf("reading tar header of %s: %w", srcPath, err)
 		}
 
+		// Sanitize the archive entry name immediately to prevent directory
+		// traversal ("Zip Slip", CWE-22). This check must happen before
+		// tarHeader.Name is used in any filepath operation.
+		if strings.Contains(tarHeader.Name, "..") {
+			return tar.ErrInsecurePath
+		}
+
 		fileCount++
 		if limits.MaxFiles > 0 && fileCount > limits.MaxFiles {
 			return fmt.Errorf("%w: archive %s exceeds max %d entries", ErrTooManyFiles, srcPath, limits.MaxFiles)
@@ -361,14 +368,6 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 		}
 
 		filePath := filepath.Join(dstDirPath, tarHeader.Name)
-
-		// Sanitize the archive entry name to prevent directory traversal
-		// ("Zip Slip", CWE-22). The cleaned relative name must not escape
-		// the destination directory via ".." components.
-		cleanName := filepath.Clean(tarHeader.Name)
-		if strings.Contains(cleanName, "..") {
-			return tar.ErrInsecurePath
-		}
 
 		// Robust containment check: use filepath.Rel to prevent prefix collisions
 		// (e.g., dstDirPath="/tmp/out" vs filePath="/tmp/out2/...")
