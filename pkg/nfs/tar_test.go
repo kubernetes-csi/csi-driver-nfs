@@ -799,3 +799,80 @@ func TestTarUnpackHardLinkEscapeRejected(t *testing.T) {
 		t.Fatal("expected error for hard link escaping extraction directory, got nil")
 	}
 }
+
+// TestTarUnpackRejectsMalformedDirSize verifies that a directory entry
+// with a non-zero Size is rejected before the payload is decompressed.
+func TestTarUnpackRejectsMalformedDirSize(t *testing.T) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	if err := tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeDir,
+		Name:     "baddir/",
+		Size:     1 << 30, // 1 GiB
+		Mode:     0o755,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	archive := filepath.Join(t.TempDir(), "test.tar")
+	if err := os.WriteFile(archive, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := TarUnpack(archive, t.TempDir(), false, TarLimits{MaxFileSize: 1 << 20})
+	if err == nil {
+		t.Fatal("expected error for directory entry with non-zero size, got nil")
+	}
+}
+
+// TestTarUnpackHardLinkSymlinkTraversal verifies that a hard-link entry
+// whose target traverses through an intermediate symlink outside the
+// extraction directory is rejected.
+func TestTarUnpackHardLinkSymlinkTraversal(t *testing.T) {
+	// Build an archive: symlink "pivot" -> "..", then hardlink to "pivot/x"
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+
+	// First: a regular file so there's something to link to outside
+	if err := tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeSymlink,
+		Name:     "pivot",
+		Linkname: "..",
+		Mode:     0o777,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a target file outside dst that the hard link would reach
+	dst := t.TempDir()
+	victimPath := filepath.Join(filepath.Dir(dst), "victim.txt")
+	if err := os.WriteFile(victimPath, []byte("secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(victimPath)
+
+	if err := tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeLink,
+		Name:     "escaped.txt",
+		Linkname: "pivot/victim.txt",
+		Mode:     0o644,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	archive := filepath.Join(t.TempDir(), "test.tar")
+	if err := os.WriteFile(archive, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := TarUnpack(archive, dst, false, TarLimits{})
+	if err == nil {
+		t.Fatal("expected error for hard link traversing symlink outside dst, got nil")
+	}
+}

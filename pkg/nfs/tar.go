@@ -343,6 +343,17 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 		if !mode.IsDir() && mode&fs.ModeSymlink == 0 && !mode.IsRegular() {
 			return fmt.Errorf("unsupported tar entry %s: type %q / mode %s", tarHeader.Name, string(tarHeader.Typeflag), mode)
 		}
+		// Apply header-size sanity check to ALL entry types, not just
+		// regular files. A malformed directory or symlink header can
+		// declare a large Size; tar.Reader.Next() drains that payload
+		// through gzip before any downstream limit, so a small
+		// compressed archive could force unbounded decompression.
+		// Directories and symlinks should have Size==0; reject any
+		// non-regular entry that claims a non-zero payload.
+		if !mode.IsRegular() && tarHeader.Size > 0 {
+			return fmt.Errorf("non-regular entry %s (type %q) declares payload size %d; rejecting",
+				tarHeader.Name, string(tarHeader.Typeflag), tarHeader.Size)
+		}
 		if mode.IsRegular() {
 			if tarHeader.Size < 0 || (limits.MaxFileSize > 0 && tarHeader.Size > limits.MaxFileSize) {
 				return fmt.Errorf("%w: %s is %d bytes, max %d", ErrFileTooLarge, tarHeader.Name, tarHeader.Size, limits.MaxFileSize)
@@ -420,6 +431,17 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 			linkTarget := filepath.Join(dstDirPath, tarHeader.Linkname)
 			if !isPathWithinBase(dstDirPath, linkTarget) {
 				return fmt.Errorf("hard link %s -> %s escapes extraction directory", tarHeader.Name, tarHeader.Linkname)
+			}
+			// Resolve symlinks in the link target path to prevent
+			// traversal via intermediate symlinks. An archive could
+			// create "pivot -> .." then hard-link to "pivot/victim";
+			// the lexical check above passes but os.Link would follow
+			// the symlink and link to a file outside dstDirPath.
+			if resolvedTarget, evalErr := filepath.EvalSymlinks(linkTarget); evalErr == nil {
+				if !isPathWithinBase(dstDirPath, resolvedTarget) {
+					return fmt.Errorf("hard link %s -> %s resolves to %s outside extraction directory",
+						tarHeader.Name, tarHeader.Linkname, resolvedTarget)
+				}
 			}
 			if existing, lErr := os.Lstat(filePath); lErr == nil && existing.Mode()&fs.ModeSymlink != 0 {
 				if err = os.Remove(filePath); err != nil {
