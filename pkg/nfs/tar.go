@@ -362,6 +362,14 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 
 		filePath := filepath.Join(dstDirPath, tarHeader.Name)
 
+		// Sanitize the archive entry name to prevent directory traversal
+		// ("Zip Slip", CWE-22). The cleaned relative name must not escape
+		// the destination directory via ".." components.
+		cleanName := filepath.Clean(tarHeader.Name)
+		if strings.Contains(cleanName, "..") {
+			return tar.ErrInsecurePath
+		}
+
 		// Robust containment check: use filepath.Rel to prevent prefix collisions
 		// (e.g., dstDirPath="/tmp/out" vs filePath="/tmp/out2/...")
 		if !isPathWithinBase(dstDirPath, filePath) {
