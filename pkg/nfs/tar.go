@@ -408,6 +408,30 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLim
 			continue
 		}
 
+		// Hard-link entries (tar.TypeLink) report regular-file mode in Go,
+		// so the mode gate above does not catch them. GNU tar can emit
+		// hard-link entries for ordinary files, and their Size is zero.
+		// Extracting them through the regular-file path would create an
+		// empty file and silently lose the linked content. Materialize
+		// them as proper hard links when both the link target and the
+		// destination are within the extraction directory; reject
+		// otherwise.
+		if tarHeader.Typeflag == tar.TypeLink {
+			linkTarget := filepath.Join(dstDirPath, tarHeader.Linkname)
+			if !isPathWithinBase(dstDirPath, linkTarget) {
+				return fmt.Errorf("hard link %s -> %s escapes extraction directory", tarHeader.Name, tarHeader.Linkname)
+			}
+			if existing, lErr := os.Lstat(filePath); lErr == nil && existing.Mode()&fs.ModeSymlink != 0 {
+				if err = os.Remove(filePath); err != nil {
+					return fmt.Errorf("removing symlink before hard link %s: %w", filePath, err)
+				}
+			}
+			if err = os.Link(linkTarget, filePath); err != nil {
+				return fmt.Errorf("creating hard link %s -> %s: %w", filePath, linkTarget, err)
+			}
+			continue
+		}
+
 		if fileInfo.Mode()&fs.ModeSymlink != 0 {
 			if err := os.Symlink(tarHeader.Linkname, filePath); err != nil {
 				return fmt.Errorf("creating symlink %s: %w", filePath, err)

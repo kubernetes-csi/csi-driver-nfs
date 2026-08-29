@@ -708,3 +708,94 @@ func TestTarPackRejectsSymlinkDestination(t *testing.T) {
 		t.Fatal("symlink target was created; TarPack followed the symlink")
 	}
 }
+
+// TestTarUnpackHardLink verifies that TarUnpack correctly materializes
+// hard-link entries (tar.TypeLink) instead of creating empty files.
+// Without explicit Typeflag handling, hard-link entries report regular
+// file mode with Size==0, causing silent data loss on restore.
+func TestTarUnpackHardLink(t *testing.T) {
+	// Build a tar archive containing a regular file and a hard link to it.
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+
+	content := []byte("hard-link-content")
+	if err := tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeReg,
+		Name:     "original.txt",
+		Size:     int64(len(content)),
+		Mode:     0o644,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write(content); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeLink,
+		Name:     "link.txt",
+		Linkname: "original.txt",
+		Mode:     0o644,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write the archive and unpack it.
+	archive := filepath.Join(t.TempDir(), "test.tar")
+	if err := os.WriteFile(archive, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dst := t.TempDir()
+	if err := TarUnpack(archive, dst, false, TarLimits{}); err != nil {
+		t.Fatalf("TarUnpack failed: %v", err)
+	}
+
+	// Verify both files exist and have the same content.
+	origData, err := os.ReadFile(filepath.Join(dst, "original.txt"))
+	if err != nil {
+		t.Fatalf("reading original.txt: %v", err)
+	}
+	linkData, err := os.ReadFile(filepath.Join(dst, "link.txt"))
+	if err != nil {
+		t.Fatalf("reading link.txt: %v", err)
+	}
+	if string(origData) != string(content) {
+		t.Fatalf("original.txt content = %q, want %q", origData, content)
+	}
+	if string(linkData) != string(content) {
+		t.Fatalf("link.txt content = %q, want %q (hard link not materialized)", linkData, content)
+	}
+}
+
+// TestTarUnpackHardLinkEscapeRejected verifies that a hard-link entry
+// whose target points outside the extraction directory is rejected.
+func TestTarUnpackHardLinkEscapeRejected(t *testing.T) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	if err := tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeLink,
+		Name:     "evil.txt",
+		Linkname: "../../../etc/passwd",
+		Mode:     0o644,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	archive := filepath.Join(t.TempDir(), "test.tar")
+	if err := os.WriteFile(archive, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dst := t.TempDir()
+	err := TarUnpack(archive, dst, false, TarLimits{})
+	if err == nil {
+		t.Fatal("expected error for hard link escaping extraction directory, got nil")
+	}
+}
