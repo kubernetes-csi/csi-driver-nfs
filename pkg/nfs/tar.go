@@ -49,6 +49,13 @@ func (l TarLimits) hasLimits() bool {
 var (
 	// ErrArchiveTooLarge is returned when a snapshot archive exceeds MaxArchiveSize.
 	ErrArchiveTooLarge = errors.New("snapshot archive exceeds max size")
+	// ErrArchiveInvalidType is returned when a snapshot archive path is not a
+	// regular file (e.g. FIFO, device, symlink, directory). This is a
+	// descriptor-mode validation failure, not a size violation — kept
+	// distinct from ErrArchiveTooLarge so operators can tell the two apart
+	// without parsing error text, and so callers can react differently
+	// (e.g. surface a different Kubernetes Event).
+	ErrArchiveInvalidType = errors.New("snapshot archive is not a regular file")
 	// ErrFileTooLarge is returned when a file in a snapshot archive exceeds MaxFileSize.
 	ErrFileTooLarge = errors.New("snapshot archive contains a file that exceeds max size")
 	// ErrTooManyFiles is returned when a snapshot archive exceeds MaxFiles entries.
@@ -535,7 +542,7 @@ func checkArchiveFile(f *os.File, path string, limits TarLimits) error {
 	// This check runs regardless of MaxArchiveSize — configurations that only
 	// set MaxFileSize / MaxFiles still need the descriptor to be a real file.
 	if !fi.Mode().IsRegular() {
-		return fmt.Errorf("%w: %s is not a regular file (mode=%s)", ErrArchiveTooLarge, path, fi.Mode())
+		return fmt.Errorf("%w: %s (mode=%s)", ErrArchiveInvalidType, path, fi.Mode())
 	}
 	if limits.MaxArchiveSize > 0 && fi.Size() > limits.MaxArchiveSize {
 		return fmt.Errorf("%w: %s is %d bytes, max %d", ErrArchiveTooLarge, path, fi.Size(), limits.MaxArchiveSize)

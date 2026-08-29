@@ -59,6 +59,13 @@ func TestTarUnpackRejectsFIFOArchive(t *testing.T) {
 	if errors.Is(err, io.EOF) {
 		t.Fatalf("expected non-EOF error rejecting FIFO, got: %v", err)
 	}
+	// When the descriptor-mode gate fires (rather than an O_NONBLOCK-open
+	// failure at a lower layer), the returned error must be the distinct
+	// invalid-type sentinel, not the size-limit sentinel — they mean
+	// different things and callers may react differently.
+	if errors.Is(err, ErrArchiveTooLarge) {
+		t.Fatalf("FIFO rejection should not surface as ErrArchiveTooLarge, got: %v", err)
+	}
 }
 
 // TestTarUnpackRejectsFIFOArchiveWithoutMaxArchiveSize covers the case where
@@ -79,6 +86,9 @@ func TestTarUnpackRejectsFIFOArchiveWithoutMaxArchiveSize(t *testing.T) {
 	}
 	if errors.Is(err, io.EOF) {
 		t.Fatalf("expected non-EOF error rejecting FIFO with no MaxArchiveSize, got: %v", err)
+	}
+	if errors.Is(err, ErrArchiveTooLarge) {
+		t.Fatalf("FIFO rejection should not surface as ErrArchiveTooLarge, got: %v", err)
 	}
 }
 
