@@ -115,6 +115,15 @@ func TarPack(srcDirPath string, dstPath string, enableCompression bool, limits T
 		return fmt.Errorf("destination file %s cannot be under source directory %s", dstPath, srcDirPath)
 	}
 
+	// Reject pre-existing symlinks at the destination path before creating
+	// the archive. Without this check os.Create follows the symlink and
+	// overwrites its target — an attacker who can write to the snapshot
+	// directory could pre-plant a symlink and redirect the archive write to
+	// an arbitrary path.
+	if fi, lErr := os.Lstat(dstPath); lErr == nil && fi.Mode()&fs.ModeSymlink != 0 {
+		return fmt.Errorf("%w: destination %s is a symlink", ErrArchiveInvalidType, dstPath)
+	}
+
 	tarFile, err := os.Create(dstPath)
 	if err != nil {
 		return fmt.Errorf("creating destination file: %w", err)

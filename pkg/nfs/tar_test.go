@@ -675,3 +675,36 @@ func TestBoundedArchiveReaderCapsPostValidationGrowth(t *testing.T) {
 		t.Fatalf("boundedArchiveReader with MaxArchiveSize=-1 read %d bytes, want unbounded (100)", len(got))
 	}
 }
+
+// TestTarPackRejectsSymlinkDestination verifies that TarPack refuses to write
+// through a pre-existing symlink at the destination path. Without this gate
+// an attacker who can write to the snapshot directory could plant a symlink
+// and redirect the archive write to an arbitrary path.
+func TestTarPackRejectsSymlinkDestination(t *testing.T) {
+	src := t.TempDir()
+	if err := os.WriteFile(filepath.Join(src, "data.txt"), []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dstDir := t.TempDir()
+	target := filepath.Join(dstDir, "real.tar")
+	archive := filepath.Join(dstDir, "snap.tar")
+
+	// Pre-create a symlink at the archive destination.
+	if err := os.Symlink(target, archive); err != nil {
+		t.Skipf("cannot create symlink: %v", err)
+	}
+
+	err := TarPack(src, archive, false, TarLimits{})
+	if err == nil {
+		t.Fatal("expected TarPack to reject symlink destination, got nil")
+	}
+	if !errors.Is(err, ErrArchiveInvalidType) {
+		t.Fatalf("expected ErrArchiveInvalidType, got: %v", err)
+	}
+
+	// Verify the target file was not created (symlink was not followed).
+	if _, statErr := os.Stat(target); statErr == nil {
+		t.Fatal("symlink target was created; TarPack followed the symlink")
+	}
+}
