@@ -74,6 +74,9 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.dnsPolicy`                            | dnsPolicy of controller driver, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`                              | `ClusterFirstWithHostNet`                                                             |
 | `controller.defaultOnDeletePolicy`                | default policy for deleting subdirectory when deleting a volume, available values: `delete`, `retain`, `archive`                              | `delete`                                                             |
 | `controller.enableSnapshotCompression`            | enable compression when creating volume snapshots. When `false`, snapshots will be stored without gzip compression (using tar instead of tar.gz)                              | `true`                                                             |
+| `controller.maxSnapshotArchiveSize`               | maximum snapshot archive file size in bytes. `0` means unlimited. | `0` |
+| `controller.maxSnapshotFileSize`                  | maximum uncompressed size in bytes of any file in a snapshot archive. `0` means unlimited. | `0` |
+| `controller.maxSnapshotFiles`                     | maximum number of entries (files, directories, and symlinks) in a snapshot archive. `0` means unlimited. | `0` |
 | `controller.livenessProbe.healthPort ` | the health check port for liveness probe | `29652` |
 | `controller.logLevel`                             | controller driver log level                                                          |`5`                                                           |
 | `controller.workingMountDir`                      | working directory for provisioner to mount nfs shares temporarily                  | `/tmp`                                                             |
