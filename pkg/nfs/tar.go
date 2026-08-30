@@ -30,9 +30,100 @@ import (
 	"time"
 )
 
-func TarPack(srcDirPath string, dstPath string, enableCompression bool) error {
+// TarLimits bounds snapshot archive packing and extraction.
+// A zero or negative value for a field means that limit is not enforced.
+type TarLimits struct {
+	// MaxArchiveSize is the maximum size of the archive file on disk, in bytes.
+	MaxArchiveSize int64
+	// MaxFileSize is the maximum uncompressed size of any regular file, in bytes.
+	MaxFileSize int64
+	// MaxFiles is the maximum number of archive entries, including directories
+	// and symlinks.
+	MaxFiles int64
+}
+
+// hasTraversalComponent reports whether the archive entry name contains a
+// literal ".." path component after normalizing backslashes to forward
+// slashes. It matches validatePath's segment-based check (see utils.go): only
+// entries whose path segments are exactly ".." are rejected, so legitimate
+// names such as "report..txt" or "..." are preserved. Backslashes are
+// normalized so Windows-style traversal (e.g. "..\\etc\\passwd") is caught
+// on Linux too, matching the rationale documented on validatePath.
+//
+// Placed alongside the tar entry sanitizer (see TarUnpack) rather than in
+// utils.go to keep the CodeQL go/zipslip sanitizer visible next to its
+// consumer; the check runs immediately after tarReader.Next() before
+// tarHeader.Name is passed to filepath.Join.
+func hasTraversalComponent(name string) bool {
+	normalized := strings.ReplaceAll(name, "\\", "/")
+	for _, segment := range strings.Split(normalized, "/") {
+		if segment == ".." {
+			return true
+		}
+	}
+	return false
+}
+
+func (l TarLimits) hasLimits() bool {
+	return l.MaxArchiveSize > 0 || l.MaxFileSize > 0 || l.MaxFiles > 0
+}
+
+var (
+	// ErrArchiveTooLarge is returned when a snapshot archive exceeds MaxArchiveSize.
+	ErrArchiveTooLarge = errors.New("snapshot archive exceeds max size")
+	// ErrArchiveInvalidType is returned when a snapshot archive path is not a
+	// regular file (e.g. FIFO, device, symlink, directory). This is a
+	// descriptor-mode validation failure, not a size violation — kept
+	// distinct from ErrArchiveTooLarge so operators can tell the two apart
+	// without parsing error text, and so callers can react differently
+	// (e.g. surface a different Kubernetes Event).
+	ErrArchiveInvalidType = errors.New("snapshot archive is not a regular file")
+	// ErrFileTooLarge is returned when a file in a snapshot archive exceeds MaxFileSize.
+	ErrFileTooLarge = errors.New("snapshot archive contains a file that exceeds max size")
+	// ErrTooManyFiles is returned when a snapshot archive exceeds MaxFiles entries.
+	ErrTooManyFiles = errors.New("snapshot archive exceeds max file count")
+)
+
+type tarPackState struct {
+	limits    TarLimits
+	fileCount int64
+}
+
+// limitedWriter stops writes once limit bytes have been written to the
+// underlying archive file (the on-disk .tar / .tar.gz size).
+type limitedWriter struct {
+	w     io.Writer
+	n     int64
+	limit int64
+}
+
+func (l *limitedWriter) Write(p []byte) (int, error) {
+	if l.limit <= 0 {
+		return l.w.Write(p)
+	}
+	remaining := l.limit - l.n
+	if remaining <= 0 {
+		return 0, fmt.Errorf("%w: wrote %d bytes, max %d", ErrArchiveTooLarge, l.n, l.limit)
+	}
+	truncated := false
+	if int64(len(p)) > remaining {
+		p = p[:remaining]
+		truncated = true
+	}
+	n, err := l.w.Write(p)
+	l.n += int64(n)
+	if err != nil {
+		return n, err
+	}
+	if truncated {
+		return n, fmt.Errorf("%w: wrote %d bytes, max %d", ErrArchiveTooLarge, l.n, l.limit)
+	}
+	return n, nil
+}
+
+func TarPack(srcDirPath string, dstPath string, enableCompression bool, limits TarLimits) (err error) {
 	// normalize all paths to be absolute and clean
-	dstPath, err := filepath.Abs(dstPath)
+	dstPath, err = filepath.Abs(dstPath)
 	if err != nil {
 		return fmt.Errorf("normalizing destination path: %w", err)
 	}
@@ -46,17 +137,40 @@ func TarPack(srcDirPath string, dstPath string, enableCompression bool) error {
 		return fmt.Errorf("destination file %s cannot be under source directory %s", dstPath, srcDirPath)
 	}
 
+	// Reject pre-existing symlinks at the destination path before creating
+	// the archive. Without this check os.Create follows the symlink and
+	// overwrites its target — an attacker who can write to the snapshot
+	// directory could pre-plant a symlink and redirect the archive write to
+	// an arbitrary path.
+	if fi, lErr := os.Lstat(dstPath); lErr == nil && fi.Mode()&fs.ModeSymlink != 0 {
+		return fmt.Errorf("%w: destination %s is a symlink", ErrArchiveInvalidType, dstPath)
+	}
+
 	tarFile, err := os.Create(dstPath)
 	if err != nil {
 		return fmt.Errorf("creating destination file: %w", err)
 	}
+	// Run last so writers are closed before we inspect or remove the file.
+	defer func() {
+		if err != nil {
+			_ = os.Remove(dstPath)
+			return
+		}
+		if sizeErr := checkArchiveSize(dstPath, limits); sizeErr != nil {
+			_ = os.Remove(dstPath)
+			err = sizeErr
+		}
+	}()
 	defer func() {
 		err = errors.Join(err, closeAndWrapErr(tarFile, "closing destination file %s: %w", dstPath))
 	}()
 
 	var tarDst io.Writer = tarFile
+	if limits.MaxArchiveSize > 0 {
+		tarDst = &limitedWriter{w: tarFile, limit: limits.MaxArchiveSize}
+	}
 	if enableCompression {
-		gzipWriter := gzip.NewWriter(tarFile)
+		gzipWriter := gzip.NewWriter(tarDst)
 		defer func() {
 			err = errors.Join(err, closeAndWrapErr(gzipWriter, "closing gzip writer"))
 		}()
@@ -68,11 +182,12 @@ func TarPack(srcDirPath string, dstPath string, enableCompression bool) error {
 		err = errors.Join(err, closeAndWrapErr(tarWriter, "closing tar writer"))
 	}()
 
+	state := &tarPackState{limits: limits}
 	// recursively visit every file and write it
 	if err = filepath.Walk(
 		srcDirPath,
 		func(srcSubPath string, fileInfo fs.FileInfo, walkErr error) error {
-			return tarVisitFileToPack(tarWriter, srcDirPath, srcSubPath, fileInfo, walkErr)
+			return tarVisitFileToPack(tarWriter, srcDirPath, srcSubPath, fileInfo, walkErr, state)
 		},
 	); err != nil {
 		return fmt.Errorf("walking source directory: %w", err)
@@ -87,9 +202,27 @@ func tarVisitFileToPack(
 	srcSubPath string,
 	fileInfo os.FileInfo,
 	walkErr error,
+	state *tarPackState,
 ) (err error) {
 	if walkErr != nil {
 		return walkErr
+	}
+
+	state.fileCount++
+	if state.limits.MaxFiles > 0 && state.fileCount > state.limits.MaxFiles {
+		return fmt.Errorf("%w: packed %d entries, max %d", ErrTooManyFiles, state.fileCount, state.limits.MaxFiles)
+	}
+	// Reject source entry modes the extractor is not equipped to materialize,
+	// so CreateSnapshot fails loudly here instead of shipping a ready snapshot
+	// that TarUnpack later refuses. tar.FileInfoHeader is happy to serialize
+	// FIFOs / devices / sockets from the source volume, but the extractor
+	// only ever writes directories, symlinks, and regular files.
+	mode := fileInfo.Mode()
+	if !mode.IsDir() && mode&fs.ModeSymlink == 0 && !mode.IsRegular() {
+		return fmt.Errorf("unsupported source entry %s: mode %s", srcSubPath, mode)
+	}
+	if mode.IsRegular() && state.limits.MaxFileSize > 0 && fileInfo.Size() > state.limits.MaxFileSize {
+		return fmt.Errorf("%w: %s is %d bytes, max %d", ErrFileTooLarge, srcSubPath, fileInfo.Size(), state.limits.MaxFileSize)
 	}
 
 	linkTarget := ""
@@ -133,7 +266,7 @@ func tarVisitFileToPack(
 	return nil
 }
 
-func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
+func TarUnpack(srcPath, dstDirPath string, enableCompression bool, limits TarLimits) (err error) {
 	// normalize all paths to be absolute and clean
 	srcPath, err = filepath.Abs(srcPath)
 	if err != nil {
@@ -156,18 +289,31 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		return fmt.Errorf("resolving destination path: %w", err)
 	}
 
-	tarFile, err := os.Open(srcPath)
+	tarFile, err := openArchiveForRead(srcPath)
 	if err != nil {
-		return fmt.Errorf("opening archive %s: %w", srcPath, err)
+		return err
 	}
 	defer func() {
 		err = errors.Join(err, closeAndWrapErr(tarFile, "closing archive %s: %w", srcPath))
 	}()
+	if err = checkArchiveFile(tarFile, srcPath, limits); err != nil {
+		return err
+	}
 
-	var tarDst io.Reader = tarFile
+	// Bound bytes actually read to the size we validated in checkArchiveFile.
+	// This closes the TOCTOU window between Stat() and Read(): a concurrent
+	// writer growing the file (or an attacker replacing the fd contents via a
+	// hard-linked path) cannot stream more than MaxArchiveSize bytes past the
+	// size check. Only apply the cap when a MaxArchiveSize was configured; a
+	// zero limit means "unbounded" and pre-existed the hardening.
+	tarDst := boundedArchiveReader(tarFile, limits.MaxArchiveSize)
 	if enableCompression {
 		var gzipReader *gzip.Reader
-		gzipReader, err = gzip.NewReader(tarFile)
+		// Read gzip from the capped tarDst, not the raw file, so the archive
+		// byte cap is enforced on the compressed side too. (Decompression-bomb
+		// growth is a separate concern already bounded per-entry by MaxFileSize
+		// and MaxFiles further down.)
+		gzipReader, err = gzip.NewReader(tarDst)
 		if err != nil {
 			return fmt.Errorf("creating gzip reader: %w", err)
 		}
@@ -188,6 +334,7 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 		accTime time.Time
 	}
 	var dirTimestamps []dirTimestamp
+	var fileCount int64
 
 	for {
 		var tarHeader *tar.Header
@@ -199,7 +346,56 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 			return fmt.Errorf("reading tar header of %s: %w", srcPath, err)
 		}
 
+		// Sanitize the archive entry name immediately to prevent directory
+		// traversal ("Zip Slip", CWE-22). This check must happen before
+		// tarHeader.Name is used in any filepath operation. CodeQL go/zipslip
+		// recognizes an explicit ".." component guard and filepath.IsLocal as
+		// sanitizers only when they guard the header name before filepath.Join.
+		//
+		// Match validatePath's semantics: reject only entries whose path has
+		// a literal ".." segment (after normalizing backslashes so Windows-
+		// style separators are also caught on Linux). Substring-matching
+		// against ".." would incorrectly reject legitimate names such as
+		// "report..txt" that TarPack is free to produce.
+		if !filepath.IsLocal(tarHeader.Name) || hasTraversalComponent(tarHeader.Name) {
+			return tar.ErrInsecurePath
+		}
+
+		fileCount++
+		if limits.MaxFiles > 0 && fileCount > limits.MaxFiles {
+			return fmt.Errorf("%w: archive %s exceeds max %d entries", ErrTooManyFiles, srcPath, limits.MaxFiles)
+		}
+
 		fileInfo := tarHeader.FileInfo()
+		mode := fileInfo.Mode()
+		// Only three entry shapes are ever materialized below (directory,
+		// symlink, regular file). Reject anything else — including tar
+		// entries whose Typeflag maps to an irregular Mode (extension
+		// headers, GNU/character/block/FIFO/socket types, or reserved flags)
+		// — up front. Without this gate an irregular entry would skip the
+		// header MaxFileSize check just below and reach tarUnpackFile /
+		// tarWriteFile, which also short-circuits its per-file io.LimitReader
+		// on !IsRegular(), so a hostile archive could stream unbounded bytes
+		// into an oversized ordinary file on disk.
+		if !mode.IsDir() && mode&fs.ModeSymlink == 0 && !mode.IsRegular() {
+			return fmt.Errorf("unsupported tar entry %s: type %q / mode %s", tarHeader.Name, string(tarHeader.Typeflag), mode)
+		}
+		// Apply header-size sanity check to ALL entry types, not just
+		// regular files. A malformed directory or symlink header can
+		// declare a large Size; tar.Reader.Next() drains that payload
+		// through gzip before any downstream limit, so a small
+		// compressed archive could force unbounded decompression.
+		// Directories and symlinks should have Size==0; reject any
+		// non-regular entry that claims a non-zero payload.
+		if !mode.IsRegular() && tarHeader.Size > 0 {
+			return fmt.Errorf("non-regular entry %s (type %q) declares payload size %d; rejecting",
+				tarHeader.Name, string(tarHeader.Typeflag), tarHeader.Size)
+		}
+		if mode.IsRegular() {
+			if tarHeader.Size < 0 || (limits.MaxFileSize > 0 && tarHeader.Size > limits.MaxFileSize) {
+				return fmt.Errorf("%w: %s is %d bytes, max %d", ErrFileTooLarge, tarHeader.Name, tarHeader.Size, limits.MaxFileSize)
+			}
+		}
 
 		filePath := filepath.Join(dstDirPath, tarHeader.Name)
 
@@ -260,6 +456,44 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 			continue
 		}
 
+		// Hard-link entries (tar.TypeLink) report regular-file mode in Go,
+		// so the mode gate above does not catch them. GNU tar can emit
+		// hard-link entries for ordinary files, and their Size is zero.
+		// Extracting them through the regular-file path would create an
+		// empty file and silently lose the linked content. Materialize
+		// them as proper hard links when both the link target and the
+		// destination are within the extraction directory; reject
+		// otherwise.
+		if tarHeader.Typeflag == tar.TypeLink {
+			if !filepath.IsLocal(tarHeader.Linkname) || hasTraversalComponent(tarHeader.Linkname) {
+				return tar.ErrInsecurePath
+			}
+			linkTarget := filepath.Join(dstDirPath, tarHeader.Linkname)
+			if !isPathWithinBase(dstDirPath, linkTarget) {
+				return fmt.Errorf("hard link %s -> %s escapes extraction directory", tarHeader.Name, tarHeader.Linkname)
+			}
+			// Resolve symlinks in the link target path to prevent
+			// traversal via intermediate symlinks. An archive could
+			// create "pivot -> .." then hard-link to "pivot/victim";
+			// the lexical check above passes but os.Link would follow
+			// the symlink and link to a file outside dstDirPath.
+			if resolvedTarget, evalErr := filepath.EvalSymlinks(linkTarget); evalErr == nil {
+				if !isPathWithinBase(dstDirPath, resolvedTarget) {
+					return fmt.Errorf("hard link %s -> %s resolves to %s outside extraction directory",
+						tarHeader.Name, tarHeader.Linkname, resolvedTarget)
+				}
+			}
+			if existing, lErr := os.Lstat(filePath); lErr == nil && existing.Mode()&fs.ModeSymlink != 0 {
+				if err = os.Remove(filePath); err != nil {
+					return fmt.Errorf("removing symlink before hard link %s: %w", filePath, err)
+				}
+			}
+			if err = os.Link(linkTarget, filePath); err != nil {
+				return fmt.Errorf("creating hard link %s -> %s: %w", filePath, linkTarget, err)
+			}
+			continue
+		}
+
 		if fileInfo.Mode()&fs.ModeSymlink != 0 {
 			if err := os.Symlink(tarHeader.Linkname, filePath); err != nil {
 				return fmt.Errorf("creating symlink %s: %w", filePath, err)
@@ -276,7 +510,7 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 			}
 		}
 
-		if err = tarUnpackFile(filePath, tarReader, tarHeader); err != nil {
+		if err = tarUnpackFile(filePath, tarReader, tarHeader, limits.MaxFileSize); err != nil {
 			return fmt.Errorf("unpacking file %s: %w", filePath, err)
 		}
 	}
@@ -303,10 +537,10 @@ func TarUnpack(srcPath, dstDirPath string, enableCompression bool) (err error) {
 	return nil
 }
 
-func tarUnpackFile(dstFileName string, src io.Reader, header *tar.Header) (err error) {
+func tarUnpackFile(dstFileName string, src io.Reader, header *tar.Header, maxFileSize int64) (err error) {
 	srcFileInfo := header.FileInfo()
 
-	if err = tarWriteFile(dstFileName, src, srcFileInfo); err != nil {
+	if err = tarWriteFile(dstFileName, src, srcFileInfo, maxFileSize); err != nil {
 		return err
 	}
 
@@ -326,7 +560,13 @@ func tarUnpackFile(dstFileName string, src io.Reader, header *tar.Header) (err e
 	return nil
 }
 
-func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (err error) {
+func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo, maxFileSize int64) (err error) {
+	if srcFileInfo.Mode().IsRegular() {
+		if srcFileInfo.Size() < 0 || (maxFileSize > 0 && srcFileInfo.Size() > maxFileSize) {
+			return fmt.Errorf("%w: %s is %d bytes, max %d", ErrFileTooLarge, dstFileName, srcFileInfo.Size(), maxFileSize)
+		}
+	}
+
 	var dstFile *os.File
 	dstFile, err = os.OpenFile(dstFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, srcFileInfo.Mode().Perm())
 	if err != nil {
@@ -336,7 +576,14 @@ func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (e
 		err = errors.Join(err, closeAndWrapErr(dstFile, "closing destination file %s: %w", dstFileName))
 	}()
 
-	n, err := io.Copy(dstFile, src)
+	var r io.Reader = src
+	if srcFileInfo.Mode().IsRegular() {
+		// Never copy more than the header claims so a truncated or lying
+		// stream cannot fill the destination filesystem.
+		r = io.LimitReader(src, srcFileInfo.Size())
+	}
+
+	n, err := io.Copy(dstFile, r)
 	if err != nil {
 		return fmt.Errorf("copying to destination file %s: %w", dstFileName, err)
 	}
@@ -347,6 +594,61 @@ func tarWriteFile(dstFileName string, src io.Reader, srcFileInfo fs.FileInfo) (e
 
 	return nil
 }
+
+// boundedArchiveReader wraps the archive file with an io.LimitReader when a
+// positive MaxArchiveSize is configured, otherwise returns the file directly.
+// Exposed as a small helper so tests can exercise the exact cap that TarUnpack
+// applies without having to stand up a whole tar archive and rely on the
+// pre-read checkArchiveFile Stat pass (which would reject a grown file before
+// this reader ever runs). A zero limit means "unbounded" and pre-existed the
+// hardening.
+func boundedArchiveReader(r io.Reader, maxArchiveSize int64) io.Reader {
+	if maxArchiveSize <= 0 {
+		return r
+	}
+	return io.LimitReader(r, maxArchiveSize)
+}
+
+func checkArchiveSize(path string, limits TarLimits) error {
+	if limits.MaxArchiveSize <= 0 {
+		return nil
+	}
+	f, err := openArchiveForRead(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	return checkArchiveFile(f, path, limits)
+}
+
+func checkArchiveFile(f *os.File, path string, limits TarLimits) error {
+	fi, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("stat archive %s: %w", path, err)
+	}
+	// Reject non-regular files: FIFO / device / symlink / directory. On an
+	// attacker-controlled NFS mount the archive path can be replaced between
+	// TarPack finish and TarUnpack read; a FIFO would block os.Open forever
+	// (or, opened O_NONBLOCK, report EOF and be accepted as an empty archive)
+	// and a device / symlink can report Size()==0 which trivially bypasses
+	// MaxArchiveSize while still streaming unbounded bytes to the reader.
+	// This check runs regardless of MaxArchiveSize — configurations that only
+	// set MaxFileSize / MaxFiles still need the descriptor to be a real file.
+	if !fi.Mode().IsRegular() {
+		return fmt.Errorf("%w: %s (mode=%s)", ErrArchiveInvalidType, path, fi.Mode())
+	}
+	if limits.MaxArchiveSize > 0 && fi.Size() > limits.MaxArchiveSize {
+		return fmt.Errorf("%w: %s is %d bytes, max %d", ErrArchiveTooLarge, path, fi.Size(), limits.MaxArchiveSize)
+	}
+	return nil
+}
+
+// openArchiveForRead opens path for reading with defenses against
+// attacker-controlled path replacement. Implementation is platform-specific
+// (see tar_unix.go / tar_windows.go). Callers still validate mode/size via
+// checkArchiveFile before trusting the returned descriptor.
 
 func closeAndWrapErr(closer io.Closer, errFormat string, a ...any) error {
 	if err := closer.Close(); err != nil {

@@ -185,6 +185,9 @@ spec:
             - "--default-ondelete-policy={{ .Values.controller.defaultOnDeletePolicy }}"
             - "--use-tar-command-in-snapshot={{ .Values.controller.useTarCommandInSnapshot }}"
             - "--enable-snapshot-compression={{ .Values.controller.enableSnapshotCompression }}"
+            - "--max-snapshot-archive-size={{ .Values.controller.maxSnapshotArchiveSize | default 0 }}"
+            - "--max-snapshot-file-size={{ .Values.controller.maxSnapshotFileSize | default 0 }}"
+            - "--max-snapshot-files={{ .Values.controller.maxSnapshotFiles | default 0 }}"
           env:
             - name: NODE_ID
               valueFrom:

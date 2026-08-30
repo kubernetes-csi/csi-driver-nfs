@@ -1612,6 +1612,134 @@ func TestCopyVolumeFromUncompressedSnapshot(t *testing.T) {
 	}
 }
 
+func TestCopyFromSnapshotEnforcesFileSizeLimit(t *testing.T) {
+	srcPath := "/tmp/snapshot-limit-test/snapshot-limit-test"
+	if err := os.MkdirAll(srcPath, 0777); err != nil {
+		t.Fatalf("failed to create snapshot directory: %v", err)
+	}
+	defer func() { _ = os.RemoveAll("/tmp/snapshot-limit-test") }()
+
+	archivePath := filepath.Join(srcPath, "src-vol.tar")
+	file, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatalf("failed to create tar archive: %v", err)
+	}
+
+	tarWriter := tar.NewWriter(file)
+	body := "test content for snapshot limit"
+	hdr := &tar.Header{
+		Name: "test.txt",
+		Mode: 0644,
+		Size: int64(len(body)),
+	}
+	if err := tarWriter.WriteHeader(hdr); err != nil {
+		t.Fatalf("failed to write tar header: %v", err)
+	}
+	if _, err := tarWriter.Write([]byte(body)); err != nil {
+		t.Fatalf("failed to write tar content: %v", err)
+	}
+	if err := tarWriter.Close(); err != nil {
+		t.Fatalf("failed to close tar writer: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("failed to close archive: %v", err)
+	}
+
+	cs := initTestControllerWithOptions(&DriverOptions{
+		WorkingMountDir:     "/tmp",
+		MountPermissions:    0777,
+		MaxSnapshotFileSize: 4,
+	})
+
+	req := &csi.CreateVolumeRequest{
+		Name: "restored-volume-limit",
+		VolumeContentSource: &csi.VolumeContentSource{
+			Type: &csi.VolumeContentSource_Snapshot{
+				Snapshot: &csi.VolumeContentSource_SnapshotSource{
+					SnapshotId: "nfs-server.default.svc.cluster.local#share#snapshot-limit-test#snapshot-limit-test#src-vol",
+				},
+			},
+		},
+	}
+
+	dstVol := &nfsVolume{
+		id:      "nfs-server.default.svc.cluster.local#share#subdir#dst-pv-limit",
+		server:  "//nfs-server.default.svc.cluster.local",
+		baseDir: "share",
+		subDir:  "subdir",
+		uuid:    "dst-pv-limit",
+	}
+
+	dstPath := filepath.Join("/tmp", dstVol.uuid, dstVol.subDir)
+	if err := os.MkdirAll(dstPath, 0777); err != nil {
+		t.Fatalf("failed to create destination directory: %v", err)
+	}
+	defer func() { _ = os.RemoveAll("/tmp/dst-pv-limit") }()
+
+	err = cs.copyFromSnapshot(context.TODO(), req, dstVol)
+	if err == nil {
+		t.Fatal("expected copyFromSnapshot to fail when file exceeds max size")
+	}
+	if !strings.Contains(err.Error(), "exceeds max size") {
+		t.Fatalf("expected max size error, got: %v", err)
+	}
+}
+
+func TestUseTarCommandForSnapshot(t *testing.T) {
+	tests := []struct {
+		name                    string
+		useTarCommandInSnapshot bool
+		limits                  TarLimits
+		want                    bool
+	}{
+		{
+			name: "cli disabled, no limits -> false",
+			want: false,
+		},
+		{
+			name:                    "cli enabled, no limits -> true",
+			useTarCommandInSnapshot: true,
+			want:                    true,
+		},
+		{
+			name:                    "cli enabled, archive size limit -> false (limits force Go tar)",
+			useTarCommandInSnapshot: true,
+			limits:                  TarLimits{MaxArchiveSize: 1024},
+			want:                    false,
+		},
+		{
+			name:                    "cli enabled, file size limit -> false",
+			useTarCommandInSnapshot: true,
+			limits:                  TarLimits{MaxFileSize: 512},
+			want:                    false,
+		},
+		{
+			name:                    "cli enabled, file count limit -> false",
+			useTarCommandInSnapshot: true,
+			limits:                  TarLimits{MaxFiles: 8},
+			want:                    false,
+		},
+		{
+			name:   "cli disabled, limits set -> false",
+			limits: TarLimits{MaxFiles: 8},
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cs := initTestControllerWithOptions(&DriverOptions{
+				WorkingMountDir:         "/tmp",
+				UseTarCommandInSnapshot: tt.useTarCommandInSnapshot,
+			})
+			if got := cs.useTarCommandForSnapshot(tt.limits); got != tt.want {
+				t.Fatalf("useTarCommandForSnapshot(%+v) with UseTarCommandInSnapshot=%v = %v, want %v",
+					tt.limits, tt.useTarCommandInSnapshot, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestArchiveNameWithCompression(t *testing.T) {
 	snap := nfsSnapshot{
 		src: "test-volume",

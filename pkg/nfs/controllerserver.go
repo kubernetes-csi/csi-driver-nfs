@@ -433,7 +433,8 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	dstPath := filepath.Join(snapInternalVolPath, snapshot.archiveName(cs.Driver.enableSnapshotCompression))
 
 	klog.V(2).Infof("tar %v -> %v", srcPath, dstPath)
-	if cs.Driver.useTarCommandInSnapshot {
+	limits := cs.Driver.snapshotTarLimits()
+	if cs.useTarCommandForSnapshot(limits) {
 		var tarArgs []string
 		if cs.Driver.enableSnapshotCompression {
 			tarArgs = []string{"-C", srcPath, "-czvf", dstPath, "."}
@@ -444,9 +445,19 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			return nil, status.Errorf(codes.Internal, "failed to create archive for snapshot: %v: %v", err, string(out))
 		}
 	} else {
-		if err := TarPack(srcPath, dstPath, cs.Driver.enableSnapshotCompression); err != nil {
+		if err := TarPack(srcPath, dstPath, cs.Driver.enableSnapshotCompression, limits); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to create archive for snapshot: %v", err)
 		}
+	}
+	// Defense-in-depth: TarPack already enforces MaxArchiveSize on the Go path
+	// via its deferred size check + cleanup, and useTarCommandForSnapshot disables
+	// the external tar CLI whenever any limit is set. Keep this check so that if
+	// either invariant is ever relaxed, limits still gate the CLI path here.
+	if err := checkArchiveSize(dstPath, limits); err != nil {
+		if rmErr := os.Remove(dstPath); rmErr != nil {
+			klog.Warningf("failed to remove oversized snapshot archive %s: %v", dstPath, rmErr)
+		}
+		return nil, status.Errorf(codes.Internal, "failed to create archive for snapshot: %v", err)
 	}
 	klog.V(2).Infof("tar %s -> %s complete", srcPath, dstPath)
 
@@ -582,6 +593,20 @@ func (cs *ControllerServer) internalUnmount(ctx context.Context, vol *nfsVolume)
 	return err
 }
 
+// useTarCommandForSnapshot reports whether the external tar CLI should pack or
+// unpack a snapshot. Size limits are only enforced by the Go tar implementation,
+// so any configured limit disables the CLI path.
+func (cs *ControllerServer) useTarCommandForSnapshot(limits TarLimits) bool {
+	if !cs.Driver.useTarCommandInSnapshot {
+		return false
+	}
+	if limits.hasLimits() {
+		klog.V(2).Infof("ignoring --use-tar-command-in-snapshot because snapshot size limits are set")
+		return false
+	}
+	return true
+}
+
 func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.CreateVolumeRequest, dstVol *nfsVolume) error {
 	snap, err := getNfsSnapFromID(req.VolumeContentSource.GetSnapshot().GetSnapshotId())
 	if err != nil {
@@ -630,7 +655,16 @@ func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.Creat
 	}
 	klog.V(2).Infof("copy volume from snapshot %v -> %v", snapPath, dstPath)
 
-	if cs.Driver.useTarCommandInSnapshot {
+	limits := cs.Driver.snapshotTarLimits()
+	// Defense-in-depth: TarUnpack already enforces MaxArchiveSize on the Go path
+	// (via checkArchiveFile), and useTarCommandForSnapshot disables the external
+	// tar CLI whenever any limit is set. Keep this pre-check so that if either
+	// invariant is ever relaxed, an oversized archive is still rejected before
+	// the CLI path extracts it.
+	if err := checkArchiveSize(snapPath, limits); err != nil {
+		return status.Errorf(codes.Internal, "failed to copy volume for snapshot: %v", err)
+	}
+	if cs.useTarCommandForSnapshot(limits) {
 		var tarArgs []string
 		if enableCompression {
 			tarArgs = []string{"-xzvf", snapPath, "-C", dstPath}
@@ -641,7 +675,7 @@ func (cs *ControllerServer) copyFromSnapshot(ctx context.Context, req *csi.Creat
 			return status.Errorf(codes.Internal, "failed to copy volume for snapshot: %v: %v", err, string(out))
 		}
 	} else {
-		if err := TarUnpack(snapPath, dstPath, enableCompression); err != nil {
+		if err := TarUnpack(snapPath, dstPath, enableCompression, limits); err != nil {
 			return status.Errorf(codes.Internal, "failed to copy volume for snapshot: %v", err)
 		}
 	}

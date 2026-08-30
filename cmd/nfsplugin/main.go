@@ -36,6 +36,9 @@ var (
 	removeArchivedVolumePath     = flag.Bool("remove-archived-volume-path", false, "remove archived volume path in DeleteVolume")
 	useTarCommandInSnapshot      = flag.Bool("use-tar-command-in-snapshot", false, "use tar command to pack and unpack snapshot data")
 	enableSnapshotCompression    = flag.Bool("enable-snapshot-compression", true, "enable compression when creating volume snapshots")
+	maxSnapshotArchiveSize       = flag.Int64("max-snapshot-archive-size", 0, "maximum snapshot archive file size in bytes (0 = unlimited)")
+	maxSnapshotFileSize          = flag.Int64("max-snapshot-file-size", 0, "maximum uncompressed size in bytes of any file in a snapshot archive (0 = unlimited)")
+	maxSnapshotFiles             = flag.Int64("max-snapshot-files", 0, "maximum number of entries in a snapshot archive (0 = unlimited)")
 )
 
 func main() {
@@ -62,6 +65,9 @@ func handle() {
 		RemoveArchivedVolumePath:     *removeArchivedVolumePath,
 		UseTarCommandInSnapshot:      *useTarCommandInSnapshot,
 		EnableSnapshotCompression:    *enableSnapshotCompression,
+		MaxSnapshotArchiveSize:       *maxSnapshotArchiveSize,
+		MaxSnapshotFileSize:          *maxSnapshotFileSize,
+		MaxSnapshotFiles:             *maxSnapshotFiles,
 	}
 	d := nfs.NewDriver(&driverOptions)
 	d.Run(false)
