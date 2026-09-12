@@ -26,12 +26,14 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-driver-nfs/test/utils/testutil"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	mount "k8s.io/mount-utils"
 )
 
 const (
@@ -321,6 +323,42 @@ func TestNodePublishVolume(t *testing.T) {
 	err = os.RemoveAll(alreadyMountedTarget)
 	assert.NoError(t, err)
 
+}
+
+func TestNodePublishVolumeUsesMountTimeoutHelper(t *testing.T) {
+	driver := NewDriver(&DriverOptions{})
+	ns := NewNodeServer(driver, nil)
+
+	called := false
+	oldFunc := mountNFSWithTimeoutFunc
+	mountNFSWithTimeoutFunc = func(_ mount.Interface, source, targetPath string, mountOptions []string, timeout time.Duration) error {
+		called = true
+		if source != "server:/share" {
+			t.Fatalf("unexpected source: %s", source)
+		}
+		if targetPath == "" {
+			t.Fatal("expected target path to be set")
+		}
+		if len(mountOptions) != 2 || mountOptions[0] != "nolock" || mountOptions[1] != "nfsvers=4" {
+			t.Fatalf("unexpected mount options: %v", mountOptions)
+		}
+		if timeout != mountTimeoutInSec*time.Second {
+			t.Fatalf("unexpected timeout: %v", timeout)
+		}
+		return fmt.Errorf("mount volume %s to %s timeout after %ds", source, targetPath, mountTimeoutInSec)
+	}
+	defer func() { mountNFSWithTimeoutFunc = oldFunc }()
+
+	err := ns.mountWithTimeout("server:/share", testutil.GetWorkDirPath("target_timeout_test", t), []string{"nolock", "nfsvers=4"})
+	if err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+	if !called {
+		t.Fatal("expected mount timeout helper to be used")
+	}
+	if !strings.Contains(err.Error(), fmt.Sprintf("timeout after %ds", mountTimeoutInSec)) {
+		t.Fatalf("expected timeout error message, got: %v", err)
+	}
 }
 
 func TestNodeUnpublishVolume(t *testing.T) {
