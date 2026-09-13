@@ -1,0 +1,140 @@
+//go:build linux
+// +build linux
+
+/*
+Copyright 2026 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package nfs
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"syscall"
+	"testing"
+	"time"
+)
+
+func TestRunNFSMountCommandContextKillsProcessGroup(t *testing.T) {
+	pidFile, err := os.CreateTemp(t.TempDir(), "mount-helper-pids-*.txt")
+	if err != nil {
+		t.Fatalf("CreateTemp failed: %v", err)
+	}
+	pidFilePath := pidFile.Name()
+	_ = pidFile.Close()
+
+	oldExecCommand := execCommand
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		cmd := exec.Command(os.Args[0], "-test.run=TestRunNFSMountCommandContextHelper", "--")
+		cmd.Env = append(os.Environ(),
+			"GO_WANT_HELPER_PROCESS=1",
+			"GO_HELPER_PID_FILE="+pidFilePath,
+		)
+		return cmd
+	}
+	defer func() { execCommand = oldExecCommand }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	err = runNFSMountCommandContext(ctx, "server:/share", "/target", []string{"nolock", "nfsvers=4"})
+	elapsed := time.Since(start)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expected DeadlineExceeded, got: %v", err)
+	}
+	if elapsed > 3*time.Second {
+		t.Fatalf("expected bounded wait after timeout, elapsed=%v", elapsed)
+	}
+
+	parentPID, childPID := readHelperPIDs(t, pidFilePath)
+	assertProcessGoneEventually(t, parentPID, 2*time.Second)
+	assertProcessGoneEventually(t, childPID, 2*time.Second)
+}
+
+func TestRunNFSMountCommandContextHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	pidFilePath := os.Getenv("GO_HELPER_PID_FILE")
+	if pidFilePath == "" {
+		fmt.Fprintln(os.Stderr, "GO_HELPER_PID_FILE is required")
+		os.Exit(2)
+	}
+
+	child := exec.Command("sleep", "300")
+	if err := child.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to start child: %v\n", err)
+		os.Exit(2)
+	}
+
+	content := fmt.Sprintf("%d %d", os.Getpid(), child.Process.Pid)
+	if err := os.WriteFile(pidFilePath, []byte(content), 0600); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to write pid file: %v\n", err)
+		_ = child.Process.Kill()
+		os.Exit(2)
+	}
+
+	time.Sleep(300 * time.Second)
+	os.Exit(0)
+}
+
+func readHelperPIDs(t *testing.T, pidFilePath string) (int, int) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		content, err := os.ReadFile(pidFilePath)
+		if err == nil && strings.TrimSpace(string(content)) != "" {
+			fields := strings.Fields(string(content))
+			if len(fields) != 2 {
+				t.Fatalf("unexpected pid file content %q", string(content))
+			}
+			parentPID, err := strconv.Atoi(fields[0])
+			if err != nil {
+				t.Fatalf("failed to parse parent pid %q: %v", fields[0], err)
+			}
+			childPID, err := strconv.Atoi(fields[1])
+			if err != nil {
+				t.Fatalf("failed to parse child pid %q: %v", fields[1], err)
+			}
+			return parentPID, childPID
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for pid file %s", pidFilePath)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func assertProcessGoneEventually(t *testing.T, pid int, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for {
+		err := syscall.Kill(pid, 0)
+		if errors.Is(err, syscall.ESRCH) {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("process %d still exists after %v", pid, timeout)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
