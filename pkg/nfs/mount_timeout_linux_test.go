@@ -66,7 +66,7 @@ func TestRunNFSMountCommandContextKillsProcessGroup(t *testing.T) {
 
 	parentPID, childPID := readHelperPIDs(t, pidFilePath)
 	assertProcessGoneEventually(t, parentPID, 2*time.Second)
-	assertProcessGoneEventually(t, childPID, 2*time.Second)
+	assertProcessNotRunningEventually(t, childPID, 2*time.Second)
 }
 
 func TestRunNFSMountCommandContextHelper(t *testing.T) {
@@ -137,4 +137,40 @@ func assertProcessGoneEventually(t *testing.T, pid int, timeout time.Duration) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
+}
+
+func assertProcessNotRunningEventually(t *testing.T, pid int, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for {
+		state, err := getProcessState(pid)
+		if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ESRCH) {
+			return
+		}
+		if err == nil && state == 'Z' {
+			return
+		}
+		if time.Now().After(deadline) {
+			if err != nil {
+				t.Fatalf("process %d still appears to be running after %v (state err: %v)", pid, timeout, err)
+			}
+			t.Fatalf("process %d still appears to be running after %v (state=%q)", pid, timeout, string(state))
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func getProcessState(pid int) (byte, error) {
+	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, os.ErrNotExist
+		}
+		return 0, err
+	}
+	fields := strings.Fields(string(data))
+	if len(fields) < 3 {
+		return 0, fmt.Errorf("unexpected /proc stat format for pid %d: %q", pid, string(data))
+	}
+	return fields[2][0], nil
 }
