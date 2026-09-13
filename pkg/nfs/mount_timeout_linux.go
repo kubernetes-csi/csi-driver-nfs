@@ -60,11 +60,13 @@ func mountNFSWithTimeout(mounter mount.Interface, source, targetPath string, mou
 	return nil
 }
 
+var execCommand = exec.Command
+
 func runNFSMountCommandContext(ctx context.Context, source, targetPath string, mountOptions []string) error {
 	mountArgs, mountArgsLogStr := mount.MakeMountArgsSensitive(source, targetPath, "nfs", mountOptions, nil)
 	klog.V(4).Infof("Mounting cmd (%s) with arguments (%s)", "mount", mountArgsLogStr)
 
-	cmd := exec.CommandContext(ctx, "mount", mountArgs...)
+	cmd := execCommand("mount", mountArgs...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	var output bytes.Buffer
