@@ -51,20 +51,27 @@ func TestRunNFSMountCommandContextKillsProcessGroup(t *testing.T) {
 	}
 	defer func() { execCommand = oldExecCommand }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	resultCh := make(chan error, 1)
 	start := time.Now()
-	err = runNFSMountCommandContext(ctx, "server:/share", "/target", []string{"nolock", "nfsvers=4"})
-	elapsed := time.Since(start)
-	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("expected DeadlineExceeded, got: %v", err)
-	}
-	if elapsed > 3*time.Second {
-		t.Fatalf("expected bounded wait after timeout, elapsed=%v", elapsed)
-	}
+	go func() {
+		resultCh <- runNFSMountCommandContext(ctx, "server:/share", "/target", []string{"nolock", "nfsvers=4"})
+	}()
 
 	parentPID, childPID := readHelperPIDs(t, pidFilePath)
+	cancel()
+
+	err = <-resultCh
+	elapsed := time.Since(start)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got: %v", err)
+	}
+	if elapsed > 3*time.Second {
+		t.Fatalf("expected bounded wait after cancellation, elapsed=%v", elapsed)
+	}
+
 	assertProcessGoneEventually(t, parentPID, 2*time.Second)
 	assertProcessNotRunningEventually(t, childPID, 2*time.Second)
 }
