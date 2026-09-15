@@ -344,7 +344,7 @@ func TestNodePublishVolumeUsesMountTimeoutHelper(t *testing.T) {
 	oldFunc := mountNFSWithTimeoutFunc
 	mountNFSWithTimeoutFunc = func(_ mount.Interface, source, gotTargetPath string, mountOptions []string, timeout time.Duration) error {
 		called = true
-		if source != "server:/share" {
+		if source != "server:share" {
 			t.Fatalf("unexpected source: %s", source)
 		}
 		if gotTargetPath != targetPath {
