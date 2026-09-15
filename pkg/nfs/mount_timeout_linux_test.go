@@ -32,6 +32,28 @@ import (
 	"time"
 )
 
+func TestWaitForMountProcessExitTimesOutWhenWaitBlocked(t *testing.T) {
+	waitCh := make(chan error)
+	gracePeriod := 50 * time.Millisecond
+
+	start := time.Now()
+	err, exited := waitForMountProcessExit(waitCh, gracePeriod)
+	elapsed := time.Since(start)
+
+	if exited {
+		t.Fatal("expected blocked wait channel to time out")
+	}
+	if err != nil {
+		t.Fatalf("expected nil error on grace-period timeout, got: %v", err)
+	}
+	if elapsed < gracePeriod {
+		t.Fatalf("wait returned too early: elapsed=%v gracePeriod=%v", elapsed, gracePeriod)
+	}
+	if elapsed > 500*time.Millisecond {
+		t.Fatalf("wait was not bounded by grace period: elapsed=%v gracePeriod=%v", elapsed, gracePeriod)
+	}
+}
+
 func TestRunNFSMountCommandContextKillsProcessGroup(t *testing.T) {
 	pidFile, err := os.CreateTemp(t.TempDir(), "mount-helper-pids-*.txt")
 	if err != nil {

@@ -62,6 +62,15 @@ func mountNFSWithTimeout(mounter mount.Interface, source, targetPath string, mou
 
 var execCommand = exec.Command
 
+func waitForMountProcessExit(waitCh <-chan error, gracePeriod time.Duration) (error, bool) {
+	select {
+	case err := <-waitCh:
+		return err, true
+	case <-time.After(gracePeriod):
+		return nil, false
+	}
+}
+
 func runNFSMountCommandContext(ctx context.Context, source, targetPath string, mountOptions []string) error {
 	mountArgs, mountArgsLogStr := mount.MakeMountArgsSensitive(source, targetPath, "nfs", mountOptions, nil)
 	klog.V(4).Infof("Mounting cmd (%s) with arguments (%s)", "mount", mountArgsLogStr)
@@ -103,15 +112,12 @@ func runNFSMountCommandContext(ctx context.Context, source, targetPath string, m
 				klog.Warningf("Failed to kill mount process group for pid %d: %v", cmd.Process.Pid, err)
 			}
 		}
-		select {
-		case err := <-waitCh:
+		if err, exited := waitForMountProcessExit(waitCh, mountKillGracePeriod); exited {
 			if err != nil && err.Error() != mountWaitNoChildProcesses {
 				klog.Warningf("Mount process for pid %d exited after timeout with error: %v", cmd.Process.Pid, err)
 			}
-		case <-time.After(mountKillGracePeriod):
-			if cmd.Process != nil {
-				klog.Warningf("Mount process group for pid %d did not exit within %v after SIGKILL; returning timeout", cmd.Process.Pid, mountKillGracePeriod)
-			}
+		} else if cmd.Process != nil {
+			klog.Warningf("Mount process group for pid %d did not exit within %v after SIGKILL; returning timeout", cmd.Process.Pid, mountKillGracePeriod)
 		}
 		return ctx.Err()
 	}
