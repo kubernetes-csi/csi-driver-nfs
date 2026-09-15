@@ -39,6 +39,8 @@ const mountTimeoutInSec = 110
 // lstatFunc is used for testing to inject stale file handle errors
 var lstatFunc = os.Lstat
 
+var mountNFSWithTimeoutFunc = mountNFSWithTimeout
+
 // NodeServer driver
 type NodeServer struct {
 	Driver  *Driver
@@ -169,13 +171,7 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	}
 
 	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)
-	execFunc := func() error {
-		return ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
-	}
-	timeoutFunc := func() error {
-		return fmt.Errorf("mount volume %s to %s timeout after %ds", source, targetPath, mountTimeoutInSec)
-	}
-	if err := WaitUntilTimeout(mountTimeoutInSec*time.Second, execFunc, timeoutFunc); err != nil {
+	if err := ns.mountWithTimeout(source, targetPath, mountOptions); err != nil {
 		if os.IsPermission(err) {
 			return nil, status.Error(codes.PermissionDenied, err.Error())
 		}
@@ -203,6 +199,10 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 // applyUIDGID chowns static PVs after mount. Dynamic volumes are already
 // owned in CreateVolume. Skip read-only publishes: the mount is ro so chown
 // would fail.
+func (ns *NodeServer) mountWithTimeout(source, targetPath string, mountOptions []string) error {
+	return mountNFSWithTimeoutFunc(ns.mounter, source, targetPath, mountOptions, mountTimeoutInSec*time.Second)
+}
+
 func (ns *NodeServer) applyUIDGID(targetPath string, uid, gid int, readonly bool, volumeContext map[string]string) error {
 	if uid == unsetOwner && gid == unsetOwner {
 		return nil
