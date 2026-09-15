@@ -62,12 +62,12 @@ func mountNFSWithTimeout(mounter mount.Interface, source, targetPath string, mou
 
 var execCommand = exec.Command
 
-func waitForMountProcessExit(waitCh <-chan error, gracePeriod time.Duration) (error, bool) {
+func waitForMountProcessExit(waitCh <-chan error, gracePeriod time.Duration) (bool, error) {
 	select {
 	case err := <-waitCh:
-		return err, true
+		return true, err
 	case <-time.After(gracePeriod):
-		return nil, false
+		return false, nil
 	}
 }
 
@@ -112,7 +112,7 @@ func runNFSMountCommandContext(ctx context.Context, source, targetPath string, m
 				klog.Warningf("Failed to kill mount process group for pid %d: %v", cmd.Process.Pid, err)
 			}
 		}
-		if err, exited := waitForMountProcessExit(waitCh, mountKillGracePeriod); exited {
+		if exited, err := waitForMountProcessExit(waitCh, mountKillGracePeriod); exited {
 			if err != nil && err.Error() != mountWaitNoChildProcesses {
 				klog.Warningf("Mount process for pid %d exited after timeout with error: %v", cmd.Process.Pid, err)
 			}

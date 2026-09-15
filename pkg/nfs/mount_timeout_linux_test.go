@@ -37,7 +37,7 @@ func TestWaitForMountProcessExitTimesOutWhenWaitBlocked(t *testing.T) {
 	gracePeriod := 50 * time.Millisecond
 
 	start := time.Now()
-	err, exited := waitForMountProcessExit(waitCh, gracePeriod)
+	exited, err := waitForMountProcessExit(waitCh, gracePeriod)
 	elapsed := time.Since(start)
 
 	if exited {
