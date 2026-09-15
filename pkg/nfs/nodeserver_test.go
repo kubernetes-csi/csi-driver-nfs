@@ -26,12 +26,14 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-driver-nfs/test/utils/testutil"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	mount "k8s.io/mount-utils"
 )
 
 const (
@@ -321,6 +323,61 @@ func TestNodePublishVolume(t *testing.T) {
 	err = os.RemoveAll(alreadyMountedTarget)
 	assert.NoError(t, err)
 
+}
+
+func TestNodePublishVolumeUsesMountTimeoutHelper(t *testing.T) {
+	ns, err := getTestNodeServer()
+	if err != nil {
+		t.Fatalf("%v", err.Error())
+	}
+
+	targetPath := testutil.GetWorkDirPath("target_timeout_test", t)
+	mountFlags := []string{"nolock", "nfsvers=4"}
+	volumeCap := &csi.VolumeCapability{
+		AccessType: &csi.VolumeCapability_Mount{
+			Mount: &csi.VolumeCapability_MountVolume{MountFlags: mountFlags},
+		},
+		AccessMode: &csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER},
+	}
+
+	called := false
+	oldFunc := mountNFSWithTimeoutFunc
+	mountNFSWithTimeoutFunc = func(_ mount.Interface, source, gotTargetPath string, mountOptions []string, timeout time.Duration) error {
+		called = true
+		if source != "server:share" {
+			t.Fatalf("unexpected source: %s", source)
+		}
+		if gotTargetPath != targetPath {
+			t.Fatalf("unexpected target path: %s", gotTargetPath)
+		}
+		if len(mountOptions) != 2 || mountOptions[0] != mountFlags[0] || mountOptions[1] != mountFlags[1] {
+			t.Fatalf("unexpected mount options: %v", mountOptions)
+		}
+		if timeout != mountTimeoutInSec*time.Second {
+			t.Fatalf("unexpected timeout: %v", timeout)
+		}
+		return fmt.Errorf("mount volume %s to %s timeout after %ds", source, gotTargetPath, mountTimeoutInSec)
+	}
+	defer func() { mountNFSWithTimeoutFunc = oldFunc }()
+
+	_, err = ns.NodePublishVolume(context.Background(), &csi.NodePublishVolumeRequest{
+		VolumeId:         "vol-timeout",
+		TargetPath:       targetPath,
+		VolumeContext:    map[string]string{"server": "server", "share": "share"},
+		VolumeCapability: volumeCap,
+	})
+	if err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+	if !called {
+		t.Fatal("expected mount timeout helper to be used")
+	}
+	if status.Code(err) != codes.Internal {
+		t.Fatalf("expected Internal error code, got: %v (%v)", status.Code(err), err)
+	}
+	if !strings.Contains(err.Error(), fmt.Sprintf("timeout after %ds", mountTimeoutInSec)) {
+		t.Fatalf("expected timeout error message, got: %v", err)
+	}
 }
 
 func TestNodeUnpublishVolume(t *testing.T) {
