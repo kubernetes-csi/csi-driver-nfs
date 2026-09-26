@@ -119,20 +119,6 @@ func TestNodePublishVolume(t *testing.T) {
 			expectedErr: status.Error(codes.InvalidArgument, "Volume capability missing in request"),
 		},
 		{
-			desc: "[Error] block volume capability",
-			req: &csi.NodePublishVolumeRequest{
-				VolumeContext: params,
-				VolumeCapability: &csi.VolumeCapability{
-					AccessType: &csi.VolumeCapability_Block{
-						Block: &csi.VolumeCapability_BlockVolume{},
-					},
-					AccessMode: &volumeCap,
-				},
-				VolumeId:   "vol_1",
-				TargetPath: targetTest},
-			expectedErr: status.Error(codes.InvalidArgument, "block volume capability not supported"),
-		},
-		{
 			desc:        "[Error] Volume ID missing",
 			req:         &csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap}},
 			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
@@ -337,6 +323,35 @@ func TestNodePublishVolume(t *testing.T) {
 	err = os.RemoveAll(alreadyMountedTarget)
 	assert.NoError(t, err)
 
+}
+
+func TestNodePublishVolumeRejectsBlockVolumeCapability(t *testing.T) {
+	ns, err := getTestNodeServer()
+	if err != nil {
+		t.Fatalf("%v", err.Error())
+	}
+
+	_, err = ns.NodePublishVolume(context.Background(), &csi.NodePublishVolumeRequest{
+		VolumeContext: map[string]string{
+			"server": "server",
+			"share":  "share",
+		},
+		VolumeCapability: &csi.VolumeCapability{
+			AccessType: &csi.VolumeCapability_Block{
+				Block: &csi.VolumeCapability_BlockVolume{},
+			},
+			AccessMode: &csi.VolumeCapability_AccessMode{
+				Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+			},
+		},
+		VolumeId:   "vol_1",
+		TargetPath: targetTest,
+	})
+	expectedErr := status.Error(codes.InvalidArgument, "block volume capability not supported")
+	if !reflect.DeepEqual(err, expectedErr) {
+		t.Fatalf("unexpected error: %v, expected: %v", err, expectedErr)
+	}
+	t.Logf("NodePublishVolume returned: %v", err)
 }
 
 func TestNodePublishVolumeUsesMountTimeoutHelper(t *testing.T) {
