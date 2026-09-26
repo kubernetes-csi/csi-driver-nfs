@@ -119,6 +119,20 @@ func TestNodePublishVolume(t *testing.T) {
 			expectedErr: status.Error(codes.InvalidArgument, "Volume capability missing in request"),
 		},
 		{
+			desc: "[Error] block volume capability",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeContext: params,
+				VolumeCapability: &csi.VolumeCapability{
+					AccessType: &csi.VolumeCapability_Block{
+						Block: &csi.VolumeCapability_BlockVolume{},
+					},
+					AccessMode: &volumeCap,
+				},
+				VolumeId:   "vol_1",
+				TargetPath: targetTest},
+			expectedErr: status.Error(codes.InvalidArgument, "block volume capability not supported"),
+		},
+		{
 			desc:        "[Error] Volume ID missing",
 			req:         &csi.NodePublishVolumeRequest{VolumeCapability: &csi.VolumeCapability{AccessMode: &volumeCap}},
 			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
