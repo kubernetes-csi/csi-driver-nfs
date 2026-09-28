@@ -15,7 +15,7 @@ jobs:
 
     # https://pluto.docs.fairwinds.com/advanced/#display-options
     - name: Download pluto
-      uses: FairwindsOps/pluto/github-action@366e3d0ebb136f41eadc96ff7a1281d396e1d58b # v5.24.3
+      uses: FairwindsOps/pluto/github-action@ac2c42d55d5ff46a1af0f4b15faf3555119eea23 # v5.24.4
 
     - name: Check deploy folder
       run: |
