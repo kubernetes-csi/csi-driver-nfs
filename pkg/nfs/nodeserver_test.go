@@ -325,6 +325,35 @@ func TestNodePublishVolume(t *testing.T) {
 
 }
 
+func TestNodePublishVolumeRejectsBlockVolumeCapability(t *testing.T) {
+	ns, err := getTestNodeServer()
+	if err != nil {
+		t.Fatalf("%v", err.Error())
+	}
+
+	_, err = ns.NodePublishVolume(context.Background(), &csi.NodePublishVolumeRequest{
+		VolumeContext: map[string]string{
+			"server": "server",
+			"share":  "share",
+		},
+		VolumeCapability: &csi.VolumeCapability{
+			AccessType: &csi.VolumeCapability_Block{
+				Block: &csi.VolumeCapability_BlockVolume{},
+			},
+			AccessMode: &csi.VolumeCapability_AccessMode{
+				Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+			},
+		},
+		VolumeId:   "vol_1",
+		TargetPath: targetTest,
+	})
+	expectedErr := status.Error(codes.InvalidArgument, "block volume capability not supported")
+	if !reflect.DeepEqual(err, expectedErr) {
+		t.Fatalf("unexpected error: %v, expected: %v", err, expectedErr)
+	}
+	t.Logf("NodePublishVolume returned: %v", err)
+}
+
 func TestNodePublishVolumeUsesMountTimeoutHelper(t *testing.T) {
 	ns, err := getTestNodeServer()
 	if err != nil {
