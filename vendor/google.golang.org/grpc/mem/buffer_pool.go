@@ -59,6 +59,10 @@ func init() {
 	internal.SetDefaultBufferPool = func(pool BufferPool) {
 		defaultBufferPool = pool
 	}
+
+	internal.SetBufferPoolingThresholdForTesting = func(threshold int) {
+		bufferPoolingThreshold = threshold
+	}
 }
 
 // DefaultBufferPool returns the current default buffer pool. It is a BufferPool

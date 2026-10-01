@@ -41,7 +41,7 @@ type CallbackSerializer struct {
 	// its resources.
 	done chan struct{}
 
-	callbacks *buffer.Unbounded[func(context.Context)]
+	callbacks *buffer.Unbounded
 }
 
 // NewCallbackSerializer returns a new CallbackSerializer instance. The provided
@@ -52,7 +52,7 @@ type CallbackSerializer struct {
 func NewCallbackSerializer(ctx context.Context) *CallbackSerializer {
 	cs := &CallbackSerializer{
 		done:      make(chan struct{}),
-		callbacks: buffer.NewUnbounded[func(context.Context)](),
+		callbacks: buffer.NewUnbounded(),
 	}
 	go cs.run(ctx)
 	return cs
@@ -113,7 +113,7 @@ func (cs *CallbackSerializer) run(ctx context.Context) {
 	// Run all callbacks.
 	for cb := range cs.callbacks.Get() {
 		cs.callbacks.Load()
-		cb(ctx)
+		cb.(func(context.Context))(ctx)
 	}
 }
 
