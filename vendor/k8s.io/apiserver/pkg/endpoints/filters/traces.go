@@ -31,7 +31,7 @@ import (
 func WithTracing(handler http.Handler, tp trace.TracerProvider) http.Handler {
 	opts := []otelhttp.Option{
 		otelhttp.WithPropagators(tracing.Propagators()),
-		otelhttp.WithPublicEndpoint(),
+		otelhttp.WithPublicEndpointFn(func(*http.Request) bool { return true }),
 		otelhttp.WithTracerProvider(tp),
 		otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
 			ctx := r.Context()
