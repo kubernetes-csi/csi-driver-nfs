@@ -239,9 +239,10 @@ test: test-fmt
 test-fmt:
 	@ echo; echo "### $@:"
 	files=$$(find . -name '*.go' | grep -v './vendor' $(TEST_FMT_FILTER_CMD)); \
-	if [ $$(gofmt -d $$files | wc -l) -ne 0 ]; then \
+	gofmt=$$(go env GOROOT)/bin/gofmt; \
+	if [ $$($$gofmt -d $$files | wc -l) -ne 0 ]; then \
 		echo "formatting errors:"; \
-		gofmt -d $$files; \
+		$$gofmt -d $$files; \
 		false; \
 	fi
 
