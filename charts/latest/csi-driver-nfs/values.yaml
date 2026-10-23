@@ -3,7 +3,7 @@ image:
     baseRepo: registry.k8s.io
     nfs:
         repository: registry.k8s.io/sig-storage/nfsplugin
-        tag: v4.13.5
+        tag: v4.13.6
         pullPolicy: IfNotPresent
     csiProvisioner:
         repository: /sig-storage/csi-provisioner

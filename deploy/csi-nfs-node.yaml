@@ -85,7 +85,7 @@ spec:
               drop:
                 - ALL
             allowPrivilegeEscalation: true
-          image: registry.k8s.io/sig-storage/nfsplugin:v4.13.5
+          image: registry.k8s.io/sig-storage/nfsplugin:v4.13.6
           args:
             - "-v=5"
             - "--nodeid=$(NODE_ID)"
