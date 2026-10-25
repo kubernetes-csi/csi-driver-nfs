@@ -20,6 +20,78 @@ onDelete | when volume is deleted, keep the directory if it's `retain` | `delete
 ```
 > example: `nfs-server.default.svc.cluster.local/share#subdir#`
 
+### Archive deletion safety
+
+`onDelete: archive` keeps the existing `archived-<subDir>` layout (including
+nested subdirectories). `--remove-archived-volume-path=true` still replaces an
+older archive when the source exists; the default `false` does not remove an
+existing archive. A retry after a completed archive is a successful no-op even
+when the controller's deletion cache has expired or the controller restarted.
+
+Archive requests use a Linux, nonblocking, server-coordinated advisory lock for
+the same share and normalized subdirectory, across controller instances and
+local mount paths. Contention returns CSI `Aborted` so the provisioner can retry.
+The lock covers the source existence check and the entire archive replacement.
+
+Requirements and limitations:
+
+- **Action required for existing archive configurations:** archive requests not
+  already satisfied by the local deletion cache (including replacement disabled
+  and already-missing sources) now require the
+  locking, cache, and metadata permissions below. Unsupported configurations
+  fail rather than risking data loss. Empty/root or escaping subdirectories
+  are rejected before archive metadata or data is modified.
+- The effective NFS mount must use **`lookupcache=none`**. Locking the metadata
+  file does not invalidate cached source/parent directory entries; a stale
+  positive source lookup could otherwise cause a retry to delete the only
+  archive. Default lookup caching and `lookupcache=positive` are rejected with
+  `FailedPrecondition`. Configure this in the controller deletion mount's
+  `mountOptions` secret (for example `vers=4.1,lookupcache=none,local_lock=none`),
+  not just the application's PV mount options. The driver verifies actual
+  `/proc/self/mountinfo` options: with NFS `sharecache`, an earlier mount may
+  determine effective settings. It does not silently remount existing shares
+  or change application mounts. Disabling lookup caching increases metadata
+  RPCs; validate performance and coordinate any mount changes operationally.
+- NFSv3 requires working NLM/server locking; NFSv4.0/4.1/4.2 requires working
+  protocol locks. Linux maps `flock` to server-side byte-range locks on NFS.
+  Effective `nolock`, `local_lock=flock`, and `local_lock=all` mounts are rejected
+  with `FailedPrecondition` before modifying volume data. Unknown NFS versions
+  or unreadable mount information are also rejected. Lock acquisition errors
+  fail the request rather than falling back to an in-process lock. Non-Linux
+  controllers cannot perform archive deletion.
+- Each archived subdirectory needs a persistent, empty
+  `.csi-nfs-archive-<sha256>.lock` file at the share root. Controller identities
+  must be able to create and open these files read/write (mode `0600`, subject
+  to export identity mapping/root squash). These names are reserved driver
+  metadata: **never delete, replace, or restore lock files while controllers
+  can access the share**. Unlinking a locked file defeats mutual exclusion.
+  The files do not indicate an active lock; the kernel/server releases locks
+  on descriptor close or client/process failure according to NFS recovery.
+- All controllers accessing a namespace must use this protocol; mixed versions
+  during a rolling upgrade, external writers, and administrator file operations
+  are not protected. Mount aliases of the same share root use the same lock;
+  overlapping exports with different roots or symlink aliases in `subDir` are
+  not a supported way to coordinate the same volume. Do not overlap volume
+  source/archive paths with other volumes or the reserved metadata names.
+- This serializes duplicate archive deletions, not `CreateVolume`, ordinary
+  deletion, or application writes. It is not a transactional backup: replacing
+  an older archive still removes it before rename, and a failed rename is
+  returned as an error. Server lock loss, failover, and cache-coherence behavior
+  must satisfy the NFS server/client locking contract; the driver cannot fence
+  an uncooperative client or a server that silently loses locks.
+
+#### Required cross-client validation before release
+
+Local filesystem tests (including separate controller instances and mount-path
+aliases) do not establish cross-client NFS correctness. Validate on two
+independent Linux NFS clients, with pre-existing lock files and prewarmed positive
+and negative source entries. Cover nested subdirectories, A completing before B
+acquires the lock, simultaneous contention, and termination before/after archive
+removal and source rename. Confirm effective `lookupcache=none` and server
+locking on both clients; verify default/positive lookup caching and local-only
+locking are rejected before modifying data. Exercise the supported NFS versions
+and server recovery behavior. This change remains a draft pending that validation.
+
 ### PV/PVC usage (static provisioning)
 > [`PersistentVolume` example](../deploy/example/pv-nfs-csi.yaml)
 

@@ -26,7 +26,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -39,6 +38,9 @@ import (
 // ControllerServer controller server setting
 type ControllerServer struct {
 	Driver *Driver
+	// archiveLock is overridden by tests to schedule requests after real lock acquisition.
+	// A nil value uses the shared filesystem lock.
+	archiveLock func(string) (func(), error)
 	csi.UnimplementedControllerServer
 }
 
@@ -286,32 +288,9 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		}
 
 		if strings.EqualFold(nfsVol.onDelete, archive) {
-			archivedInternalVolumePath := filepath.Join(internalMountPath, "archived-"+nfsVol.subDir)
-			if strings.Contains(nfsVol.subDir, "/") {
-				parentDir := filepath.Dir(archivedInternalVolumePath)
-				klog.V(2).Infof("DeleteVolume: subdirectory(%s) contains '/', make sure the parent directory(%s) exists", nfsVol.subDir, parentDir)
-				if err = os.MkdirAll(parentDir, 0777); err != nil {
-					return nil, status.Errorf(codes.Internal, "create parent directory(%s) of %s failed with %v", parentDir, archivedInternalVolumePath, err)
-				}
+			if err := cs.archiveVolume(internalMountPath, internalVolumePath, nfsVol.subDir); err != nil {
+				return nil, err
 			}
-
-			// archive subdirectory under base-dir, remove stale archived copy if exists.
-			klog.V(2).Infof("archiving subdirectory %s --> %s", internalVolumePath, archivedInternalVolumePath)
-			if cs.Driver.removeArchivedVolumePath {
-				klog.V(2).Infof("removing archived subdirectory at %v", archivedInternalVolumePath)
-				if err = os.RemoveAll(archivedInternalVolumePath); err != nil {
-					return nil, status.Errorf(codes.Internal, "failed to delete archived subdirectory %s: %v", archivedInternalVolumePath, err)
-				}
-				klog.V(2).Infof("removed archived subdirectory at %v", archivedInternalVolumePath)
-			}
-			if err = os.Rename(internalVolumePath, archivedInternalVolumePath); err != nil {
-				return nil, status.Errorf(codes.Internal, "archive subdirectory(%s, %s) failed with %v", internalVolumePath, archivedInternalVolumePath, err)
-			}
-			// make sure internalVolumePath does not exist with 1 minute timeout
-			if err = waitForPathNotExistWithTimeout(internalVolumePath, time.Minute); err != nil {
-				return nil, status.Errorf(codes.Internal, "DeleteVolume: internalVolumePath(%s) still exists after 1 minute", internalVolumePath)
-			}
-			klog.V(2).Infof("archived subdirectory %s --> %s", internalVolumePath, archivedInternalVolumePath)
 		} else {
 			klog.V(2).Infof("removing subdirectory at %v", internalVolumePath)
 			if err = os.RemoveAll(internalVolumePath); err != nil {
