@@ -269,6 +269,9 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		}
 		// mount nfs base share so we can delete the subdirectory
 		volCap := getVolumeCapabilityFromSecret(volumeID, req.GetSecrets())
+		if strings.EqualFold(nfsVol.onDelete, archive) {
+			volCap = archiveVolumeCapability(volCap)
+		}
 		if err = cs.internalMount(ctx, nfsVol, nil, volCap); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err)
 		}

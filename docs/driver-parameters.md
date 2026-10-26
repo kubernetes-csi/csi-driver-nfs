@@ -27,11 +27,18 @@ successful archive preserves the archive and returns success.
 `--remove-archived-volume-path=true` replaces an existing archive only
 when the source directory still exists; its default remains `false`.
 
-**Upgrade requirements:** archive deletion now requires:
+For archive deletion only, the driver sets `lookupcache=none,nosharecache`
+for its internal Linux controller mount, replacing conflicting cache options.
+No deletion-secret or PV mount-option update is needed for these cache settings.
+Other options from the deletion `mountOptions` secret, including NFS version,
+transport, security, and explicit locking choices, are preserved; workload,
+provisioning, and snapshot mounts are unchanged.
+
+**Upgrade requirements:** archive deletion still requires:
 - A Linux controller and working server-side NFS locking.
-- Effective `lookupcache=none` on the controller's deletion mount,
-  configured through the deletion `mountOptions` secret, not only PV
-  mount options. `nolock` and local-only flock locking are rejected.
+- Effective `lookupcache=none` on the controller's deletion mount.
+  Effective mount settings are checked even when an existing mount is reused.
+  `nolock` and local-only flock locking are rejected, not silently overridden.
 - Permission to create and open `.csi-nfs-archive-*.lock` files at the
   share root. Do not remove or replace these files while controllers
   can access the share.
@@ -43,8 +50,11 @@ lock contention returns `Aborted` for retry.
 
 All controllers accessing the same archive namespace must use this
 protocol. Mixed-version controllers and external writers are not
-coordinated. `lookupcache=none` increases metadata RPCs; verify the
-effective mount settings when NFS mounts share a cache.
+coordinated. `lookupcache=none` increases metadata RPCs. `nosharecache`
+prevents inheriting another mount's cache policy, but creates an independent
+cache: concurrent access to the same files through different mounts can have
+inconsistent cached data. These internal mounts are for archive metadata
+operations, not a guarantee of coherence with active workload writers.
 
 `onDelete: delete` and `retain` are unchanged.
 

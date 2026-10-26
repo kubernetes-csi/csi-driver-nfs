@@ -21,13 +21,57 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/klog/v2"
 )
+
+// archiveVolumeCapability manages cache options only for the controller's
+// archive deletion mount. Never change user locking, security, or transport
+// choices, or mutate a capability that another mount may share.
+func archiveVolumeCapability(volCap *csi.VolumeCapability) *csi.VolumeCapability {
+	if runtime.GOOS != "linux" {
+		// Archive locking fails closed on other platforms. Do not introduce
+		// Linux-only mount options before reaching that check.
+		return volCap
+	}
+	if volCap == nil {
+		volCap = &csi.VolumeCapability{
+			AccessType: &csi.VolumeCapability_Mount{Mount: &csi.VolumeCapability_MountVolume{}},
+		}
+	} else {
+		volCap = proto.Clone(volCap).(*csi.VolumeCapability)
+	}
+	mountVolume := volCap.GetMount()
+	if mountVolume == nil {
+		return volCap
+	}
+	options := make([]string, 0, len(mountVolume.MountFlags)+2)
+	for _, flags := range mountVolume.MountFlags {
+		// The deletion secret supplies a comma-packed string, while other
+		// CSI callers may supply individual flags. Handle both forms.
+		for _, option := range strings.Split(flags, ",") {
+			key, _, _ := strings.Cut(option, "=")
+			switch key {
+			case "lookupcache", "sharecache", "nosharecache":
+				continue
+			default:
+				options = append(options, option)
+			}
+		}
+	}
+	// Independent caches prevent an earlier mount of the export from
+	// silently supplying its lookup cache policy. Effective mountinfo checks
+	// remain necessary, including when NodePublishVolume reuses a target.
+	mountVolume.MountFlags = append(options, "lookupcache=none", "nosharecache")
+	return volCap
+}
 
 // archiveLockPath identifies the namespace, not the CSI volume ID or the local
 // mount path. Controllers using different mount paths/IDs for the same share

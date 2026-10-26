@@ -335,3 +335,62 @@ func TestArchiveRejectsRootOrEscapingSource(t *testing.T) {
 		})
 	}
 }
+
+// Mountinfo fixtures verify that normalizing requested cache options does not
+// hide unsafe effective locks, or make a reused stale mount safe. No NFS server
+// is involved in this regression test.
+func TestArchiveDeleteValidatesEffectiveMount(t *testing.T) {
+	for _, test := range []struct {
+		name, secret string
+		effective    []string
+		reuse        bool
+	}{
+		{name: "nolock preserved and rejected", secret: "vers=3,nolock,lookupcache=all,sharecache"},
+		{name: "local flock preserved and rejected", secret: "vers=4.1,local_lock=flock,lookupcache=positive"},
+		{name: "local all preserved and rejected", secret: "vers=3,local_lock=all"},
+		{name: "reused mount has default lookup cache", secret: "vers=4.1", effective: []string{"vers=4.1", "local_lock=none"}, reuse: true},
+		{name: "reused mount has positive lookup cache", secret: "vers=4.1", effective: []string{"vers=4.1", "lookupcache=positive"}, reuse: true},
+		{name: "reused mount has unsafe locks", secret: "vers=3,lock,local_lock=none", effective: []string{"vers=3", "nolock", "lookupcache=none"}, reuse: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			driver := NewDriver(&DriverOptions{WorkingMountDir: t.TempDir(), RemoveArchivedVolumePath: true})
+			vol := &nfsVolume{server: "server", baseDir: "share", subDir: "volume", uuid: "test", onDelete: archive}
+			vol.id = getVolumeIDFromNfsVol(vol)
+			share, err := getInternalMountPath(driver.workingMountDir, vol)
+			require.NoError(t, err)
+			archivePayload(t, share, "volume", "new")
+			archivePayload(t, share, "archived-volume", "old")
+			mounter := &archiveRecordingMounter{FakeMounter: mount.NewFakeMounter(nil)}
+			if test.reuse {
+				mounter.MountPoints = []mount.MountPoint{{Device: "server:/share", Path: share, Type: "nfs", Opts: test.effective}}
+			}
+			driver.ns = NewNodeServer(driver, mounter)
+			cs := NewControllerServer(driver)
+			checked := false
+			cs.archiveLock = func(path string) (func(), error) {
+				checked = true
+				mounts, err := mounter.List()
+				require.NoError(t, err)
+				require.Len(t, mounts, 1)
+				err = validateArchiveLockMount(filepath.Dir(path), []mount.MountInfo{{MountPoint: mounts[0].Path, FsType: mounts[0].Type, SuperOptions: mounts[0].Opts}})
+				require.Error(t, err)
+				return nil, status.Errorf(codes.FailedPrecondition, "archive requires shared filesystem locking: %v", err)
+			}
+			_, err = cs.DeleteVolume(context.Background(), &csi.DeleteVolumeRequest{VolumeId: vol.id, Secrets: map[string]string{mountOptionsField: test.secret}})
+			require.Equal(t, codes.FailedPrecondition, status.Code(err))
+			require.True(t, checked, "effective validation must run even for a reused target")
+			if test.reuse {
+				require.Empty(t, mounter.options, "NodePublishVolume must reuse the existing mount")
+			} else {
+				require.Len(t, mounter.options, 1)
+				require.Contains(t, mounter.options[0], "lookupcache=none")
+				require.Contains(t, mounter.options[0], "nosharecache")
+			}
+			requireArchivePayload(t, share, "volume", "old")
+			data, err := os.ReadFile(filepath.Join(share, "volume", "payload"))
+			require.NoError(t, err)
+			require.Equal(t, "new", string(data))
+			require.NoFileExists(t, archiveLockPath(share, "volume"))
+		})
+	}
+}
