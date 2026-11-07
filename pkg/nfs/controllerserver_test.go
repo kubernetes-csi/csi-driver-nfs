@@ -360,6 +360,13 @@ func TestCreateVolume(t *testing.T) {
 }
 
 func TestDeleteVolume(t *testing.T) {
+	archiveResp := &csi.DeleteVolumeResponse{}
+	var archiveErr error
+	if runtime.GOOS != "linux" {
+		archiveResp = nil
+		archiveErr = status.Error(codes.FailedPrecondition, "shared NFS archive locking requires Linux")
+	}
+
 	cases := []struct {
 		desc                 string
 		testOnWindows        bool
@@ -404,9 +411,9 @@ func TestDeleteVolume(t *testing.T) {
 			desc:                 "Valid request with onDelete:archive",
 			testOnWindows:        false,
 			req:                  &csi.DeleteVolumeRequest{VolumeId: newTestVolumeOnDeleteArchive},
-			resp:                 &csi.DeleteVolumeResponse{},
-			expectedErr:          nil,
-			expectedDeleteSubDir: true,
+			resp:                 archiveResp,
+			expectedErr:          archiveErr,
+			expectedDeleteSubDir: runtime.GOOS == "linux",
 		},
 	}
 
@@ -416,8 +423,15 @@ func TestDeleteVolume(t *testing.T) {
 		}
 		t.Run(test.desc, func(t *testing.T) {
 			cs := initTestController(t)
-			_ = os.MkdirAll(filepath.Join(cs.Driver.workingMountDir, testCSIVolume), os.ModePerm)
-			_, _ = os.Create(filepath.Join(cs.Driver.workingMountDir, testCSIVolume, testCSIVolume))
+			cs.Driver.workingMountDir = t.TempDir()
+			sourcePath := filepath.Join(cs.Driver.workingMountDir, testCSIVolume, testCSIVolume)
+			if err := os.MkdirAll(filepath.Dir(sourcePath), os.ModePerm); err != nil {
+				t.Fatal(err)
+			}
+			payload := []byte("source data must survive a rejected archive")
+			if err := os.WriteFile(sourcePath, payload, 0600); err != nil {
+				t.Fatal(err)
+			}
 
 			resp, err := cs.DeleteVolume(context.TODO(), test.req)
 
@@ -431,12 +445,18 @@ func TestDeleteVolume(t *testing.T) {
 				t.Errorf("test %q failed: got resp %+v, expected %+v", test.desc, resp, test.resp)
 			}
 
-			if _, err := os.Stat(filepath.Join(cs.Driver.workingMountDir, testCSIVolume, testCSIVolume)); test.expectedErr == nil {
-				if !os.IsNotExist(err) && test.expectedDeleteSubDir {
-					t.Errorf("test %q failed: expected volume subdirectory deleted, it still exists", test.desc)
-				} else if os.IsNotExist(err) && !test.expectedDeleteSubDir {
-					t.Errorf("test %q failed: expected volume subdirectory not deleted, it was deleted", test.desc)
-				}
+			assert.Equal(t, status.Code(test.expectedErr), status.Code(err))
+			if test.req.GetVolumeId() == newTestVolumeOnDeleteArchive && archiveErr != nil {
+				assert.EqualError(t, err, archiveErr.Error())
+			}
+			if test.expectedDeleteSubDir {
+				_, statErr := os.Stat(sourcePath)
+				assert.True(t, os.IsNotExist(statErr), "expected volume subdirectory deleted, got %v", statErr)
+			} else {
+				// Error paths must preserve the source too, not only successful retain requests.
+				data, readErr := os.ReadFile(sourcePath)
+				assert.NoError(t, readErr)
+				assert.Equal(t, payload, data)
 			}
 		})
 	}
