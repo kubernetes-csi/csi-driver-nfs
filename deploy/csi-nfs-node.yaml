@@ -18,6 +18,8 @@ spec:
         app: csi-nfs-node
     spec:
       hostNetwork: true  # original nfs connection would be broken without hostNetwork setting
+      # Let the pod sandbox reap orphaned mount helpers after a timeout.
+      shareProcessNamespace: true
       dnsPolicy: ClusterFirstWithHostNet  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
       serviceAccountName: csi-nfs-node-sa
       priorityClassName: system-node-critical

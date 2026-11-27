@@ -66,6 +66,8 @@ fi
 # jq-equivalent for yaml
 pip install yq --ignore-installed PyYAML
 
+python3 "${PKG_ROOT}/hack/verify-process-namespace.py"
+
 # Extract images from csi-nfs-controller.yaml
 expected_csi_provisioner_image="$(cat ${PKG_ROOT}/deploy/csi-nfs-controller.yaml | yq -r .spec.template.spec.containers[0].image | head -n 1)"
 expected_csi_resizer_image="$(cat ${PKG_ROOT}/deploy/csi-nfs-controller.yaml | yq -r .spec.template.spec.containers[1].image | head -n 1)"
