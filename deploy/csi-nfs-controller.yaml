@@ -20,6 +20,8 @@ spec:
         app: csi-nfs-controller
     spec:
       hostNetwork: true  # controller also needs to mount nfs to create dir
+      # Let the pod sandbox reap orphaned mount helpers after a timeout.
+      shareProcessNamespace: true
       dnsPolicy: ClusterFirstWithHostNet  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
       serviceAccountName: csi-nfs-controller-sa
       nodeSelector:
