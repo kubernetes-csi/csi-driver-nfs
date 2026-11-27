@@ -37,36 +37,20 @@ helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-syste
 
 ### Reaping orphaned mount helpers
 
-The latest chart and the manifests in `deploy/` enable `shareProcessNamespace`
-for both the NFS node and controller pods. The controller also mounts NFS shares
-for provisioning and snapshot operations. After a mount timeout, a `mount.nfs`
-helper can outlive its parent `mount` process. Sharing the pod process namespace
-lets the pod sandbox (pause) process adopt and reap the orphan when it exits,
-instead of leaving a zombie under `nfsplugin`. This does not unblock a helper
-still in uninterruptible kernel sleep or fix an unavailable NFS server.
+The latest chart and `deploy/csi-nfs-node.yaml` enable `shareProcessNamespace`
+for node pods so the pod sandbox (pause) process reaps orphaned `mount.nfs`
+helpers after they exit. Controller pods are unchanged. This does not unblock
+helpers still in uninterruptible kernel sleep or fix an unavailable NFS server.
 
-This changes process isolation **within each driver pod**, not between pods or
-with the host. Containers can see each other's processes, and process information
-and files under `/proc` are accessible subject to normal Linux permissions.
-`nfsplugin` is no longer PID 1; custom scripts must not use `kill 1` to signal it.
-See [Kubernetes process namespace sharing](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/)
-for security considerations. Do not combine this setting with `hostPID: true`.
+Containers within each node pod now share process visibility, and `nfsplugin`
+is no longer PID 1. Custom scripts must not use `kill 1` to signal it. See
+[Kubernetes process namespace sharing](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/)
+for security considerations. Do not combine this with `hostPID: true`.
 
-If your runtime or isolation requirements do not support this behavior, opt out
-independently for each workload:
-
-```yaml
-controller:
-  shareProcessNamespace: false
-node:
-  shareProcessNamespace: false
-```
-
-For static installations, set `spec.template.spec.shareProcessNamespace: false`
-in the corresponding manifest. Opting out restores the previous isolation but
-also the risk of accumulating zombie mount helpers. Changing this pod-template
-setting rolls out new driver pods; it does not reap zombies in existing pods in
-place. These options apply to the latest chart, not already published versions.
+Set `node.shareProcessNamespace: false` to retain the previous isolation (and
+zombie-helper risk). For static installations, set the node DaemonSet's
+`spec.template.spec.shareProcessNamespace` to `false`. Changing this setting
+requires replacement pods. Published chart versions are unchanged.
 
 ### High-availability controller
 
@@ -145,7 +129,6 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `controller.runOnMaster`                          | run controller on master node(deprecated on k8s 1.25+)                                                          |`false`                                                           |
 | `controller.runOnControlPlane`                    | run controller on control plane node                                                          |`false`                                                           |
 | `controller.dnsPolicy`                            | dnsPolicy of controller driver, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`                              | `ClusterFirstWithHostNet`                                                             |
-| `controller.shareProcessNamespace` | share the pod process namespace so the sandbox reaps orphaned mount helpers; see [security and opt-out notes](#reaping-orphaned-mount-helpers) | `true` |
 | `controller.defaultOnDeletePolicy`                | default policy for deleting subdirectory when deleting a volume, available values: `delete`, `retain`, `archive`                              | `delete`                                                             |
 | `controller.enableSnapshotCompression`            | enable compression when creating volume snapshots. When `false`, snapshots will be stored without gzip compression (using tar instead of tar.gz)                              | `true`                                                             |
 | `controller.maxSnapshotArchiveSize`               | maximum snapshot archive file size in bytes. `0` means unlimited. | `0` |

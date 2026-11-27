@@ -53,8 +53,6 @@ kubeletDir: /var/lib/kubelet
 
 controller:
   name: csi-nfs-controller
-  # Let the pod sandbox reap orphaned mount helpers after a timeout.
-  shareProcessNamespace: true
   replicas: 1
   revisionHistoryLimit: 10
   strategyType: Recreate

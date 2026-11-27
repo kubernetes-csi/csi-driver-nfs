@@ -30,8 +30,8 @@ CHART = ROOT / "charts/latest/csi-driver-nfs"
 
 
 class ProcessNamespaceTest(unittest.TestCase):
-    def check_workloads(self, documents, controller=True, node=True):
-        expected = {"csi-nfs-controller": controller, "csi-nfs-node": node}
+    def check_workloads(self, documents, node=True):
+        expected = {"csi-nfs-controller": None, "csi-nfs-node": node}
         found = set()
         for doc in documents:
             if not doc or doc.get("kind") not in ("Deployment", "DaemonSet"):
@@ -43,7 +43,10 @@ class ProcessNamespaceTest(unittest.TestCase):
                 self.assertNotIn("shareProcessNamespace", spec)
                 continue
             found.add(name)
-            self.assertIs(spec.get("shareProcessNamespace"), expected[name], name)
+            if expected[name] is None:
+                self.assertNotIn("shareProcessNamespace", spec, name)
+            else:
+                self.assertIs(spec.get("shareProcessNamespace"), expected[name], name)
             # Sharing the host PID namespace is incompatible with Pod PID sharing.
             self.assertFalse(spec.get("hostPID", False), name)
         self.assertEqual(found, set(expected))
@@ -58,17 +61,15 @@ class ProcessNamespaceTest(unittest.TestCase):
     def test_defaults(self):
         self.check_workloads(self.render())
 
-    def test_independent_overrides(self):
-        for controller in (True, False):
-            for node in (True, False):
-                with self.subTest(controller=controller, node=node):
-                    documents = self.render(
-                        CHART, "--set",
-                        f"controller.shareProcessNamespace={str(controller).lower()},"
-                        f"node.shareProcessNamespace={str(node).lower()},"
-                        "externalSnapshotter.enabled=true",
-                    )
-                    self.check_workloads(documents, controller, node)
+    def test_node_overrides(self):
+        for node in (True, False):
+            with self.subTest(node=node):
+                documents = self.render(
+                    CHART, "--set",
+                    f"node.shareProcessNamespace={str(node).lower()},"
+                    "externalSnapshotter.enabled=true",
+                )
+                self.check_workloads(documents, node=node)
 
     def test_missing_values(self):
         # Older reused values may not contain the new settings.
@@ -77,8 +78,7 @@ class ProcessNamespaceTest(unittest.TestCase):
             shutil.copytree(CHART, chart)
             values_path = chart / "values.yaml"
             values = yaml.safe_load(values_path.read_text())
-            for component in ("controller", "node"):
-                values[component].pop("shareProcessNamespace", None)
+            values["node"].pop("shareProcessNamespace", None)
             values_path.write_text(yaml.safe_dump(values))
             self.check_workloads(self.render(chart))
 

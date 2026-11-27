@@ -23,8 +23,6 @@ spec:
 {{ toYaml .Values.imagePullSecrets | indent 8 }}
       {{- end }}
       hostNetwork: true  # controller also needs to mount nfs to create dir
-      # Let the pod sandbox reap orphaned mount helpers after a timeout.
-      shareProcessNamespace: {{ dig "shareProcessNamespace" true .Values.controller }}
       dnsPolicy: {{ .Values.controller.dnsPolicy }}
       serviceAccountName: {{ .Values.serviceAccount.controller }}
     # runOnControlPlane=true or runOnMaster=true only takes effect if affinity is not set
