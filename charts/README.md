@@ -22,6 +22,23 @@ helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/cs
 helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system --version 4.13.6
 ```
 
+### Reaping orphaned mount helpers
+
+The latest chart and `deploy/csi-nfs-node.yaml` enable `shareProcessNamespace`
+for node pods so the pod sandbox (pause) process reaps orphaned `mount.nfs`
+helpers after they exit. Controller pods are unchanged. This does not unblock
+helpers still in uninterruptible kernel sleep or fix an unavailable NFS server.
+
+Containers within each node pod now share process visibility, and `nfsplugin`
+is no longer PID 1. Custom scripts must not use `kill 1` to signal it. See
+[Kubernetes process namespace sharing](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/)
+for security considerations. Do not combine this with `hostPID: true`.
+
+Set `node.shareProcessNamespace: false` to retain the previous isolation (and
+zombie-helper risk). For static installations, set the node DaemonSet's
+`spec.template.spec.shareProcessNamespace` to `false`. Changing this setting
+requires replacement pods. Published chart versions are unchanged.
+
 ### install driver with customized driver name, deployment name
 > only supported from `v3.1.0`+
  - following example would install a driver with name `nfs2`
@@ -108,6 +125,7 @@ The following table lists the configurable parameters of the latest NFS CSI Driv
 | `nodeDriverRegistrar.livenessProbe.failureThreshold`    | node-driver-registrar liveness probe failureThreshold | `2`        |
 | `node.name`                                           | driver node daemonset name                            | `csi-nfs-node`
 | `node.dnsPolicy`                                      | dnsPolicy of driver node daemonset, available values: `Default`, `ClusterFirstWithHostNet`, `ClusterFirst`          |`ClusterFirstWithHostNet`
+| `node.shareProcessNamespace` | share the pod process namespace so the sandbox reaps orphaned mount helpers; see [security and opt-out notes](#reaping-orphaned-mount-helpers) | `true` |
 | `node.maxUnavailable`                             | `maxUnavailable` value of driver node daemonset                            | `1`
 | `node.logLevel`                                   | node driver log level                                                          |`5`                                                           |
 | `node.livenessProbe.healthPort `                  | the health check port for liveness probe                    |`29653`                                                           |
