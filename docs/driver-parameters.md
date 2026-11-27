@@ -20,6 +20,44 @@ onDelete | when volume is deleted, keep the directory if it's `retain` | `delete
 ```
 > example: `nfs-server.default.svc.cluster.local/share#subdir#`
 
+### `onDelete: archive`
+
+Archives the volume directory as `archived-<subDir>`. A retry after a
+successful archive preserves the archive and returns success.
+`--remove-archived-volume-path=true` replaces an existing archive only
+when the source directory still exists; its default remains `false`.
+
+For archive deletion only, the driver sets `lookupcache=none,nosharecache`
+for its internal Linux controller mount, replacing conflicting cache options.
+No deletion-secret or PV mount-option update is needed for these cache settings.
+Other options from the deletion `mountOptions` secret, including NFS version,
+transport, security, and explicit locking choices, are preserved; workload,
+provisioning, and snapshot mounts are unchanged.
+
+**Upgrade requirements:** archive deletion still requires:
+- A Linux controller and working server-side NFS locking.
+- Effective `lookupcache=none` on the controller's deletion mount.
+  Effective mount settings are checked even when an existing mount is reused.
+  `nolock` and local-only flock locking are rejected, not silently overridden.
+- Permission to create and open `.csi-nfs-archive-*.lock` files at the
+  share root. Do not remove or replace these files while controllers
+  can access the share.
+
+These checks also apply when archive replacement is disabled or the
+source is already missing, unless the request hits the local deletion
+cache. Unsupported mount settings return `FailedPrecondition`;
+lock contention returns `Aborted` for retry.
+
+All controllers accessing the same archive namespace must use this
+protocol. Mixed-version controllers and external writers are not
+coordinated. `lookupcache=none` increases metadata RPCs. `nosharecache`
+prevents inheriting another mount's cache policy, but creates an independent
+cache: concurrent access to the same files through different mounts can have
+inconsistent cached data. These internal mounts are for archive metadata
+operations, not a guarantee of coherence with active workload writers.
+
+`onDelete: delete` and `retain` are unchanged.
+
 ### PV/PVC usage (static provisioning)
 > [`PersistentVolume` example](../deploy/example/pv-nfs-csi.yaml)
 
